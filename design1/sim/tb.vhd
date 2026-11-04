@@ -15,8 +15,8 @@ architecture sim of tb is
     signal LCD_DATA : std_logic_vector(7 downto 0);
     signal LCD_RS, LCD_RW, LCD_EN, LCD_ON, LCD_BLON : std_logic;
     signal screen : string(1 to 32) := (others => ' ');   -- what the LCD shows (line 1 then line 2)
-    constant TXT_NORMAL  : string(1 to 32) := "DE2 PROJECT 1   " & "TRY FOR 777!    ";
-    constant TXT_JACKPOT : string(1 to 32) := "* JACKPOT  777 *" & "CONGRATULATIONS!";
+    constant TXT_COUNTER : string(1 to 32) := "COUNTER         " & "                ";
+    constant TXT_CALC    : string(1 to 32) := "CALCULATOR      " & "                ";
 
     function ch(s : std_logic_vector(6 downto 0)) return character is
     begin
@@ -211,7 +211,7 @@ begin
         cnt_is(776, "776 no jackpot");
         press(3, 20);    cnt_is(777, "777 jackpot on");
         wait for 150 ms;                                -- LCD : about 21 ms start-up, then 32 characters in about 90 ms
-        compare_lcd(TXT_JACKPOT, "LCD jackpot");
+        compare_lcd(TXT_COUNTER, "LCD counter mode");
         for i in 1 to 5 loop                            -- LEDs must flash : both states within 200 ms
             if LEDR(0) = '1' then hi := true; else lo := true; end if;
             cnt_is(777, "777 jackpot flashing");
@@ -223,8 +223,6 @@ begin
             report "FAIL jackpot LEDs do not flash";
         end if;
         press(3, 20);    cnt_is(778, "778 jackpot off");
-        wait for 100 ms;
-        compare_lcd(TXT_NORMAL, "LCD normal");
         press(1, 20);    cnt_is(777, "777 again jackpot on");
         SW(0) <= '1';  wait for 1 ns;
         checks := checks + 1;
@@ -232,6 +230,8 @@ begin
             errors := errors + 1;
             report "FAIL LEDs must be off in calculator mode";
         end if;
+        wait for 100 ms;                                -- LCD rewrites all characters in about 90 ms
+        compare_lcd(TXT_CALC, "LCD calculator mode");
         SW(0) <= '0';  wait for 1 ns;
         cnt_is(777, "back to counter mode, value kept");
         -- simultaneous press
