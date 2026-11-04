@@ -3,7 +3,7 @@
 -- Counter    : SW1 = mode, KEY3/KEY2/KEY1 = change value, KEY0 = reset
 --              HEX3~0 = value, LEDR = value in binary
 --              jackpot at 777 : red and green LEDs flash, HEX7~4 show 7777
--- LCD        : shows COUNTER or CALCULATOR (mode of SW0)
+-- LCD        : shows COUNTER or CALCULATOR (mode of SW0), a congratulation text at the jackpot
 -- Calculator : SW17~14 = A, SW13~10 = B, SW2~1 = operation (00 +, 01 -, 10 *, 11 /)
 --              SW3 = 0 : decimal (0~9),  SW3 = 1 : hexadecimal (0~F)
 --              A on HEX6, B on HEX4, result on HEX3~0
@@ -55,6 +55,7 @@ architecture behavior of DE2_Project1 is
     -- LCD text : 16 characters of line 1 followed by 16 characters of line 2
     constant COUNTER_TXT : string(1 to 32) := "COUNTER         " & "                ";
     constant CALC_TXT    : string(1 to 32) := "CALCULATOR      " & "                ";
+    constant JACKPOT_TXT : string(1 to 32) := "* JACKPOT  777 *" & "CONGRATULATIONS!";
     signal tick : unsigned(25 downto 0) := (others => '0');  -- free running counter (LED flash, LCD timing)
     signal step : integer range 0 to 41 := 0;                -- which byte the LCD gets now
     signal jp   : std_logic;                                 -- 1 = jackpot (counter mode and value 777)
@@ -168,7 +169,7 @@ begin
     LCD_EN  <= '1' when tick(16 downto 15) = "10" else '0';   -- pulse in the 3rd quarter, data is stable then
     LCD_RS  <= '1' when step > 8 and step /= 25 else '0';     -- 1 = text, 0 = command
 
-    process (step, SW)
+    process (step, SW, jp)
         variable i : integer range 1 to 32;      -- position in the 32 characters of the text
     begin
         i := 1;
@@ -178,8 +179,9 @@ begin
         elsif step = 7  then LCD_DATA <= x"06";            -- cursor moves right after each character
         elsif step = 8  then LCD_DATA <= x"80";            -- go to line 1
         elsif step = 25 then LCD_DATA <= x"C0";            -- go to line 2
-        elsif SW(0) = '0' then LCD_DATA <= std_logic_vector(to_unsigned(character'pos(COUNTER_TXT(i)), 8));
-        else                   LCD_DATA <= std_logic_vector(to_unsigned(character'pos(CALC_TXT(i)), 8));
+        elsif jp = '1'        then LCD_DATA <= std_logic_vector(to_unsigned(character'pos(JACKPOT_TXT(i)), 8));
+        elsif SW(0) = '0'     then LCD_DATA <= std_logic_vector(to_unsigned(character'pos(COUNTER_TXT(i)), 8));
+        else                       LCD_DATA <= std_logic_vector(to_unsigned(character'pos(CALC_TXT(i)), 8));
         end if;
     end process;
 

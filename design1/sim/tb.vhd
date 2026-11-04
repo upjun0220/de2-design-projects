@@ -17,6 +17,7 @@ architecture sim of tb is
     signal screen : string(1 to 32) := (others => ' ');   -- what the LCD shows (line 1 then line 2)
     constant TXT_COUNTER : string(1 to 32) := "COUNTER         " & "                ";
     constant TXT_CALC    : string(1 to 32) := "CALCULATOR      " & "                ";
+    constant TXT_JACKPOT : string(1 to 32) := "* JACKPOT  777 *" & "CONGRATULATIONS!";
 
     function ch(s : std_logic_vector(6 downto 0)) return character is
     begin
@@ -211,7 +212,7 @@ begin
         cnt_is(776, "776 no jackpot");
         press(3, 20);    cnt_is(777, "777 jackpot on");
         wait for 150 ms;                                -- LCD : about 21 ms start-up, then 32 characters in about 90 ms
-        compare_lcd(TXT_COUNTER, "LCD counter mode");
+        compare_lcd(TXT_JACKPOT, "LCD jackpot");
         for i in 1 to 5 loop                            -- LEDs must flash : both states within 200 ms
             if LEDR(0) = '1' then hi := true; else lo := true; end if;
             cnt_is(777, "777 jackpot flashing");
@@ -223,6 +224,8 @@ begin
             report "FAIL jackpot LEDs do not flash";
         end if;
         press(3, 20);    cnt_is(778, "778 jackpot off");
+        wait for 100 ms;
+        compare_lcd(TXT_COUNTER, "LCD counter mode");
         press(1, 20);    cnt_is(777, "777 again jackpot on");
         SW(0) <= '1';  wait for 1 ns;
         checks := checks + 1;

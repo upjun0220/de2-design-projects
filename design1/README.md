@@ -1,6 +1,6 @@
 # Design Project #1 — Counter + One Digit Calculator
 
-DE2 보드(Cyclone II EP2C35F672C6), Quartus II 13.0 SP1, **VHDL**. 파일 하나(`src/DE2_Project1.vhd`, 188줄)로 구성한다.
+DE2 보드(Cyclone II EP2C35F672C6), Quartus II 13.0 SP1, **VHDL**. 파일 하나(`src/DE2_Project1.vhd`, 190줄)로 구성한다.
 시연 11/26, 최종 보고서 12/21. 평가: 카운터 정상 동작, 사칙연산과 0으로 나누기 예외 처리, 읽기 쉽고 간결한 코드(줄 수 최소화), 소스코드 발표에서의 이해도.
 
 ## 동작
@@ -27,7 +27,13 @@ DE2 보드(Cyclone II EP2C35F672C6), Quartus II 13.0 SP1, **VHDL**. 파일 하�
 
 **777 잭팟:** 카운터 모드에서 값이 777이면 빨간 LED 전체와 초록 LED 전체가 약 0.17초마다 번갈아 켜지고(번쩍임), HEX7~4에 `7777`이 뜬다.
 
-**LCD:** 보드의 16×2 문자 LCD 1행에 현재 모드를 영문으로 표시한다(`SW0` = 0이면 `COUNTER`, 1이면 `CALCULATOR`). 2행은 비어 있다.
+**LCD:** 보드의 16×2 문자 LCD는 영문만 표시한다.
+
+| 상태 | 1행 | 2행 |
+|---|---|---|
+| 카운터 모드 (`SW0` = 0) | `COUNTER` | 비어 있음 |
+| 계산기 모드 (`SW0` = 1) | `CALCULATOR` | 비어 있음 |
+| 777 잭팟 | `* JACKPOT  777 *` | `CONGRATULATIONS!` |
 
 ## 빌드 (Quartus, 사용자 PC)
 
@@ -43,7 +49,7 @@ DE2 보드(Cyclone II EP2C35F672C6), Quartus II 13.0 SP1, **VHDL**. 파일 하�
 sh sim/run_sim.sh
 ```
 
-`sim/tb.vhd`가 카운터(롱프레스, 포화, 잭팟, LED)와 계산기(십진수·16진수 전 조합, 십진수 모드의 범위 밖 입력)를 검사한다. LCD 글자와 LED 점멸까지 검사하므로 시뮬레이션 시간이 길다(ModelSim에서 약 1분 반). 마지막 줄이 `TOTAL checks=2132 errors=0`이면 통과.
+`sim/tb.vhd`가 카운터(롱프레스, 포화, 잭팟, LED)와 계산기(십진수·16진수 전 조합, 십진수 모드의 범위 밖 입력)를 검사한다. LCD 글자와 LED 점멸까지 검사하므로 시뮬레이션 시간이 길다(ModelSim에서 약 1분 반). 마지막 줄이 `TOTAL checks=2133 errors=0`이면 통과.
 시뮬레이션은 로직 검증이며 Quartus 합성·핀 할당·보드 동작을 대신하지 않는다.
 
 ## 코드 이해와 발표
