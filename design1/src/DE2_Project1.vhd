@@ -2,7 +2,7 @@
 -- SW0 : 0 = counter, 1 = calculator
 -- Counter    : SW1 = mode, KEY3/KEY2/KEY1 = change value, KEY0 = reset
 --              HEX3~0 = value, LEDR = value in binary
---              jackpot at 777 : green LEDs on and HEX7~4 show 7777
+--              jackpot at 777 : red and green LEDs flash, HEX7~4 show 7777, LCD shows a message
 -- Calculator : SW17~14 = A, SW13~10 = B, SW2~1 = operation (00 +, 01 -, 10 *, 11 /)
 --              SW3 = 0 : decimal (0~9),  SW3 = 1 : hexadecimal (0~F)
 --              A on HEX6, B on HEX4, result on HEX3~0
@@ -18,6 +18,8 @@ entity DE2_Project1 is
         SW       : in  std_logic_vector(17 downto 0);
         LEDR     : out std_logic_vector(17 downto 0);
         LEDG     : out std_logic_vector(7 downto 0);
+        LCD_DATA : out std_logic_vector(7 downto 0);
+        LCD_RS, LCD_RW, LCD_EN, LCD_ON, LCD_BLON : out std_logic;
         HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, HEX7 : out std_logic_vector(6 downto 0)
     );
 end DE2_Project1;
@@ -48,6 +50,13 @@ architecture behavior of DE2_Project1 is
         "0010010", "0000010", "1111000", "0000000", "0010000",   -- 5 6 7 8 9
         "0001000", "0000011", "1000110", "0100001", "0000110", "0001110",   -- A b C d E F
         "1111111", "0111111", "0101111");                        -- blank - r
+
+    -- LCD text : 16 characters of line 1 followed by 16 characters of line 2
+    constant NORMAL  : string(1 to 32) := "DE2 PROJECT 1   " & "TRY FOR 777!    ";
+    constant JACKPOT : string(1 to 32) := "* JACKPOT  777 *" & "CONGRATULATIONS!";
+    signal tick : unsigned(25 downto 0) := (others => '0');  -- free running counter (LED flash, LCD timing)
+    signal step : integer range 0 to 41 := 0;                -- which byte the LCD gets now
+    signal jp   : std_logic;                                 -- 1 = jackpot (counter mode and value 777)
 begin
     -- counter : change the value only at the moment a button is pressed (1 -> 0)
     s1 <= 1 when SW(1) = '0' else 5;     -- step of button1 (+) and button3 (-)
@@ -58,6 +67,10 @@ begin
         if rising_edge(CLOCK_50) then
             k1 <= KEY;
             k2 <= k1;
+            tick <= tick + 1;
+            if tick(16 downto 0) = 0 then            -- every 2^17 clocks : next LCD byte
+                if step = 41 then step <= 8; else step <= step + 1; end if;
+            end if;
             if SW(0) = '0' then          -- counter mode only
                 if k2(0) = '1' and k1(0) = '0' then          -- KEY0 : reset
                     cnt <= 0;
@@ -72,9 +85,11 @@ begin
         end if;
     end process;
 
-    -- LEDs (counter mode only) : red = value in binary, green = jackpot at 777
-    LEDR <= std_logic_vector(to_unsigned(cnt, 18)) when SW(0) = '0' else (others => '0');
-    LEDG <= (others => '1') when SW(0) = '0' and cnt = 777 else (others => '0');
+    -- LEDs (counter mode only) : red = value in binary, jackpot at 777 : red and green flash by turns
+    jp   <= '1' when SW(0) = '0' and cnt = 777 else '0';
+    LEDR <= (others => tick(23)) when jp = '1' else
+            std_logic_vector(to_unsigned(cnt, 18)) when SW(0) = '0' else (others => '0');
+    LEDG <= (others => not tick(23)) when jp = '1' else (others => '0');
 
     -- calculator : 00 add, 01 subtract, 10 multiply, 11 divide
     a <= to_integer(unsigned(SW(17 downto 14)));
@@ -142,6 +157,28 @@ begin
                     end if;
                 end if;
             end if;
+        end if;
+    end process;
+
+    -- LCD (16x2, HD44780, 8 bit bus, write only) : one byte per 2^17 clocks (2.6 ms), sent in a loop
+    -- step 0~5 function set, 6 display on, 7 entry mode, 8 line 1 address, 9~24 line 1 text,
+    -- 25 line 2 address, 26~41 line 2 text (after step 41 it goes back to step 8)
+    LCD_RW  <= '0';  LCD_ON <= '1';  LCD_BLON <= '1';
+    LCD_EN  <= '1' when tick(16 downto 15) = "10" else '0';   -- pulse in the 3rd quarter, data is stable then
+    LCD_RS  <= '1' when step > 8 and step /= 25 else '0';     -- 1 = text, 0 = command
+
+    process (step, jp)
+        variable i : integer range 1 to 32;      -- position in the 32 characters of the text
+    begin
+        i := 1;
+        if step > 25 then i := step - 9; elsif step > 8 then i := step - 8; end if;
+        if    step < 6  then LCD_DATA <= x"38";            -- function set : 8 bit bus, 2 lines
+        elsif step = 6  then LCD_DATA <= x"0C";            -- display on, cursor off
+        elsif step = 7  then LCD_DATA <= x"06";            -- cursor moves right after each character
+        elsif step = 8  then LCD_DATA <= x"80";            -- go to line 1
+        elsif step = 25 then LCD_DATA <= x"C0";            -- go to line 2
+        elsif jp = '1'  then LCD_DATA <= std_logic_vector(to_unsigned(character'pos(JACKPOT(i)), 8));
+        else                 LCD_DATA <= std_logic_vector(to_unsigned(character'pos(NORMAL(i)), 8));
         end if;
     end process;
 

@@ -12,6 +12,11 @@ architecture sim of tb is
     signal LEDR : std_logic_vector(17 downto 0);
     signal LEDG : std_logic_vector(7 downto 0);
     signal H0, H1, H2, H3, H4, H5, H6, H7 : std_logic_vector(6 downto 0);
+    signal LCD_DATA : std_logic_vector(7 downto 0);
+    signal LCD_RS, LCD_RW, LCD_EN, LCD_ON, LCD_BLON : std_logic;
+    signal screen : string(1 to 32) := (others => ' ');   -- what the LCD shows (line 1 then line 2)
+    constant TXT_NORMAL  : string(1 to 32) := "DE2 PROJECT 1   " & "TRY FOR 777!    ";
+    constant TXT_JACKPOT : string(1 to 32) := "* JACKPOT  777 *" & "CONGRATULATIONS!";
 
     function ch(s : std_logic_vector(6 downto 0)) return character is
     begin
@@ -44,13 +49,32 @@ begin
 
     dut : entity work.DE2_Project1
         port map (CLOCK_50 => clk, KEY => KEY, SW => SW, LEDR => LEDR, LEDG => LEDG,
+                  LCD_DATA => LCD_DATA, LCD_RS => LCD_RS, LCD_RW => LCD_RW, LCD_EN => LCD_EN,
+                  LCD_ON => LCD_ON, LCD_BLON => LCD_BLON,
                   HEX0 => H0, HEX1 => H1, HEX2 => H2, HEX3 => H3,
                   HEX4 => H4, HEX5 => H5, HEX6 => H6, HEX7 => H7);
+
+    -- LCD monitor : like the real LCD, take a byte when LCD_EN falls and copy text into "screen"
+    process (LCD_EN)
+        variable pos : integer range 1 to 33 := 1;
+    begin
+        if falling_edge(LCD_EN) then
+            if LCD_RS = '1' then
+                if pos <= 32 then
+                    screen(pos) <= character'val(to_integer(unsigned(LCD_DATA)));
+                    pos := pos + 1;
+                end if;
+            elsif LCD_DATA = x"80" then pos := 1;         -- line 1 address
+            elsif LCD_DATA = x"C0" then pos := 17;        -- line 2 address
+            end if;
+        end if;
+    end process;
 
     process
         variable errors, checks : integer := 0;
         variable exp : string(1 to 8);
         variable r, ar, q, rm : integer;
+        variable hi, lo : boolean := false;     -- jackpot LED states seen so far
 
         impure function shown return string is
         begin
@@ -66,21 +90,30 @@ begin
             end if;
         end procedure;
 
-        -- counter shows v on HEX3~0, binary on LEDR, jackpot (green LEDs + 7777) at 777
+        procedure compare_lcd(e : string; name : string) is
+        begin
+            checks := checks + 1;
+            if screen /= e then
+                errors := errors + 1;
+                report "FAIL " & name & ": got [" & screen & "] expected [" & e & "]";
+            end if;
+        end procedure;
+
+        -- counter shows v on HEX3~0 and binary on LEDR, jackpot at 777 : 7777, red and green LEDs flash by turns
         procedure cnt_is(v : integer; name : string) is
             variable pre : string(1 to 4);
         begin
             if v = 777 then pre := "7777"; else pre := "    "; end if;
             compare(pre & hx(v / 1000) & hx((v / 100) mod 10) & hx((v / 10) mod 10) & hx(v mod 10), name);
             checks := checks + 1;
-            if LEDR /= std_logic_vector(to_unsigned(v, 18)) then
+            if v = 777 then       -- all red on and all green off, or the opposite
+                if LEDR /= (17 downto 0 => LEDR(0)) or LEDG /= (7 downto 0 => not LEDR(0)) then
+                    errors := errors + 1;
+                    report "FAIL " & name & ": jackpot LEDs wrong";
+                end if;
+            elsif LEDR /= std_logic_vector(to_unsigned(v, 18)) or LEDG /= "00000000" then
                 errors := errors + 1;
-                report "FAIL " & name & ": LEDR wrong";
-            end if;
-            checks := checks + 1;
-            if (v = 777 and LEDG /= "11111111") or (v /= 777 and LEDG /= "00000000") then
-                errors := errors + 1;
-                report "FAIL " & name & ": LEDG wrong";
+                report "FAIL " & name & ": LEDs wrong";
             end if;
         end procedure;
 
@@ -177,7 +210,21 @@ begin
         for i in 1 to 6 loop press(3, 20); end loop;
         cnt_is(776, "776 no jackpot");
         press(3, 20);    cnt_is(777, "777 jackpot on");
+        wait for 150 ms;                                -- LCD : about 21 ms start-up, then 32 characters in about 90 ms
+        compare_lcd(TXT_JACKPOT, "LCD jackpot");
+        for i in 1 to 5 loop                            -- LEDs must flash : both states within 200 ms
+            if LEDR(0) = '1' then hi := true; else lo := true; end if;
+            cnt_is(777, "777 jackpot flashing");
+            wait for 50 ms;
+        end loop;
+        checks := checks + 1;
+        if not (hi and lo) then
+            errors := errors + 1;
+            report "FAIL jackpot LEDs do not flash";
+        end if;
         press(3, 20);    cnt_is(778, "778 jackpot off");
+        wait for 100 ms;
+        compare_lcd(TXT_NORMAL, "LCD normal");
         press(1, 20);    cnt_is(777, "777 again jackpot on");
         SW(0) <= '1';  wait for 1 ns;
         checks := checks + 1;
