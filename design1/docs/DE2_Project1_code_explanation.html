@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DE2 Design Project #1 코드 설명</title>
+<style>
+:root{
+  --bg:#ffffff; --fg:#1f2328; --muted:#5b6470; --line:#d8dde3; --card:#f6f8fa;
+  --accent:#0b5cad; --codebg:#0f1720; --codefg:#e6edf3; --kw:#79b8ff; --ty:#ffab70; --cm:#8b98a5; --ln:#566270;
+  --ok:#1a7f37; --warn:#9a6700;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0f141a; --fg:#e6edf3; --muted:#9aa6b2; --line:#2a323b; --card:#161c23; --accent:#6cb2ff; --codebg:#0a0f14; }
+}
+*{ box-sizing:border-box; }
+html{ scroll-behavior:smooth; }
+body{ margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.75 "Pretendard","Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif; }
+.wrap{ max-width:980px; margin:0 auto; padding:32px 20px 80px; }
+header h1{ font-size:30px; margin:0 0 6px; line-height:1.3; }
+header p{ margin:0; color:var(--muted); }
+nav{ margin:24px 0 8px; padding:14px 18px; background:var(--card); border:1px solid var(--line); border-radius:10px; }
+nav strong{ display:block; margin-bottom:6px; }
+nav a{ display:inline-block; margin:2px 14px 2px 0; color:var(--accent); text-decoration:none; font-size:15px; }
+nav a:hover{ text-decoration:underline; }
+h2{ font-size:23px; margin:48px 0 10px; padding-bottom:8px; border-bottom:2px solid var(--line); }
+h3{ font-size:18px; margin:30px 0 6px; }
+p{ margin:8px 0; }
+ul,ol{ margin:8px 0; padding-left:22px; }
+li{ margin:4px 0; }
+code{ font-family:"D2Coding","Consolas","Menlo",monospace; font-size:.92em; background:var(--card);
+  border:1px solid var(--line); padding:1px 6px; border-radius:5px; }
+pre.code{ background:var(--codebg); color:var(--codefg); border-radius:10px; padding:14px 0; margin:12px 0;
+  overflow-x:auto; font-size:13.5px; line-height:1.6; }
+pre.code code{ background:none; border:0; padding:0; font-size:inherit; color:inherit; display:block; width:max-content; min-width:100%; }
+.ln{ display:inline-block; width:3.2em; padding-right:1em; text-align:right; color:var(--ln); user-select:none; }
+.k{ color:var(--kw); } .t{ color:var(--ty); } .c{ color:var(--cm); }
+pre.plain{ background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 16px; overflow-x:auto;
+  font:13.5px/1.55 "D2Coding","Consolas",monospace; }
+table{ border-collapse:collapse; width:100%; margin:12px 0; font-size:15px; }
+th,td{ border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+th{ background:var(--card); }
+td.c, th.c{ text-align:center; }
+.note{ background:var(--card); border-left:4px solid var(--accent); padding:10px 14px; border-radius:6px; margin:14px 0; }
+.warn{ border-left-color:var(--warn); }
+.flow{ display:flex; flex-wrap:wrap; align-items:stretch; gap:10px; margin:16px 0; }
+.box{ flex:1 1 170px; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-size:14.5px; }
+.box b{ display:block; margin-bottom:4px; color:var(--accent); }
+.arrow{ align-self:center; color:var(--muted); font-size:20px; }
+details{ background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 14px; margin:10px 0; }
+summary{ cursor:pointer; font-weight:600; }
+details[open] summary{ margin-bottom:8px; }
+.small{ font-size:14px; color:var(--muted); }
+@media print{
+  nav{ display:none; } pre.code{ white-space:pre-wrap; } body{ font-size:13px; }
+  details{ break-inside:avoid; } details > *{ display:block; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>DE2 Design Project #1 코드 설명</h1>
+  <p>Counter + One Digit Calculator (보너스 포함) · VHDL · Cyclone II EP2C35F672C6 · 소스 169줄 (파일 1개)</p>
+</header>
+
+<nav>
+  <strong>목차</strong>
+  <a href="#overview">1. 한눈에 보기</a>
+  <a href="#usage">2. 보드 사용법</a>
+  <a href="#entity">3. 포트</a>
+  <a href="#decl">4. 선언부</a>
+  <a href="#seg7">5. seg7</a>
+  <a href="#counter">6. 카운터</a>
+  <a href="#led">7. LED·잭팟</a>
+  <a href="#calc">8. 계산기</a>
+  <a href="#disp">9. 표시</a>
+  <a href="#hexout">10. 출력 연결</a>
+  <a href="#examples">11. 동작 예시</a>
+  <a href="#qa">12. 예상 질문</a>
+  <a href="#demo">13. 시연 순서</a>
+  <a href="#full">부록. 전체 코드</a>
+</nav>
+
+<h2 id="overview">1. 한눈에 보기</h2>
+<p>스위치 <code>SW0</code> 하나로 <b>카운터</b>와 <b>한 자리 계산기</b>를 오가는 회로입니다. 결과는 7세그먼트(HEX)에 십진수로 표시하고, 보너스로 LED 표시, 777 잭팟, 나눗셈 나머지, 16진수 표시를 넣었습니다.</p>
+<p>코드는 크게 <b>세 덩어리</b>로 나뉩니다. 앞의 두 덩어리가 값을 만들고, 세 번째가 화면에 무엇을 띄울지 정합니다.</p>
+<div class="flow">
+  <div class="box"><b>① 카운터</b>버튼을 누른 순간을 감지해 <code>cnt</code>를 올리고 내립니다.<br>(클럭에 맞춰 동작하는 순차회로)</div>
+  <div class="arrow">+</div>
+  <div class="box"><b>② 계산기</b>스위치로 받은 A, B를 계산해 <code>result</code>, <code>quot</code>, <code>remain</code>, <code>neg</code>를 만듭니다.<br>(스위치가 바뀌면 바로 계산되는 조합회로)</div>
+  <div class="arrow">→</div>
+  <div class="box"><b>③ 표시</b>어느 값을 어느 HEX 칸에 띄울지 <code>d0~d7</code>에 정하고, <code>seg7</code>이 7세그 패턴으로 바꿉니다.</div>
+</div>
+<p class="small">전체 흐름: 스위치·버튼 → (카운터 / 계산기) → 숫자 값 → 자릿수 분리 → 문자 코드(<code>d0~d7</code>) → <code>seg7</code> → HEX0~7</p>
+
+<h2 id="usage">2. 보드 사용법</h2>
+<p>스위치는 위로 올리면 1, 아래로 내리면 0입니다. 오른쪽 끝이 SW0입니다.</p>
+<table>
+<tr><th>입력</th><th>카운터 모드 (SW0 = 0)</th><th>계산기 모드 (SW0 = 1)</th></tr>
+<tr><td><code>SW0</code></td><td colspan="2">0 = 카운터, 1 = 계산기</td></tr>
+<tr><td><code>SW1</code></td><td>0 → +1 / +2 / -1, 1 → +5 / +10 / -5</td><td rowspan="2">연산 선택 (SW2 SW1): 00 덧셈, 01 뺄셈, 10 곱셈, 11 나눗셈</td></tr>
+<tr><td><code>SW2</code></td><td>사용 안 함</td></tr>
+<tr><td><code>SW3</code></td><td>사용 안 함</td><td>0 = 십진수 (A, B = 0~9), 1 = 16진수 (A, B = 0~F)</td></tr>
+<tr><td><code>SW13~10</code></td><td>사용 안 함</td><td>숫자 B (4비트 이진수)</td></tr>
+<tr><td><code>SW17~14</code></td><td>사용 안 함</td><td>숫자 A (4비트 이진수)</td></tr>
+<tr><td><code>KEY3 / KEY2 / KEY1</code></td><td>버튼1 / 버튼2 / 버튼3 (증가 / 증가 / 감소)</td><td>사용 안 함</td></tr>
+<tr><td><code>KEY0</code></td><td>리셋 (0으로)</td><td>사용 안 함</td></tr>
+<tr><td>표시</td><td>HEX3~0 = 카운터 값, LEDR = 이진수, 777이면 LEDG 전부 + HEX7~4에 7777</td><td>HEX6 = A, HEX4 = B, HEX3~0 = 결과</td></tr>
+</table>
+
+<h2 id="entity">3. 라이브러리와 포트 (entity)</h2>
+<pre class="code"><code><span class="ln">10</span><span class="k">library</span> ieee;
+<span class="ln">11</span><span class="k">use</span> ieee.std_logic_1164.<span class="k">all</span>;
+<span class="ln">12</span><span class="k">use</span> ieee.numeric_std.<span class="k">all</span>;
+<span class="ln">13</span>
+<span class="ln">14</span><span class="k">entity</span> DE2_Project1 <span class="k">is</span>
+<span class="ln">15</span>    <span class="k">port</span> (
+<span class="ln">16</span>        CLOCK_50 : <span class="k">in</span>  <span class="t">std_logic</span>;
+<span class="ln">17</span>        KEY      : <span class="k">in</span>  <span class="t">std_logic_vector</span>(3 <span class="k">downto</span> 0);
+<span class="ln">18</span>        SW       : <span class="k">in</span>  <span class="t">std_logic_vector</span>(17 <span class="k">downto</span> 0);
+<span class="ln">19</span>        LEDR     : <span class="k">out</span> <span class="t">std_logic_vector</span>(17 <span class="k">downto</span> 0);
+<span class="ln">20</span>        LEDG     : <span class="k">out</span> <span class="t">std_logic_vector</span>(7 <span class="k">downto</span> 0);
+<span class="ln">21</span>        HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, HEX7 : <span class="k">out</span> <span class="t">std_logic_vector</span>(6 <span class="k">downto</span> 0)
+<span class="ln">22</span>    );
+<span class="ln">23</span><span class="k">end</span> DE2_Project1;</code></pre>
+<ul>
+  <li><code>library ieee; use ieee.std_logic_1164.all;</code> : 신호 타입 <code>std_logic</code>(0 또는 1 한 비트)을 쓰기 위한 선언입니다.</li>
+  <li><code>use ieee.numeric_std.all;</code> : 이진수와 정수를 바꾸는 함수(<code>unsigned</code>, <code>to_integer</code>, <code>to_unsigned</code>)를 쓰기 위한 선언입니다.</li>
+  <li><b>entity는 회로의 겉모습</b>, 즉 입력과 출력 핀 목록입니다. <code>in</code>은 입력, <code>out</code>은 출력입니다.</li>
+  <li><code>CLOCK_50</code> : 보드의 50MHz 클럭 (한 클럭 = 20ns). <code>KEY</code> : 버튼 4개. <code>SW</code> : 토글스위치 18개.</li>
+  <li><code>LEDR</code>(빨강 18개), <code>LEDG</code>(초록 8개) : 보너스용 LED.</li>
+  <li><code>HEX0~HEX7</code> : 7세그먼트 8개. 각각 7비트(세그먼트 a~g 일곱 개)입니다.</li>
+  <li>포트 이름은 DE2 핀 할당 파일의 이름과 <b>똑같아야</b> 합니다. 그래야 코드의 신호가 보드의 실제 핀에 연결됩니다.</li>
+</ul>
+
+<h2 id="decl">4. 선언부 (architecture 앞부분)</h2>
+<pre class="code"><code><span class="ln">25</span><span class="k">architecture</span> behavior <span class="k">of</span> DE2_Project1 <span class="k">is</span>
+<span class="ln">26</span>    <span class="c">-- character codes : 0~15 = hex digit 0~F, 16 = blank, 17 = &#x27;-&#x27;, 18 = &#x27;r&#x27;</span>
+<span class="ln">27</span>    <span class="k">constant</span> BLANK : <span class="t">integer</span> := 16;
+<span class="ln">28</span>    <span class="k">constant</span> MINUS : <span class="t">integer</span> := 17;
+<span class="ln">29</span>    <span class="k">constant</span> CH_R  : <span class="t">integer</span> := 18;
+<span class="ln">30</span>    <span class="k">constant</span> CH_E  : <span class="t">integer</span> := 14;   <span class="c">-- same shape as hex E</span>
+<span class="ln">31</span>
+<span class="ln">32</span>    <span class="k">signal</span> k1, k2 : <span class="t">std_logic_vector</span>(3 <span class="k">downto</span> 0) := "1111";  <span class="c">-- buttons now / one clock ago</span>
+<span class="ln">33</span>    <span class="k">signal</span> cnt    : <span class="t">integer</span> <span class="k">range</span> 0 <span class="k">to</span> 9999 := 0;            <span class="c">-- counter value</span>
+<span class="ln">34</span>    <span class="k">signal</span> s1, s2 : <span class="t">integer</span> <span class="k">range</span> 0 <span class="k">to</span> 10;                   <span class="c">-- step size</span>
+<span class="ln">35</span>    <span class="k">signal</span> a, b   : <span class="t">integer</span> <span class="k">range</span> 0 <span class="k">to</span> 15;                   <span class="c">-- calculator inputs</span>
+<span class="ln">36</span>    <span class="k">signal</span> result : <span class="t">integer</span> <span class="k">range</span> 0 <span class="k">to</span> 255;                  <span class="c">-- result of + - * (absolute value)</span>
+<span class="ln">37</span>    <span class="k">signal</span> quot   : <span class="t">integer</span> <span class="k">range</span> 0 <span class="k">to</span> 15;                   <span class="c">-- quotient</span>
+<span class="ln">38</span>    <span class="k">signal</span> remain : <span class="t">integer</span> <span class="k">range</span> 0 <span class="k">to</span> 15;                   <span class="c">-- remainder</span>
+<span class="ln">39</span>    <span class="k">signal</span> neg    : <span class="t">std_logic</span>;                               <span class="c">-- 1 = negative result</span>
+<span class="ln">40</span>    <span class="k">signal</span> err    : <span class="t">std_logic</span>;                               <span class="c">-- 1 = divide by zero</span>
+<span class="ln">41</span>    <span class="k">signal</span> valid  : <span class="t">std_logic</span>;                               <span class="c">-- 0 = decimal mode and A or B is 10 or more</span>
+<span class="ln">42</span>    <span class="k">signal</span> d0, d1, d2, d3, d4, d5, d6, d7 : <span class="t">integer</span> <span class="k">range</span> 0 <span class="k">to</span> 18;  <span class="c">-- what each HEX shows</span></code></pre>
+<ul>
+  <li><b>constant</b> : 문자 코드를 이름으로 적어 둔 것입니다. 표시할 칸마다 "무엇을 띄울지"를 숫자로 정합니다. <code>0~15</code>는 16진수 숫자 0~F 그대로, <code>16</code>은 빈칸, <code>17</code>은 <code>-</code>, <code>18</code>은 <code>r</code>입니다. <code>Err</code>의 E는 16진수 E(14)와 모양이 같아서 14를 씁니다.</li>
+  <li><b>signal</b> : 회로 안의 전선·저장소입니다.
+    <ul>
+      <li><code>k1, k2</code> : 버튼 값을 한 클럭, 두 클럭 늦게 저장합니다. 초기값 <code>"1111"</code>인 이유는 <b>버튼이 안 눌린 상태가 1</b>이기 때문입니다.</li>
+      <li><code>cnt</code> : 카운터 값. <code>integer range 0 to 9999</code>로 범위를 정하면 합성할 때 필요한 비트 수(14비트)로 알아서 만들어집니다.</li>
+      <li><code>s1, s2</code> : 버튼을 한 번 눌렀을 때 바뀌는 크기(모드에 따라 1/2 또는 5/10).</li>
+      <li><code>a, b</code> : 계산기 입력(0~15). <code>result</code> : 더하기·빼기·곱하기의 결과(항상 0 이상, 부호는 <code>neg</code>로 따로 표시).</li>
+      <li><code>quot, remain</code> : 나눗셈의 몫과 나머지. <code>err</code> : 0으로 나누면 1. <code>valid</code> : 십진수 모드에서 A나 B가 10 이상이면 0.</li>
+      <li><code>d0~d7</code> : HEX 8칸에 각각 무엇을 띄울지(문자 코드).</li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="seg7">5. seg7 함수 : 코드 → 7세그 패턴</h2>
+<pre class="code"><code><span class="ln">44</span>    <span class="c">-- character code -&gt; 7-segment pattern (a segment lights up when 0)</span>
+<span class="ln">45</span>    <span class="k">function</span> seg7(c : <span class="t">integer</span>) <span class="k">return</span> <span class="t">std_logic_vector</span> <span class="k">is</span>
+<span class="ln">46</span>    <span class="k">begin</span>
+<span class="ln">47</span>        <span class="k">case</span> c <span class="k">is</span>
+<span class="ln">48</span>            <span class="k">when</span> 0  =&gt; <span class="k">return</span> "1000000";
+<span class="ln">49</span>            <span class="k">when</span> 1  =&gt; <span class="k">return</span> "1111001";
+<span class="ln">50</span>            <span class="k">when</span> 2  =&gt; <span class="k">return</span> "0100100";
+<span class="ln">51</span>            <span class="k">when</span> 3  =&gt; <span class="k">return</span> "0110000";
+<span class="ln">52</span>            <span class="k">when</span> 4  =&gt; <span class="k">return</span> "0011001";
+<span class="ln">53</span>            <span class="k">when</span> 5  =&gt; <span class="k">return</span> "0010010";
+<span class="ln">54</span>            <span class="k">when</span> 6  =&gt; <span class="k">return</span> "0000010";
+<span class="ln">55</span>            <span class="k">when</span> 7  =&gt; <span class="k">return</span> "1111000";
+<span class="ln">56</span>            <span class="k">when</span> 8  =&gt; <span class="k">return</span> "0000000";
+<span class="ln">57</span>            <span class="k">when</span> 9  =&gt; <span class="k">return</span> "0010000";
+<span class="ln">58</span>            <span class="k">when</span> 10 =&gt; <span class="k">return</span> "0001000";   <span class="c">-- A</span>
+<span class="ln">59</span>            <span class="k">when</span> 11 =&gt; <span class="k">return</span> "0000011";   <span class="c">-- b</span>
+<span class="ln">60</span>            <span class="k">when</span> 12 =&gt; <span class="k">return</span> "1000110";   <span class="c">-- C</span>
+<span class="ln">61</span>            <span class="k">when</span> 13 =&gt; <span class="k">return</span> "0100001";   <span class="c">-- d</span>
+<span class="ln">62</span>            <span class="k">when</span> 14 =&gt; <span class="k">return</span> "0000110";   <span class="c">-- E</span>
+<span class="ln">63</span>            <span class="k">when</span> 15 =&gt; <span class="k">return</span> "0001110";   <span class="c">-- F</span>
+<span class="ln">64</span>            <span class="k">when</span> 17 =&gt; <span class="k">return</span> "0111111";   <span class="c">-- -</span>
+<span class="ln">65</span>            <span class="k">when</span> 18 =&gt; <span class="k">return</span> "0101111";   <span class="c">-- r</span>
+<span class="ln">66</span>            <span class="k">when</span> <span class="k">others</span> =&gt; <span class="k">return</span> "1111111";   <span class="c">-- blank</span>
+<span class="ln">67</span>        <span class="k">end</span> <span class="k">case</span>;
+<span class="ln">68</span>    <span class="k">end</span> <span class="k">function</span>;</code></pre>
+<p>7세그먼트의 일곱 획에 이름(a~g)이 있고, 이 함수는 <b>문자 코드를 받아 어느 획을 켤지(7비트)</b> 돌려줍니다.</p>
+<pre class="plain">   a
+ f   b        패턴 순서 : g f e d c b a  (왼쪽부터)
+   g          DE2 보드는 0이면 켜지고 1이면 꺼집니다 (active-low)
+ e   c
+   d          예) 숫자 0 = "1000000" : g만 끄고 나머지 여섯 획을 켬</pre>
+<ul>
+  <li><code>case c is when 0 =&gt; return "1000000";</code> 처럼 코드 값마다 패턴을 하나씩 돌려줍니다. 나머지 값은 <code>when others</code>에서 전부 끈 상태(<code>"1111111"</code>, 빈칸)입니다.</li>
+  <li>숫자 10~15는 <code>A, b, C, d, E, F</code> 모양입니다. 7세그로는 B와 D를 대문자로 그릴 수 없어서 소문자 <code>b</code>, <code>d</code>로 씁니다.</li>
+  <li><code>-</code>(17)은 가운데 획 g만 켠 모양, <code>r</code>(18)은 e와 g만 켠 모양입니다.</li>
+</ul>
+
+<h2 id="counter">6. 카운터</h2>
+<h3>6-1. 증감 크기 정하기</h3>
+<pre class="code"><code><span class="ln">71</span>    s1 &lt;= 1 <span class="k">when</span> SW(1) = '0' <span class="k">else</span> 5;     <span class="c">-- step of button1 (+) and button3 (-)</span>
+<span class="ln">72</span>    s2 &lt;= 2 <span class="k">when</span> SW(1) = '0' <span class="k">else</span> 10;    <span class="c">-- step of button2 (+)</span></code></pre>
+<p>SW1이 0이면 버튼1·3은 1씩, 버튼2는 2씩 바뀌고, SW1이 1이면 5씩, 10씩 바뀝니다. <code>when ... else</code>는 조건에 따라 값을 고르는 신호 대입입니다.</p>
+
+<h3>6-2. 버튼을 누른 순간만 감지하기 (엣지 검출)</h3>
+<pre class="code"><code><span class="ln">74</span>    <span class="k">process</span> (CLOCK_50)
+<span class="ln">75</span>    <span class="k">begin</span>
+<span class="ln">76</span>        <span class="k">if</span> rising_edge(CLOCK_50) <span class="k">then</span>
+<span class="ln">77</span>            k1 &lt;= KEY;
+<span class="ln">78</span>            k2 &lt;= k1;
+<span class="ln">79</span>            <span class="k">if</span> SW(0) = '0' <span class="k">then</span>          <span class="c">-- counter mode only</span>
+<span class="ln">80</span>                <span class="k">if</span> k2(0) = '1' <span class="k">and</span> k1(0) = '0' <span class="k">then</span>          <span class="c">-- KEY0 : reset</span>
+<span class="ln">81</span>                    cnt &lt;= 0;
+<span class="ln">82</span>                <span class="k">elsif</span> k2(3) = '1' <span class="k">and</span> k1(3) = '0' <span class="k">then</span>       <span class="c">-- KEY3 : up by s1</span>
+<span class="ln">83</span>                    <span class="k">if</span> cnt + s1 &gt; 9999 <span class="k">then</span> cnt &lt;= 9999; <span class="k">else</span> cnt &lt;= cnt + s1; <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">84</span>                <span class="k">elsif</span> k2(2) = '1' <span class="k">and</span> k1(2) = '0' <span class="k">then</span>       <span class="c">-- KEY2 : up by s2</span>
+<span class="ln">85</span>                    <span class="k">if</span> cnt + s2 &gt; 9999 <span class="k">then</span> cnt &lt;= 9999; <span class="k">else</span> cnt &lt;= cnt + s2; <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">86</span>                <span class="k">elsif</span> k2(1) = '1' <span class="k">and</span> k1(1) = '0' <span class="k">then</span>       <span class="c">-- KEY1 : down by s1</span>
+<span class="ln">87</span>                    <span class="k">if</span> cnt &lt; s1 <span class="k">then</span> cnt &lt;= 0; <span class="k">else</span> cnt &lt;= cnt - s1; <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">88</span>                <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">89</span>            <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">90</span>        <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">91</span>    <span class="k">end</span> <span class="k">process</span>;</code></pre>
+<p><b>왜 필요한가?</b> 버튼을 한 번 누르는 0.1초 동안 50MHz 클럭은 500만 번 돕니다. "눌려 있으면 더한다"고 하면 한 번 눌러도 500만 번 더해집니다. 그래서 <b>"전 클럭엔 안 눌림(1), 지금은 눌림(0)"인 단 한 번</b>만 동작하게 합니다.</p>
+<table>
+<tr><th>클럭 번호</th><th class="c">1</th><th class="c">2</th><th class="c">3</th><th class="c">4</th><th class="c">5</th><th class="c">6</th></tr>
+<tr><td>KEY3 (눌림 = 0)</td><td class="c">1</td><td class="c">1</td><td class="c">0</td><td class="c">0</td><td class="c">0</td><td class="c">0</td></tr>
+<tr><td><code>k1</code> (한 클럭 전 값)</td><td class="c">1</td><td class="c">1</td><td class="c">1</td><td class="c">0</td><td class="c">0</td><td class="c">0</td></tr>
+<tr><td><code>k2</code> (두 클럭 전 값)</td><td class="c">1</td><td class="c">1</td><td class="c">1</td><td class="c">1</td><td class="c">0</td><td class="c">0</td></tr>
+<tr><td><code>k2 = 1 and k1 = 0</code></td><td class="c">X</td><td class="c">X</td><td class="c">X</td><td class="c"><b>O</b></td><td class="c">X</td><td class="c">X</td></tr>
+</table>
+<p>버튼을 계속 눌러도 조건이 만족되는 클럭은 <b>딱 한 번(4번)</b>뿐입니다. 코드로는 <code>k2(3) = '1' and k1(3) = '0'</code>입니다.</p>
+<ul>
+  <li><code>process (CLOCK_50)</code> + <code>rising_edge(CLOCK_50)</code> : 클럭이 올라가는 순간마다 한 번 실행합니다. 값을 기억하는 회로(플립플롭)가 만들어집니다.</li>
+  <li><code>k1 &lt;= KEY; k2 &lt;= k1;</code> : 버튼 값을 한 단계씩 밀어 저장합니다. 버튼은 클럭과 상관없이 바뀌는 신호라서 한 번 레지스터에 담아 안정화하는 효과도 있습니다.</li>
+  <li><b>우선순위</b> : <code>if / elsif</code> 순서대로 KEY0(리셋) → KEY3 → KEY2 → KEY1입니다. 두 버튼이 정확히 같은 클럭에 눌리면 앞의 것 하나만 동작합니다.</li>
+  <li><b>상한·하한</b> : 올릴 때 <code>cnt + s1 &gt; 9999</code>이면 9999로 고정하고, 내릴 때 <code>cnt &lt; s1</code>이면 0으로 고정합니다.</li>
+  <li><code>if SW(0) = '0'</code> : 계산기 모드에서는 카운터가 버튼을 무시합니다. 이때도 <code>k1, k2</code>는 계속 갱신되기 때문에 모드를 바꿀 때 가짜 입력이 생기지 않습니다.</li>
+  <li>이 프로세스는 74~91번 줄입니다.</li>
+</ul>
+
+<h2 id="led">7. LED와 777 잭팟</h2>
+<pre class="code"><code><span class="ln">93</span>    <span class="c">-- LEDs (counter mode only) : red = value in binary, green = jackpot at 777</span>
+<span class="ln">94</span>    LEDR(13 <span class="k">downto</span> 0)  &lt;= <span class="t">std_logic_vector</span>(to_unsigned(cnt, 14)) <span class="k">when</span> SW(0) = '0' <span class="k">else</span> (<span class="k">others</span> =&gt; '0');
+<span class="ln">95</span>    LEDR(17 <span class="k">downto</span> 14) &lt;= "0000";
+<span class="ln">96</span>    LEDG &lt;= (<span class="k">others</span> =&gt; '1') <span class="k">when</span> SW(0) = '0' <span class="k">and</span> cnt = 777 <span class="k">else</span> (<span class="k">others</span> =&gt; '0');</code></pre>
+<ul>
+  <li><code>to_unsigned(cnt, 14)</code> : 정수 <code>cnt</code>를 14비트 이진수로 바꿉니다. 9999까지 표현하려면 14비트(2<sup>14</sup> = 16384)가 필요해서 <code>LEDR(13 downto 0)</code>에 연결하고, 남은 <code>LEDR(17 downto 14)</code>는 항상 0입니다.</li>
+  <li><code>(others =&gt; '0')</code> : 모든 비트를 0으로 채운다는 뜻입니다. 계산기 모드(SW0 = 1)에서는 LED를 끕니다.</li>
+  <li><code>LEDG</code> : 카운터 모드에서 <code>cnt = 777</code>이면 초록 LED 8개를 모두 켭니다. HEX7~4에 <code>7777</code>을 띄우는 부분은 9장 표시 프로세스에 있습니다.</li>
+  <li>이 부분은 클럭 없이 값이 바뀌는 즉시 반응하는 <b>조합회로</b>입니다.</li>
+</ul>
+
+<h2 id="calc">8. 계산기</h2>
+<h3>8-1. 입력 받기</h3>
+<pre class="code"><code><span class="ln">99</span>    a &lt;= to_integer(<span class="t">unsigned</span>(SW(17 <span class="k">downto</span> 14)));
+<span class="ln">100</span>    b &lt;= to_integer(<span class="t">unsigned</span>(SW(13 <span class="k">downto</span> 10)));
+<span class="ln">101</span>    err &lt;= '1' <span class="k">when</span> SW(2 <span class="k">downto</span> 1) = "11" <span class="k">and</span> b = 0 <span class="k">else</span> '0';
+<span class="ln">102</span>    valid &lt;= '1' <span class="k">when</span> SW(3) = '1' <span class="k">or</span> (a &lt; 10 <span class="k">and</span> b &lt; 10) <span class="k">else</span> '0';</code></pre>
+<ul>
+  <li><code>SW(17 downto 14)</code>는 4비트 이진수입니다. <code>unsigned(...)</code>로 "부호 없는 숫자"로 보고 <code>to_integer(...)</code>로 정수로 바꿉니다.</li>
+  <li><code>err</code> : 나눗셈(<code>"11"</code>)이면서 B가 0이면 1입니다.</li>
+  <li><code>valid</code> : 16진수 모드(SW3 = 1)이거나 A, B가 모두 10 미만이면 1입니다. 한 자리 계산기이므로 십진수 모드에서 10 이상이 들어오면 결과를 띄우지 않기 위한 신호입니다.</li>
+</ul>
+
+<h3>8-2. 연산하기</h3>
+<pre class="code"><code><span class="ln">104</span>    <span class="k">process</span> (SW, a, b)
+<span class="ln">105</span>        <span class="k">variable</span> q : <span class="t">integer</span> <span class="k">range</span> 0 <span class="k">to</span> 15;
+<span class="ln">106</span>    <span class="k">begin</span>
+<span class="ln">107</span>        result &lt;= 0;
+<span class="ln">108</span>        quot &lt;= 0;
+<span class="ln">109</span>        remain &lt;= 0;
+<span class="ln">110</span>        neg &lt;= '0';
+<span class="ln">111</span>        <span class="k">case</span> SW(2 <span class="k">downto</span> 1) <span class="k">is</span>
+<span class="ln">112</span>            <span class="k">when</span> "00" =&gt; result &lt;= a + b;
+<span class="ln">113</span>            <span class="k">when</span> "01" =&gt;
+<span class="ln">114</span>                <span class="k">if</span> a &gt;= b <span class="k">then</span>
+<span class="ln">115</span>                    result &lt;= a - b;
+<span class="ln">116</span>                <span class="k">else</span>
+<span class="ln">117</span>                    result &lt;= b - a;     <span class="c">-- a is smaller : calculate b - a and mark negative</span>
+<span class="ln">118</span>                    neg &lt;= '1';
+<span class="ln">119</span>                <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">120</span>            <span class="k">when</span> "10" =&gt; result &lt;= a * b;
+<span class="ln">121</span>            <span class="k">when</span> <span class="k">others</span> =&gt;
+<span class="ln">122</span>                <span class="k">if</span> b /= 0 <span class="k">then</span>
+<span class="ln">123</span>                    q := to_integer(to_unsigned(a, 4) / to_unsigned(b, 4));
+<span class="ln">124</span>                    quot &lt;= q;
+<span class="ln">125</span>                    remain &lt;= a - q * b;     <span class="c">-- remainder = a - quotient * b</span>
+<span class="ln">126</span>                <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">127</span>        <span class="k">end</span> <span class="k">case</span>;
+<span class="ln">128</span>    <span class="k">end</span> <span class="k">process</span>;</code></pre>
+<ul>
+  <li><code>process (SW, a, b)</code> : 괄호 안의 신호가 바뀔 때마다 다시 실행됩니다. 클럭이 없으니 스위치를 바꾸면 곧바로 결과가 바뀝니다.</li>
+  <li><b>맨 위에서 기본값을 먼저 넣는 이유</b> : 어떤 경우에도 모든 신호에 값이 정해지게 하기 위해서입니다. 안 그러면 값을 기억하는 회로(래치)가 불필요하게 만들어질 수 있습니다.</li>
+  <li><b>뺄셈</b> : <code>a &gt;= b</code>이면 <code>a - b</code>. 아니면 <code>b - a</code>를 구하고 <code>neg</code>를 1로 합니다. 음수를 2의 보수로 다루지 않고 "크기 + 부호 표시"로 나눈 방식입니다. (3 - 7 → 결과 4, neg = 1 → 화면에 <code>-004</code>)</li>
+  <li><b>곱셈</b> : <code>a * b</code>. 십진수 최대 9 × 9 = 81, 16진수 최대 15 × 15 = 225입니다.</li>
+  <li><b>나눗셈</b> : b가 0이면 계산하지 않습니다. 아니면 4비트 부호 없는 수끼리 <code>/</code>로 나눈 몫을 <code>q</code>에 담고, <b>나머지 = a - 몫 × b</b>로 구합니다. 예) 7 ÷ 3 → q = 2, 나머지 = 7 - 2×3 = 1</li>
+  <li><code>variable q</code> : 신호(<code>&lt;=</code>)는 프로세스가 끝난 뒤 값이 바뀌지만, 변수(<code>:=</code>)는 대입 즉시 바뀝니다. 몫을 계산하자마자 같은 프로세스 안에서 바로 쓰기 위해 변수를 썼습니다.</li>
+  <li>이 프로세스는 104~128번 줄입니다.</li>
+</ul>
+
+<h2 id="disp">9. 표시 : 어느 칸에 무엇을 띄울까</h2>
+<h3>9-1. 먼저 전부 끄기</h3>
+<pre class="code"><code><span class="ln">131</span>    <span class="k">process</span> (SW, cnt, a, b, result, quot, remain, neg, err, valid)
+<span class="ln">132</span>    <span class="k">begin</span>
+<span class="ln">133</span>        d7 &lt;= BLANK; d6 &lt;= BLANK; d5 &lt;= BLANK; d4 &lt;= BLANK;     <span class="c">-- everything off first</span>
+<span class="ln">134</span>        d3 &lt;= BLANK; d2 &lt;= BLANK; d1 &lt;= BLANK; d0 &lt;= BLANK;</code></pre>
+<p>모든 칸을 빈칸으로 두고 시작해서 필요한 칸만 아래에서 덮어씁니다. 같은 신호에 여러 번 대입하면 <b>마지막 대입이 적용</b>됩니다. 이 덕분에 "안 쓰는 칸은 끈다"를 일일이 적지 않아도 됩니다.</p>
+
+<h3>9-2. 카운터 표시와 잭팟</h3>
+<pre class="code"><code><span class="ln">136</span>        <span class="k">if</span> SW(0) = '0' <span class="k">then</span>              <span class="c">-- counter : thousands, hundreds, tens, ones</span>
+<span class="ln">137</span>            d3 &lt;= cnt / 1000;
+<span class="ln">138</span>            d2 &lt;= (cnt / 100) <span class="k">mod</span> 10;
+<span class="ln">139</span>            d1 &lt;= (cnt / 10) <span class="k">mod</span> 10;
+<span class="ln">140</span>            d0 &lt;= cnt <span class="k">mod</span> 10;
+<span class="ln">141</span>            <span class="k">if</span> cnt = 777 <span class="k">then</span>            <span class="c">-- jackpot : show 7777</span>
+<span class="ln">142</span>                d7 &lt;= 7; d6 &lt;= 7; d5 &lt;= 7; d4 &lt;= 7;
+<span class="ln">143</span>            <span class="k">end</span> <span class="k">if</span>;</code></pre>
+<table>
+<tr><th>cnt = 1234</th><th class="c">d3 (천)</th><th class="c">d2 (백)</th><th class="c">d1 (십)</th><th class="c">d0 (일)</th></tr>
+<tr><td>식</td><td class="c"><code>cnt / 1000</code></td><td class="c"><code>(cnt / 100) mod 10</code></td><td class="c"><code>(cnt / 10) mod 10</code></td><td class="c"><code>cnt mod 10</code></td></tr>
+<tr><td>값</td><td class="c">1</td><td class="c">2</td><td class="c">3</td><td class="c">4</td></tr>
+</table>
+<p><code>/</code>는 몫, <code>mod</code>는 나머지입니다. 7세그는 한 칸에 숫자 한 개만 띄울 수 있어서 십진수를 자릿수별로 쪼갭니다. 값이 777이면 HEX7~4(<code>d7~d4</code>)에 7을 넣어 <code>7777</code>을 띄웁니다.</p>
+
+<h3>9-3. 계산기 표시</h3>
+<pre class="code"><code><span class="ln">144</span>        <span class="k">else</span>                             <span class="c">-- calculator</span>
+<span class="ln">145</span>            <span class="k">if</span> SW(3) = '1' <span class="k">or</span> a &lt; 10 <span class="k">then</span> d6 &lt;= a; <span class="k">end</span> <span class="k">if</span>;   <span class="c">-- decimal mode shows 0~9 only</span>
+<span class="ln">146</span>            <span class="k">if</span> SW(3) = '1' <span class="k">or</span> b &lt; 10 <span class="k">then</span> d4 &lt;= b; <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">147</span>            <span class="k">if</span> valid = '1' <span class="k">then</span>
+<span class="ln">148</span>                <span class="k">if</span> err = '1' <span class="k">then</span>                            <span class="c">-- divide by zero : &quot; Err&quot;</span>
+<span class="ln">149</span>                    d2 &lt;= CH_E;  d1 &lt;= CH_R;  d0 &lt;= CH_R;
+<span class="ln">150</span>                <span class="k">elsif</span> SW(2 <span class="k">downto</span> 1) = "11" <span class="k">then</span>             <span class="c">-- division : &quot;quotient r remainder&quot;</span>
+<span class="ln">151</span>                    d3 &lt;= quot;  d1 &lt;= CH_R;  d0 &lt;= remain;
+<span class="ln">152</span>                <span class="k">else</span>
+<span class="ln">153</span>                    <span class="k">if</span> neg = '1' <span class="k">then</span> d3 &lt;= MINUS; <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">154</span>                    <span class="k">if</span> SW(3) = '1' <span class="k">then</span>                      <span class="c">-- hexadecimal result : 2 digits</span>
+<span class="ln">155</span>                        d1 &lt;= result / 16;
+<span class="ln">156</span>                        d0 &lt;= result <span class="k">mod</span> 16;
+<span class="ln">157</span>                    <span class="k">else</span>                                     <span class="c">-- decimal result : 3 digits</span>
+<span class="ln">158</span>                        d2 &lt;= result / 100;
+<span class="ln">159</span>                        d1 &lt;= (result / 10) <span class="k">mod</span> 10;
+<span class="ln">160</span>                        d0 &lt;= result <span class="k">mod</span> 10;
+<span class="ln">161</span>                    <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">162</span>                <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">163</span>            <span class="k">end</span> <span class="k">if</span>;</code></pre>
+<ul>
+  <li>A는 HEX6(<code>d6</code>), B는 HEX4(<code>d4</code>)에 한 자리만 띄웁니다. 십진수 모드에서 10 이상이면 그 칸은 빈칸으로 둡니다.</li>
+  <li><code>valid = '1'</code>일 때만 결과를 띄웁니다. 즉 십진수 모드에서 A나 B가 10 이상이면 결과 칸도 비웁니다.</li>
+  <li><b>0으로 나눔</b> → <code>E</code>, <code>r</code>, <code>r</code>을 HEX2~0에 띄워 <code> Err</code>가 됩니다.</li>
+  <li><b>나눗셈</b> → HEX3 = 몫, HEX2 = 빈칸, HEX1 = <code>r</code>, HEX0 = 나머지. 예) 7 ÷ 3 → <code>2 r1</code></li>
+  <li><b>그 외 연산</b> : 음수면 HEX3에 <code>-</code>. 16진수 모드면 두 자리(<code>result / 16</code>, <code>result mod 16</code>), 십진수 모드면 세 자리(백, 십, 일)로 나눕니다.<br>
+      예) 15 × 15 = 225 → 16진수 모드: 225 ÷ 16 = 14(E), 225 mod 16 = 1 → <code>E1</code></li>
+  <li>이 프로세스는 131~165번 줄입니다.</li>
+</ul>
+
+<h2 id="hexout">10. 출력 연결</h2>
+<pre class="code"><code><span class="ln">167</span>    HEX0 &lt;= seg7(d0);  HEX1 &lt;= seg7(d1);  HEX2 &lt;= seg7(d2);  HEX3 &lt;= seg7(d3);
+<span class="ln">168</span>    HEX4 &lt;= seg7(d4);  HEX5 &lt;= seg7(d5);  HEX6 &lt;= seg7(d6);  HEX7 &lt;= seg7(d7);
+<span class="ln">169</span><span class="k">end</span> behavior;</code></pre>
+<p>8개 칸 각각에 <code>seg7</code> 함수를 적용해 문자 코드(<code>d0~d7</code>)를 7세그 패턴으로 바꿔 HEX 출력에 연결합니다. 마지막 <code>end behavior;</code>로 설계가 끝납니다.</p>
+
+<h2 id="examples">11. 동작 예시</h2>
+<p>계산기 모드(SW0 = 1), 십진수(SW3 = 0). A = 7 (<code>0111</code>), B = 3 (<code>0011</code>)일 때의 HEX6 / HEX4 / HEX3~0입니다.</p>
+<table>
+<tr><th>SW2 SW1</th><th>연산</th><th>표시 (HEX6, HEX4, 결과)</th></tr>
+<tr><td>00</td><td>7 + 3</td><td><code>7 · 3 · 010</code></td></tr>
+<tr><td>01</td><td>7 - 3</td><td><code>7 · 3 · 004</code></td></tr>
+<tr><td>10</td><td>7 × 3</td><td><code>7 · 3 · 021</code></td></tr>
+<tr><td>11</td><td>7 ÷ 3</td><td><code>7 · 3 · 2 r1</code> (몫 2, 나머지 1)</td></tr>
+<tr><td>01</td><td>3 - 7 (A=3, B=7)</td><td><code>3 · 7 · -004</code></td></tr>
+<tr><td>11</td><td>7 ÷ 0 (B=0)</td><td><code>7 · 0 · Err</code></td></tr>
+<tr><td>10 (SW3 = 1)</td><td>15 × 15</td><td><code>F · F · E1</code> (16진수)</td></tr>
+</table>
+
+<h2 id="qa">12. 발표 예상 질문과 답</h2>
+
+<details><summary>Q1. 버튼을 길게 눌러도 한 번만 올라가는 이유는?</summary>
+<p>누른 <b>순간</b>만 감지하기 때문입니다. 한 클럭 전 버튼 값(<code>k2</code>)이 1이고 지금 값(<code>k1</code>)이 0인 클럭에서만 증감합니다. 버튼을 계속 눌러도 이 조건은 처음 한 번만 참입니다.</p></details>
+
+<details><summary>Q2. 왜 <code>k1</code>, <code>k2</code> 두 개를 쓰나요?</summary>
+<p>하나는 현재 값, 하나는 한 클럭 전 값을 저장해서 "1에서 0으로 바뀌었는지"를 비교하려고 쓰고, 버튼이 클럭과 상관없이 바뀌는 신호이므로 레지스터에 한 번 담아 안정화하는 역할도 합니다.</p></details>
+
+<details><summary>Q3. 왜 <code>integer range 0 to 9999</code>처럼 정수를 썼나요?</summary>
+<p>코드가 읽기 쉽고, 범위만 적어 주면 합성할 때 필요한 비트 수(여기서는 14비트)로 알아서 만들어지기 때문입니다. 자릿수 분리(<code>/</code>, <code>mod</code>)도 정수로 하면 간단합니다.</p></details>
+
+<details><summary>Q4. 음수는 어떻게 처리했나요?</summary>
+<p>a가 b보다 작으면 큰 수에서 작은 수를 뺀(<code>b - a</code>) 값을 <code>result</code>에 넣고, <code>neg</code> 신호를 1로 켭니다. 표시 단계에서 <code>neg</code>가 1이면 HEX3에 <code>-</code>를 띄웁니다. 2의 보수 대신 "크기 + 부호"로 나눈 방식입니다.</p></details>
+
+<details><summary>Q5. 프로세스 맨 위에서 기본값을 먼저 넣는 이유는?</summary>
+<p>어떤 경우에도 모든 신호에 값이 정해지게 하려는 것입니다. 값이 정해지지 않는 경우가 생기면 회로가 이전 값을 기억하는 래치를 만들 수 있습니다. 표시 프로세스에서는 "먼저 전부 끄고 필요한 칸만 덮어쓰기" 용도로도 씁니다.</p></details>
+
+<details><summary>Q6. 0으로 나누면 어떻게 되나요?</summary>
+<p><code>err</code> 신호가 1이 되어 <code>Err</code>를 표시하고, 나눗셈 자체는 b가 0이 아닐 때만 계산합니다.</p></details>
+
+<details><summary>Q7. 나머지는 어떻게 구하나요?</summary>
+<p>몫 <code>q</code>를 구한 뒤 <b>나머지 = a - q × b</b>로 계산합니다. 7 ÷ 3이면 q = 2이고 나머지는 7 - 6 = 1입니다.</p></details>
+
+<details><summary>Q8. 16진수 표시는 어떻게 했나요?</summary>
+<p>SW3이 1이면 10으로 나누던 부분을 16으로 나눕니다. <code>result / 16</code>이 윗자리, <code>result mod 16</code>이 아랫자리입니다. <code>seg7</code>에 10~15의 패턴(<code>A, b, C, d, E, F</code>)이 들어 있어서 이 값들이 문자로 보입니다.</p></details>
+
+<details><summary>Q9. 777 잭팟은 어떻게 구현했나요?</summary>
+<p><code>cnt = 777</code>인지 비교합니다. 참이면 초록 LED(<code>LEDG</code>) 8개를 모두 켜고, 표시 프로세스에서 HEX7~4에 7을 넣어 <code>7777</code>을 띄웁니다. 777에서 벗어나면 꺼집니다.</p></details>
+
+<details><summary>Q10. 두 버튼을 동시에 누르면요?</summary>
+<p><code>if / elsif</code> 순서의 우선순위(KEY0 → KEY3 → KEY2 → KEY1)대로 하나만 동작합니다. 같은 클럭 안에서 정확히 동시에 눌렸을 때의 이야기이고, 실제로는 약간씩 시간 차가 있어 따로 인식됩니다.</p></details>
+
+<details><summary>Q11. 9999에서 더 올리면요? 0에서 내리면요?</summary>
+<p>9999를 넘기는 경우 9999로 고정하고, 0 아래로 내려가는 경우 0으로 고정합니다. (예: 9995에서 +10 → 9999, 2에서 -5 → 0)</p></details>
+
+<details><summary>Q12. 카운터는 클럭을 쓰는데 계산기는 왜 안 쓰나요?</summary>
+<p>카운터는 값을 기억하고 버튼을 누른 순간을 감지해야 해서 클럭에 맞춰 동작하는 순차회로입니다. 계산기는 스위치 값으로만 결과가 정해지고 기억할 필요가 없어서 입력이 바뀌면 바로 반응하는 조합회로입니다.</p></details>
+
+<details><summary>Q13. 신호(signal)와 변수(variable)는 뭐가 다른가요?</summary>
+<p>신호는 <code>&lt;=</code>로 대입하고, 프로세스가 끝난 뒤에 값이 바뀝니다. 변수는 <code>:=</code>로 대입하고, 즉시 바뀝니다. 몫 <code>q</code>를 계산하자마자 바로 나머지 계산에 써야 해서 변수를 썼습니다.</p></details>
+
+<details><summary>Q14. 7세그먼트는 왜 0일 때 켜지나요?</summary>
+<p>DE2 보드의 7세그먼트는 active-low 방식이라 해당 획에 0을 주면 켜지고 1을 주면 꺼지기 때문입니다. 숫자 0은 g만 끄면 되므로 <code>"1000000"</code>입니다.</p></details>
+
+<details><summary>Q15. 십진수 모드에서 A나 B가 10 이상이면 어떻게 되나요?</summary>
+<p>"한 자리 계산기"이므로 십진수 모드에서는 0~9만 표시합니다. 10 이상이면 그 입력 칸이 비고 <code>valid</code>가 0이 되어 결과 칸도 모두 비워집니다. SW3을 1로 올려 16진수 모드로 바꾸면 0~F를 모두 입력할 수 있습니다.</p></details>
+
+<h2 id="demo">13. 시연 순서 (제안)</h2>
+<ol>
+  <li><b>카운터</b> (SW0 = 0) : <code>0000</code> 확인 → KEY3을 길게 눌러도 +1만 되는지 → KEY2 → KEY1 → SW1을 올려 +5 / +10 / -5 → KEY0 리셋.</li>
+  <li><b>LED</b> : 값이 바뀔 때 빨간 LED가 이진수로 바뀌는지 확인.</li>
+  <li><b>잭팟</b> : 777을 만들면(예: SW1을 올려 KEY2로 +10을 77번, SW1을 내려 KEY3으로 +1을 7번) 초록 LED 전부 + HEX7~4에 <code>7777</code>.</li>
+  <li><b>계산기</b> (SW0 = 1) : A = 7, B = 3으로 덧셈 → 뺄셈 → 곱셈 → 나눗셈(<code>2 r1</code>). A와 B를 바꿔 <code>-004</code>, B = 0으로 <code>Err</code>.</li>
+  <li><b>16진수</b> (SW3 = 1) : A = 15, B = 15로 곱셈 → <code>E1</code>. SW3을 내려 십진수로 돌아가고, A에 10 이상을 넣어 입력과 결과가 빈칸이 되는 것까지 확인.</li>
+</ol>
+
+<h2 id="full">부록. 전체 코드</h2>
+<pre class="code"><code><span class="ln">1</span><span class="c">-- DE2 Design Project #1 : Counter + One Digit Calculator (with bonus)</span>
+<span class="ln">2</span><span class="c">-- SW0 : 0 = counter, 1 = calculator</span>
+<span class="ln">3</span><span class="c">-- Counter    : SW1 = mode, KEY3/KEY2/KEY1 = change value, KEY0 = reset</span>
+<span class="ln">4</span><span class="c">--              HEX3~0 = value, LEDR = value in binary</span>
+<span class="ln">5</span><span class="c">--              jackpot at 777 : green LEDs on and HEX7~4 show 7777</span>
+<span class="ln">6</span><span class="c">-- Calculator : SW17~14 = A, SW13~10 = B, SW2~1 = operation (00 +, 01 -, 10 *, 11 /)</span>
+<span class="ln">7</span><span class="c">--              SW3 = 0 : decimal (0~9),  SW3 = 1 : hexadecimal (0~F)</span>
+<span class="ln">8</span><span class="c">--              A on HEX6, B on HEX4, result on HEX3~0</span>
+<span class="ln">9</span><span class="c">--              division shows &quot;quotient r remainder&quot;, for example 7 / 3 -&gt; &quot;2 r1&quot;</span>
+<span class="ln">10</span><span class="k">library</span> ieee;
+<span class="ln">11</span><span class="k">use</span> ieee.std_logic_1164.<span class="k">all</span>;
+<span class="ln">12</span><span class="k">use</span> ieee.numeric_std.<span class="k">all</span>;
+<span class="ln">13</span>
+<span class="ln">14</span><span class="k">entity</span> DE2_Project1 <span class="k">is</span>
+<span class="ln">15</span>    <span class="k">port</span> (
+<span class="ln">16</span>        CLOCK_50 : <span class="k">in</span>  <span class="t">std_logic</span>;
+<span class="ln">17</span>        KEY      : <span class="k">in</span>  <span class="t">std_logic_vector</span>(3 <span class="k">downto</span> 0);
+<span class="ln">18</span>        SW       : <span class="k">in</span>  <span class="t">std_logic_vector</span>(17 <span class="k">downto</span> 0);
+<span class="ln">19</span>        LEDR     : <span class="k">out</span> <span class="t">std_logic_vector</span>(17 <span class="k">downto</span> 0);
+<span class="ln">20</span>        LEDG     : <span class="k">out</span> <span class="t">std_logic_vector</span>(7 <span class="k">downto</span> 0);
+<span class="ln">21</span>        HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, HEX7 : <span class="k">out</span> <span class="t">std_logic_vector</span>(6 <span class="k">downto</span> 0)
+<span class="ln">22</span>    );
+<span class="ln">23</span><span class="k">end</span> DE2_Project1;
+<span class="ln">24</span>
+<span class="ln">25</span><span class="k">architecture</span> behavior <span class="k">of</span> DE2_Project1 <span class="k">is</span>
+<span class="ln">26</span>    <span class="c">-- character codes : 0~15 = hex digit 0~F, 16 = blank, 17 = &#x27;-&#x27;, 18 = &#x27;r&#x27;</span>
+<span class="ln">27</span>    <span class="k">constant</span> BLANK : <span class="t">integer</span> := 16;
+<span class="ln">28</span>    <span class="k">constant</span> MINUS : <span class="t">integer</span> := 17;
+<span class="ln">29</span>    <span class="k">constant</span> CH_R  : <span class="t">integer</span> := 18;
+<span class="ln">30</span>    <span class="k">constant</span> CH_E  : <span class="t">integer</span> := 14;   <span class="c">-- same shape as hex E</span>
+<span class="ln">31</span>
+<span class="ln">32</span>    <span class="k">signal</span> k1, k2 : <span class="t">std_logic_vector</span>(3 <span class="k">downto</span> 0) := "1111";  <span class="c">-- buttons now / one clock ago</span>
+<span class="ln">33</span>    <span class="k">signal</span> cnt    : <span class="t">integer</span> <span class="k">range</span> 0 <span class="k">to</span> 9999 := 0;            <span class="c">-- counter value</span>
+<span class="ln">34</span>    <span class="k">signal</span> s1, s2 : <span class="t">integer</span> <span class="k">range</span> 0 <span class="k">to</span> 10;                   <span class="c">-- step size</span>
+<span class="ln">35</span>    <span class="k">signal</span> a, b   : <span class="t">integer</span> <span class="k">range</span> 0 <span class="k">to</span> 15;                   <span class="c">-- calculator inputs</span>
+<span class="ln">36</span>    <span class="k">signal</span> result : <span class="t">integer</span> <span class="k">range</span> 0 <span class="k">to</span> 255;                  <span class="c">-- result of + - * (absolute value)</span>
+<span class="ln">37</span>    <span class="k">signal</span> quot   : <span class="t">integer</span> <span class="k">range</span> 0 <span class="k">to</span> 15;                   <span class="c">-- quotient</span>
+<span class="ln">38</span>    <span class="k">signal</span> remain : <span class="t">integer</span> <span class="k">range</span> 0 <span class="k">to</span> 15;                   <span class="c">-- remainder</span>
+<span class="ln">39</span>    <span class="k">signal</span> neg    : <span class="t">std_logic</span>;                               <span class="c">-- 1 = negative result</span>
+<span class="ln">40</span>    <span class="k">signal</span> err    : <span class="t">std_logic</span>;                               <span class="c">-- 1 = divide by zero</span>
+<span class="ln">41</span>    <span class="k">signal</span> valid  : <span class="t">std_logic</span>;                               <span class="c">-- 0 = decimal mode and A or B is 10 or more</span>
+<span class="ln">42</span>    <span class="k">signal</span> d0, d1, d2, d3, d4, d5, d6, d7 : <span class="t">integer</span> <span class="k">range</span> 0 <span class="k">to</span> 18;  <span class="c">-- what each HEX shows</span>
+<span class="ln">43</span>
+<span class="ln">44</span>    <span class="c">-- character code -&gt; 7-segment pattern (a segment lights up when 0)</span>
+<span class="ln">45</span>    <span class="k">function</span> seg7(c : <span class="t">integer</span>) <span class="k">return</span> <span class="t">std_logic_vector</span> <span class="k">is</span>
+<span class="ln">46</span>    <span class="k">begin</span>
+<span class="ln">47</span>        <span class="k">case</span> c <span class="k">is</span>
+<span class="ln">48</span>            <span class="k">when</span> 0  =&gt; <span class="k">return</span> "1000000";
+<span class="ln">49</span>            <span class="k">when</span> 1  =&gt; <span class="k">return</span> "1111001";
+<span class="ln">50</span>            <span class="k">when</span> 2  =&gt; <span class="k">return</span> "0100100";
+<span class="ln">51</span>            <span class="k">when</span> 3  =&gt; <span class="k">return</span> "0110000";
+<span class="ln">52</span>            <span class="k">when</span> 4  =&gt; <span class="k">return</span> "0011001";
+<span class="ln">53</span>            <span class="k">when</span> 5  =&gt; <span class="k">return</span> "0010010";
+<span class="ln">54</span>            <span class="k">when</span> 6  =&gt; <span class="k">return</span> "0000010";
+<span class="ln">55</span>            <span class="k">when</span> 7  =&gt; <span class="k">return</span> "1111000";
+<span class="ln">56</span>            <span class="k">when</span> 8  =&gt; <span class="k">return</span> "0000000";
+<span class="ln">57</span>            <span class="k">when</span> 9  =&gt; <span class="k">return</span> "0010000";
+<span class="ln">58</span>            <span class="k">when</span> 10 =&gt; <span class="k">return</span> "0001000";   <span class="c">-- A</span>
+<span class="ln">59</span>            <span class="k">when</span> 11 =&gt; <span class="k">return</span> "0000011";   <span class="c">-- b</span>
+<span class="ln">60</span>            <span class="k">when</span> 12 =&gt; <span class="k">return</span> "1000110";   <span class="c">-- C</span>
+<span class="ln">61</span>            <span class="k">when</span> 13 =&gt; <span class="k">return</span> "0100001";   <span class="c">-- d</span>
+<span class="ln">62</span>            <span class="k">when</span> 14 =&gt; <span class="k">return</span> "0000110";   <span class="c">-- E</span>
+<span class="ln">63</span>            <span class="k">when</span> 15 =&gt; <span class="k">return</span> "0001110";   <span class="c">-- F</span>
+<span class="ln">64</span>            <span class="k">when</span> 17 =&gt; <span class="k">return</span> "0111111";   <span class="c">-- -</span>
+<span class="ln">65</span>            <span class="k">when</span> 18 =&gt; <span class="k">return</span> "0101111";   <span class="c">-- r</span>
+<span class="ln">66</span>            <span class="k">when</span> <span class="k">others</span> =&gt; <span class="k">return</span> "1111111";   <span class="c">-- blank</span>
+<span class="ln">67</span>        <span class="k">end</span> <span class="k">case</span>;
+<span class="ln">68</span>    <span class="k">end</span> <span class="k">function</span>;
+<span class="ln">69</span><span class="k">begin</span>
+<span class="ln">70</span>    <span class="c">-- counter : change the value only at the moment a button is pressed (1 -&gt; 0)</span>
+<span class="ln">71</span>    s1 &lt;= 1 <span class="k">when</span> SW(1) = '0' <span class="k">else</span> 5;     <span class="c">-- step of button1 (+) and button3 (-)</span>
+<span class="ln">72</span>    s2 &lt;= 2 <span class="k">when</span> SW(1) = '0' <span class="k">else</span> 10;    <span class="c">-- step of button2 (+)</span>
+<span class="ln">73</span>
+<span class="ln">74</span>    <span class="k">process</span> (CLOCK_50)
+<span class="ln">75</span>    <span class="k">begin</span>
+<span class="ln">76</span>        <span class="k">if</span> rising_edge(CLOCK_50) <span class="k">then</span>
+<span class="ln">77</span>            k1 &lt;= KEY;
+<span class="ln">78</span>            k2 &lt;= k1;
+<span class="ln">79</span>            <span class="k">if</span> SW(0) = '0' <span class="k">then</span>          <span class="c">-- counter mode only</span>
+<span class="ln">80</span>                <span class="k">if</span> k2(0) = '1' <span class="k">and</span> k1(0) = '0' <span class="k">then</span>          <span class="c">-- KEY0 : reset</span>
+<span class="ln">81</span>                    cnt &lt;= 0;
+<span class="ln">82</span>                <span class="k">elsif</span> k2(3) = '1' <span class="k">and</span> k1(3) = '0' <span class="k">then</span>       <span class="c">-- KEY3 : up by s1</span>
+<span class="ln">83</span>                    <span class="k">if</span> cnt + s1 &gt; 9999 <span class="k">then</span> cnt &lt;= 9999; <span class="k">else</span> cnt &lt;= cnt + s1; <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">84</span>                <span class="k">elsif</span> k2(2) = '1' <span class="k">and</span> k1(2) = '0' <span class="k">then</span>       <span class="c">-- KEY2 : up by s2</span>
+<span class="ln">85</span>                    <span class="k">if</span> cnt + s2 &gt; 9999 <span class="k">then</span> cnt &lt;= 9999; <span class="k">else</span> cnt &lt;= cnt + s2; <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">86</span>                <span class="k">elsif</span> k2(1) = '1' <span class="k">and</span> k1(1) = '0' <span class="k">then</span>       <span class="c">-- KEY1 : down by s1</span>
+<span class="ln">87</span>                    <span class="k">if</span> cnt &lt; s1 <span class="k">then</span> cnt &lt;= 0; <span class="k">else</span> cnt &lt;= cnt - s1; <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">88</span>                <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">89</span>            <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">90</span>        <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">91</span>    <span class="k">end</span> <span class="k">process</span>;
+<span class="ln">92</span>
+<span class="ln">93</span>    <span class="c">-- LEDs (counter mode only) : red = value in binary, green = jackpot at 777</span>
+<span class="ln">94</span>    LEDR(13 <span class="k">downto</span> 0)  &lt;= <span class="t">std_logic_vector</span>(to_unsigned(cnt, 14)) <span class="k">when</span> SW(0) = '0' <span class="k">else</span> (<span class="k">others</span> =&gt; '0');
+<span class="ln">95</span>    LEDR(17 <span class="k">downto</span> 14) &lt;= "0000";
+<span class="ln">96</span>    LEDG &lt;= (<span class="k">others</span> =&gt; '1') <span class="k">when</span> SW(0) = '0' <span class="k">and</span> cnt = 777 <span class="k">else</span> (<span class="k">others</span> =&gt; '0');
+<span class="ln">97</span>
+<span class="ln">98</span>    <span class="c">-- calculator : 00 add, 01 subtract, 10 multiply, 11 divide</span>
+<span class="ln">99</span>    a &lt;= to_integer(<span class="t">unsigned</span>(SW(17 <span class="k">downto</span> 14)));
+<span class="ln">100</span>    b &lt;= to_integer(<span class="t">unsigned</span>(SW(13 <span class="k">downto</span> 10)));
+<span class="ln">101</span>    err &lt;= '1' <span class="k">when</span> SW(2 <span class="k">downto</span> 1) = "11" <span class="k">and</span> b = 0 <span class="k">else</span> '0';
+<span class="ln">102</span>    valid &lt;= '1' <span class="k">when</span> SW(3) = '1' <span class="k">or</span> (a &lt; 10 <span class="k">and</span> b &lt; 10) <span class="k">else</span> '0';
+<span class="ln">103</span>
+<span class="ln">104</span>    <span class="k">process</span> (SW, a, b)
+<span class="ln">105</span>        <span class="k">variable</span> q : <span class="t">integer</span> <span class="k">range</span> 0 <span class="k">to</span> 15;
+<span class="ln">106</span>    <span class="k">begin</span>
+<span class="ln">107</span>        result &lt;= 0;
+<span class="ln">108</span>        quot &lt;= 0;
+<span class="ln">109</span>        remain &lt;= 0;
+<span class="ln">110</span>        neg &lt;= '0';
+<span class="ln">111</span>        <span class="k">case</span> SW(2 <span class="k">downto</span> 1) <span class="k">is</span>
+<span class="ln">112</span>            <span class="k">when</span> "00" =&gt; result &lt;= a + b;
+<span class="ln">113</span>            <span class="k">when</span> "01" =&gt;
+<span class="ln">114</span>                <span class="k">if</span> a &gt;= b <span class="k">then</span>
+<span class="ln">115</span>                    result &lt;= a - b;
+<span class="ln">116</span>                <span class="k">else</span>
+<span class="ln">117</span>                    result &lt;= b - a;     <span class="c">-- a is smaller : calculate b - a and mark negative</span>
+<span class="ln">118</span>                    neg &lt;= '1';
+<span class="ln">119</span>                <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">120</span>            <span class="k">when</span> "10" =&gt; result &lt;= a * b;
+<span class="ln">121</span>            <span class="k">when</span> <span class="k">others</span> =&gt;
+<span class="ln">122</span>                <span class="k">if</span> b /= 0 <span class="k">then</span>
+<span class="ln">123</span>                    q := to_integer(to_unsigned(a, 4) / to_unsigned(b, 4));
+<span class="ln">124</span>                    quot &lt;= q;
+<span class="ln">125</span>                    remain &lt;= a - q * b;     <span class="c">-- remainder = a - quotient * b</span>
+<span class="ln">126</span>                <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">127</span>        <span class="k">end</span> <span class="k">case</span>;
+<span class="ln">128</span>    <span class="k">end</span> <span class="k">process</span>;
+<span class="ln">129</span>
+<span class="ln">130</span>    <span class="c">-- decide what each 7-segment shows</span>
+<span class="ln">131</span>    <span class="k">process</span> (SW, cnt, a, b, result, quot, remain, neg, err, valid)
+<span class="ln">132</span>    <span class="k">begin</span>
+<span class="ln">133</span>        d7 &lt;= BLANK; d6 &lt;= BLANK; d5 &lt;= BLANK; d4 &lt;= BLANK;     <span class="c">-- everything off first</span>
+<span class="ln">134</span>        d3 &lt;= BLANK; d2 &lt;= BLANK; d1 &lt;= BLANK; d0 &lt;= BLANK;
+<span class="ln">135</span>
+<span class="ln">136</span>        <span class="k">if</span> SW(0) = '0' <span class="k">then</span>              <span class="c">-- counter : thousands, hundreds, tens, ones</span>
+<span class="ln">137</span>            d3 &lt;= cnt / 1000;
+<span class="ln">138</span>            d2 &lt;= (cnt / 100) <span class="k">mod</span> 10;
+<span class="ln">139</span>            d1 &lt;= (cnt / 10) <span class="k">mod</span> 10;
+<span class="ln">140</span>            d0 &lt;= cnt <span class="k">mod</span> 10;
+<span class="ln">141</span>            <span class="k">if</span> cnt = 777 <span class="k">then</span>            <span class="c">-- jackpot : show 7777</span>
+<span class="ln">142</span>                d7 &lt;= 7; d6 &lt;= 7; d5 &lt;= 7; d4 &lt;= 7;
+<span class="ln">143</span>            <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">144</span>        <span class="k">else</span>                             <span class="c">-- calculator</span>
+<span class="ln">145</span>            <span class="k">if</span> SW(3) = '1' <span class="k">or</span> a &lt; 10 <span class="k">then</span> d6 &lt;= a; <span class="k">end</span> <span class="k">if</span>;   <span class="c">-- decimal mode shows 0~9 only</span>
+<span class="ln">146</span>            <span class="k">if</span> SW(3) = '1' <span class="k">or</span> b &lt; 10 <span class="k">then</span> d4 &lt;= b; <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">147</span>            <span class="k">if</span> valid = '1' <span class="k">then</span>
+<span class="ln">148</span>                <span class="k">if</span> err = '1' <span class="k">then</span>                            <span class="c">-- divide by zero : &quot; Err&quot;</span>
+<span class="ln">149</span>                    d2 &lt;= CH_E;  d1 &lt;= CH_R;  d0 &lt;= CH_R;
+<span class="ln">150</span>                <span class="k">elsif</span> SW(2 <span class="k">downto</span> 1) = "11" <span class="k">then</span>             <span class="c">-- division : &quot;quotient r remainder&quot;</span>
+<span class="ln">151</span>                    d3 &lt;= quot;  d1 &lt;= CH_R;  d0 &lt;= remain;
+<span class="ln">152</span>                <span class="k">else</span>
+<span class="ln">153</span>                    <span class="k">if</span> neg = '1' <span class="k">then</span> d3 &lt;= MINUS; <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">154</span>                    <span class="k">if</span> SW(3) = '1' <span class="k">then</span>                      <span class="c">-- hexadecimal result : 2 digits</span>
+<span class="ln">155</span>                        d1 &lt;= result / 16;
+<span class="ln">156</span>                        d0 &lt;= result <span class="k">mod</span> 16;
+<span class="ln">157</span>                    <span class="k">else</span>                                     <span class="c">-- decimal result : 3 digits</span>
+<span class="ln">158</span>                        d2 &lt;= result / 100;
+<span class="ln">159</span>                        d1 &lt;= (result / 10) <span class="k">mod</span> 10;
+<span class="ln">160</span>                        d0 &lt;= result <span class="k">mod</span> 10;
+<span class="ln">161</span>                    <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">162</span>                <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">163</span>            <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">164</span>        <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">165</span>    <span class="k">end</span> <span class="k">process</span>;
+<span class="ln">166</span>
+<span class="ln">167</span>    HEX0 &lt;= seg7(d0);  HEX1 &lt;= seg7(d1);  HEX2 &lt;= seg7(d2);  HEX3 &lt;= seg7(d3);
+<span class="ln">168</span>    HEX4 &lt;= seg7(d4);  HEX5 &lt;= seg7(d5);  HEX6 &lt;= seg7(d6);  HEX7 &lt;= seg7(d7);
+<span class="ln">169</span><span class="k">end</span> behavior;</code></pre>
+
+</div>
+</body>
+</html>

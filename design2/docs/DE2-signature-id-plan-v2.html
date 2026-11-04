@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DE2 마법 펜 — 자석 펜 서명 식별 설계서</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1b2430; --muted:#5b6675; --line:#dde3ea; --bg:#f6f8fb; --card:#fff;
+    --accent:#5b2a86; --accent2:#1f5fbf; --warn:#c2410c; --ok:#15803d; --bad:#b91c1c; --code:#0f172a;
+  }
+  *{box-sizing:border-box}
+  html{color-scheme:light}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans KR",system-ui,sans-serif;line-height:1.7;font-size:15.5px}
+  header.hero{background:linear-gradient(135deg,#2a1450,#5b2a86 55%,#1f5fbf);color:#fff;padding:48px 24px 40px}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+  .hero h1{margin:0 0 8px;font-size:30px;line-height:1.3}
+  .hero p{margin:0;opacity:.92}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+  .chip{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:4px 12px;font-size:13px}
+  nav.toc{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line)}
+  nav.toc .wrap{display:flex;gap:4px;overflow-x:auto;padding:8px 20px}
+  nav.toc a{white-space:nowrap;color:var(--muted);text-decoration:none;font-size:13.5px;padding:6px 10px;border-radius:6px}
+  nav.toc a:hover{background:var(--bg);color:var(--accent)}
+  main{padding:28px 0 60px}
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:28px 30px;margin:0 0 22px}
+  h2{margin:0 0 14px;font-size:22px}
+  h2 .n{display:inline-block;min-width:30px;color:var(--accent)}
+  h3{font-size:17px;margin:22px 0 8px}
+  p{margin:8px 0}
+  table{border-collapse:collapse;width:100%;margin:10px 0 6px;font-size:14.5px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:#f1ebf8;font-weight:600}
+  td.num,th.num{text-align:right;white-space:nowrap}
+  tr.total td{background:#faf7fd;font-weight:700}
+  code{font-family:"JetBrains Mono",monospace;font-size:13px;background:#eef1f5;padding:1px 5px;border-radius:4px}
+  pre{background:var(--code);color:#e2e8f0;border-radius:10px;padding:16px 18px;overflow-x:auto;font-family:"JetBrains Mono",monospace;font-size:12.8px;line-height:1.55;margin:10px 0}
+  pre code{background:none;padding:0;color:inherit}
+  figure{margin:14px 0 6px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px}
+  figure svg{display:block;width:100%;height:auto}
+  figcaption{font-size:13.5px;color:var(--muted);margin-top:8px;padding:0 4px}
+  .callout{border-left:4px solid var(--warn);background:#fff6ef;padding:10px 14px;border-radius:6px;margin:12px 0}
+  .callout.ok{border-color:var(--ok);background:#effaf2}
+  .callout.info{border-color:var(--accent2);background:#eff5fd}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  @media(max-width:760px){.grid2,.grid3{grid-template-columns:1fr} section{padding:20px 18px}}
+  .kpi{border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .kpi b{display:block;font-size:15px;margin-bottom:4px}
+  ul,ol{margin:6px 0;padding-left:22px}
+  li{margin:3px 0}
+  .week{border:1px solid var(--line);border-radius:10px;padding:14px 18px;margin:10px 0}
+  .week h3{margin:0 0 6px}
+  .ms{display:inline-block;background:#e8f6ec;color:var(--ok);font-weight:600;font-size:13px;border-radius:6px;padding:2px 8px;margin-top:6px}
+  .gate{display:inline-block;background:#fff1e6;color:var(--warn);font-weight:600;font-size:13px;border-radius:6px;padding:2px 8px;margin-top:6px}
+  .tag{display:inline-block;font-size:12px;font-weight:600;border-radius:5px;padding:1px 7px;margin-right:4px;white-space:nowrap}
+  .tag.est{background:#fff1e6;color:var(--warn)}
+  .tag.ok{background:#e8f6ec;color:var(--ok)}
+  .tag.new{background:#efe7f8;color:var(--accent)}
+  .check li{list-style:none;margin-left:-20px}
+  .check li::before{content:"☐ ";color:var(--accent)}
+  .tablewrap{overflow-x:auto}
+  .lcd{display:inline-block;background:#9fc33a;color:#1d2a05;font-family:"JetBrains Mono",monospace;font-size:14px;line-height:1.35;padding:8px 12px;border-radius:6px;border:3px solid #3b4a12;white-space:pre;letter-spacing:.5px}
+  footer{color:var(--muted);font-size:13px;text-align:center;padding:10px 0 30px}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>DE2 마법 펜 — 자석 펜 서명으로 사람 식별하기</h1>
+    <p>펜 끝 영구자석의 자기장을 책상 아래 3축 홀 센서 배열로 읽어 펜의 3차원 궤적을 복원하고, 그 궤적(모양·속도·리듬·공중 동작)으로 누가 서명했는지 판별한다. 등록된 사람이면 DE2 보드의 LCD와 VGA 화면에 이름이 뜨고, 등록되지 않은 사람이면 "미등록"이 뜬다.</p>
+    <div class="chips">
+      <span class="chip">마이크로프로세서 자유주제 프로젝트</span>
+      <span class="chip">Altera DE2 (Cyclone II EP2C35)</span>
+      <span class="chip">Quartus II 13.0 SP1 · Qsys · Nios II</span>
+      <span class="chip">AI: 위치 복원 MLP + 서명 임베딩 1D CNN</span>
+      <span class="chip">팀: 임창현 · 윤재국</span>
+      <span class="chip">2026-11-04 수정 (구매 목록 반영)</span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+  <a href="#overview">1 개요</a><a href="#system">2 시스템 구성</a><a href="#modes">3 동작 모드</a><a href="#data">4 서명 데이터</a><a href="#ai">5 AI·판정</a><a href="#display">6 출력 화면</a><a href="#hw">7 하드웨어·핀</a><a href="#bom">8 구매 목록·가격</a><a href="#demo">9 시연</a><a href="#eval">10 평가 지표</a><a href="#collect">11 데이터 수집</a><a href="#plan">12 일정</a><a href="#risk">13 위험·대안</a><a href="#open">14 미결 사항</a>
+</div></nav>
+
+<main><div class="wrap">
+
+<!-- 1 -->
+<section id="overview">
+  <h2><span class="n">1</span>프로젝트 개요</h2>
+  <p>기존 기획(자석 펜 위치 추적 + 숫자 인식)의 하드웨어와 위치 복원 파이프라인은 그대로 쓰고, 마지막 단계의 <b>숫자 인식 CNN을 서명 식별로 바꾼다.</b></p>
+  <div class="grid2">
+    <div class="kpi"><b>① 자기장 계측 (기존 유지)</b>MLX90393 3축 센서 4개(2×2)를 I²C 버스 1개로 읽는다. Verilog I²C 마스터가 샘플을 모은다. 게이트 1 실측 결과에 따라 9개로 확장할 수 있다.</div>
+    <div class="kpi"><b>② 위치·기울기 복원 (기존 유지)</b>쌍극자 모델 LM 피팅을 기준선으로, 소형 MLP가 (x, y, z, θ, φ)를 한 번의 순전파로 구한다.</div>
+    <div class="kpi"><b>③ 서명 식별 <span class="tag new">신규</span></b>서명 한 번의 시계열을 1D CNN으로 32차원 특징 벡터(임베딩)로 바꾸고, 등록자별 기준 벡터와 비교해 가장 가까운 사람을 고른다. 기준선은 DTW(동적 시간 정렬) 템플릿 비교.</div>
+    <div class="kpi"><b>④ 미등록 거부 <span class="tag new">신규</span></b>가장 가까운 사람과의 거리가 문턱값을 넘거나 1·2순위 차이가 작으면 "미등록"으로 판정한다.</div>
+    <div class="kpi"><b>⑤ 출력 <span class="tag new">신규</span></b>보드 16×2 LCD에 영문 이름, VGA에 한글 이름과 2D 서명·3D 궤적, LED로 승인/거부, 7세그먼트로 추론 지연을 표시한다.</div>
+    <div class="kpi"><b>⑥ HW/SW 가속 비교 (기존 유지)</b>같은 int8 임베딩 CNN을 Nios II 소프트웨어와 병렬 MAC 엔진으로 각각 돌려 지연·LE·곱셈기 사용량을 비교한다.</div>
+  </div>
+
+  <div class="callout"><b>범위를 분명히 한다:</b> 이 시스템은 <b>등록된 사람 중 누가 썼는지 식별</b>하고, 등록 안 된 사람을 거부하는 장치다. 다른 사람의 서명을 연습해서 흉내 낸 <b>위조 서명을 가려내는 "인증·보안" 장치가 아니다.</b> 위치 오차(목표 ≤5 mm)와 샘플링(약 50 Hz)으로는 숙련된 위조를 구분할 근거가 부족하므로 보고서·발표에서 "서명 인증", "보안"이라는 표현을 쓰지 않는다.</div>
+
+  <h3>왜 이 장치로 서명을 구별할 수 있다고 보는가</h3>
+  <ul>
+    <li>사람마다 서명의 <b>모양, 쓰는 속도·리듬, 획 순서, 펜을 드는 타이밍</b>이 다르다. 이런 시간 정보를 쓰는 "온라인 서명" 식별은 태블릿 입력에서 오래 연구된 분야다.</li>
+    <li>이 장치는 펜 좌표를 시간 순서로 받으므로 속도와 리듬을 그대로 쓸 수 있다. 위치 오차로 세밀한 모양이 뭉개져도 동적 특징이 이를 보완할 것이라고 본다.</li>
+    <li>태블릿과 달리 <b>펜을 든 동안의 공중 동작(z, 기울기)</b>까지 잡힌다. 종이에 남지 않는 정보라 보고 따라 쓰기 어렵다. 이것이 식별에 실제로 도움이 되는지는 10장의 비교 실험(공중 궤적 포함/제외)으로 확인하는 <b>가설</b>이다.</li>
+  </ul>
+</section>
+
+<!-- 2 -->
+<section id="system">
+  <h2><span class="n">2</span>시스템 구성</h2>
+  <figure>
+    <svg viewBox="0 0 1000 560" role="img" aria-label="자석 펜과 센서 배열에서 I2C로 FPGA에 들어온 자기장이 위치 MLP, 서명 버퍼, 임베딩 CNN과 DTW, 판정부를 거쳐 LCD, VGA, LED, 7세그먼트로 출력되는 흐름">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#334155"/></marker>
+        <marker id="arP" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5b2a86"/></marker>
+      </defs>
+      <g font-family="Noto Sans KR, sans-serif" font-size="13" fill="#1b2430">
+        <!-- PC -->
+        <rect x="20" y="24" width="230" height="170" rx="12" fill="#f1ebf8" stroke="#5b2a86" stroke-width="1.6"/>
+        <text x="135" y="48" text-anchor="middle" font-weight="700" fill="#5b2a86">PC (오프라인)</text>
+        <text x="135" y="74" text-anchor="middle" font-size="12.5">위치 MLP 학습 (합성→실측)</text>
+        <text x="135" y="94" text-anchor="middle" font-size="12.5">서명 임베딩 CNN 학습</text>
+        <text x="135" y="114" text-anchor="middle" font-size="12.5">int8 양자화 · .hex 출력</text>
+        <text x="135" y="134" text-anchor="middle" font-size="12.5">문턱값 결정 · 결과 분석</text>
+        <text x="135" y="154" text-anchor="middle" font-size="12.5">한글 이름 비트맵 생성</text>
+        <text x="135" y="178" text-anchor="middle" font-size="11.5" fill="#5b6675">(JTAG UART로 로그·데이터 수신)</text>
+
+        <!-- Input -->
+        <rect x="20" y="260" width="230" height="170" rx="12" fill="#fff" stroke="#94a3b8"/>
+        <text x="135" y="284" text-anchor="middle" font-weight="700">입력 장치</text>
+        <rect x="40" y="298" width="190" height="34" rx="6" fill="#eef1f5" stroke="#94a3b8"/><text x="135" y="320" text-anchor="middle">자석 펜 (φ10×10)</text>
+        <rect x="40" y="344" width="190" height="34" rx="6" fill="#fff4e6" stroke="#c2410c"/><text x="135" y="366" text-anchor="middle">MLX90393 × 4 (2×2)</text>
+        <text x="135" y="400" text-anchor="middle" font-size="12" fill="#5b6675">3.3 V · I²C 버스 1개 (센서 4개)</text>
+        <text x="135" y="418" text-anchor="middle" font-size="12" fill="#5b6675">격자 간격 6 cm · 비자성 판</text>
+        <line x1="135" y1="333" x2="135" y2="342" stroke="#c2410c" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#ar)"/>
+
+        <!-- FPGA -->
+        <rect x="300" y="24" width="500" height="520" rx="12" fill="#eaf1fb" stroke="#1f5fbf" stroke-width="1.6"/>
+        <text x="550" y="48" text-anchor="middle" font-weight="700" fill="#1f5fbf">DE2 FPGA (Cyclone II) — Qsys 시스템</text>
+
+        <rect x="320" y="64" width="145" height="54" rx="8" fill="#fff4e6" stroke="#c2410c"/>
+        <text x="392" y="87" text-anchor="middle" font-weight="700" fill="#c2410c">I²C 마스터 ×1</text><text x="392" y="105" text-anchor="middle" font-size="11.5" fill="#5b6675">Verilog · 샘플 FIFO</text>
+        <rect x="480" y="64" width="140" height="54" rx="8" fill="#fff" stroke="#93b4e3"/>
+        <text x="550" y="87" text-anchor="middle">기준값 차감</text><text x="550" y="105" text-anchor="middle" font-size="11.5" fill="#5b6675">지자기·오프셋 제거</text>
+        <rect x="635" y="64" width="150" height="54" rx="8" fill="#fff" stroke="#5b2a86"/>
+        <text x="710" y="87" text-anchor="middle" font-weight="700">위치 MLP</text><text x="710" y="105" text-anchor="middle" font-size="11.5" fill="#5b6675">→ x, y, z, θ, φ</text>
+
+        <rect x="320" y="140" width="465" height="58" rx="8" fill="#fff" stroke="#93b4e3"/>
+        <text x="552" y="163" text-anchor="middle" font-weight="700">서명 버퍼 · 시작/끝 판정</text>
+        <text x="552" y="183" text-anchor="middle" font-size="11.5" fill="#5b6675">펜 내림 첫 순간 시작 → 펜 올림 1.0 s 지속 또는 KEY1 → 끝 (최대 6 s, SDRAM)</text>
+
+        <rect x="320" y="218" width="465" height="46" rx="8" fill="#fff" stroke="#93b4e3"/>
+        <text x="552" y="246" text-anchor="middle">전처리: 중심·크기 정규화 → 128점 시간 리샘플 → 8채널 int8</text>
+
+        <rect x="320" y="284" width="465" height="120" rx="10" fill="#f8f5fc" stroke="#5b2a86" stroke-dasharray="6 4"/>
+        <text x="552" y="306" text-anchor="middle" font-weight="700" fill="#5b2a86">서명 식별</text>
+        <rect x="335" y="318" width="210" height="74" rx="8" fill="#fff" stroke="#5b2a86"/>
+        <text x="440" y="340" text-anchor="middle" font-size="12.5" font-weight="700">AI: 임베딩 1D CNN</text>
+        <text x="440" y="359" text-anchor="middle" font-size="11.5" fill="#5b6675">128×8 → 32차원 벡터</text>
+        <text x="440" y="377" text-anchor="middle" font-size="11.5" fill="#5b6675">SW(Nios II) / HW(병렬 MAC)</text>
+        <rect x="560" y="318" width="210" height="74" rx="8" fill="#fff" stroke="#5b2a86"/>
+        <text x="665" y="340" text-anchor="middle" font-size="12.5" font-weight="700">기준선: DTW</text>
+        <text x="665" y="359" text-anchor="middle" font-size="11.5" fill="#5b6675">등록 템플릿과 정렬 거리</text>
+        <text x="665" y="377" text-anchor="middle" font-size="11.5" fill="#5b6675">학습 불필요 · Nios II C</text>
+
+        <rect x="320" y="424" width="465" height="50" rx="8" fill="#fff" stroke="#15803d" stroke-width="1.5"/>
+        <text x="552" y="446" text-anchor="middle" font-weight="700" fill="#15803d">판정: 등록자 ID 또는 "미등록"</text>
+        <text x="552" y="464" text-anchor="middle" font-size="11.5" fill="#5b6675">거리 문턱 + 1·2순위 차이 + (선택) DTW 동의</text>
+
+        <rect x="320" y="488" width="465" height="44" rx="8" fill="#fff" stroke="#93b4e3"/>
+        <text x="552" y="508" text-anchor="middle" font-size="12.5">VGA 픽셀 버퍼 IP · Character LCD IP · PIO(LED, 7세그, SW, KEY)</text>
+        <text x="552" y="524" text-anchor="middle" font-size="11.5" fill="#5b6675">University Program IP · 타임스탬프 타이머로 지연 측정</text>
+
+        <!-- outputs -->
+        <rect x="840" y="210" width="140" height="80" rx="10" fill="#f1f5f9" stroke="#94a3b8"/>
+        <text x="910" y="238" text-anchor="middle" font-weight="700">VGA 모니터</text><text x="910" y="258" text-anchor="middle" font-size="12">한글 이름</text><text x="910" y="276" text-anchor="middle" font-size="12">2D 서명 · 3D 궤적</text>
+        <rect x="840" y="310" width="140" height="70" rx="10" fill="#eef7d9" stroke="#3b4a12"/>
+        <text x="910" y="338" text-anchor="middle" font-weight="700">보드 LCD 16×2</text><text x="910" y="358" text-anchor="middle" font-size="12">영문 이름 / 미등록</text>
+        <rect x="840" y="400" width="140" height="70" rx="10" fill="#f1f5f9" stroke="#94a3b8"/>
+        <text x="910" y="428" text-anchor="middle" font-weight="700">LED · 7세그</text><text x="910" y="448" text-anchor="middle" font-size="12">승인/거부 · 지연(µs)</text>
+
+        <!-- arrows -->
+        <line x1="250" y1="360" x2="318" y2="95" stroke="#c2410c" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ar)"/>
+        <text x="262" y="240" fill="#c2410c" font-size="12" font-weight="600">I²C</text>
+        <path d="M250 110 L300 110" stroke="#5b2a86" stroke-width="1.8" fill="none" marker-end="url(#arP)"/>
+        <text x="254" y="102" fill="#5b2a86" font-size="11" font-weight="600">.hex</text>
+        <line x1="465" y1="91" x2="478" y2="91" stroke="#334155" stroke-width="1.6" marker-end="url(#ar)"/>
+        <line x1="620" y1="91" x2="633" y2="91" stroke="#334155" stroke-width="1.6" marker-end="url(#ar)"/>
+        <line x1="710" y1="118" x2="710" y2="138" stroke="#334155" stroke-width="1.6" marker-end="url(#ar)"/>
+        <line x1="552" y1="198" x2="552" y2="216" stroke="#334155" stroke-width="1.6" marker-end="url(#ar)"/>
+        <line x1="552" y1="264" x2="552" y2="282" stroke="#334155" stroke-width="1.6" marker-end="url(#ar)"/>
+        <line x1="552" y1="404" x2="552" y2="422" stroke="#334155" stroke-width="1.6" marker-end="url(#ar)"/>
+        <line x1="785" y1="449" x2="815" y2="449" stroke="#334155" stroke-width="1.6"/>
+        <line x1="815" y1="250" x2="815" y2="449" stroke="#334155" stroke-width="1.6"/>
+        <line x1="815" y1="250" x2="838" y2="250" stroke="#334155" stroke-width="1.6" marker-end="url(#ar)"/>
+        <line x1="815" y1="345" x2="838" y2="345" stroke="#334155" stroke-width="1.6" marker-end="url(#ar)"/>
+        <line x1="815" y1="435" x2="838" y2="435" stroke="#334155" stroke-width="1.6" marker-end="url(#ar)"/>
+      </g>
+    </svg>
+    <figcaption>위쪽 세 블록(I²C → 기준값 차감 → 위치 MLP)은 기존 기획 그대로이고, 서명 버퍼부터 판정·출력까지가 이번에 바뀌는 부분이다. 점선은 오프라인/저속 경로.</figcaption>
+  </figure>
+
+  <h3>한 번의 서명 처리 흐름</h3>
+  <ol>
+    <li>매 프레임(목표 50 Hz) 위치 MLP가 (x, y, z, θ, φ)를 내고, z 문턱 + 히스테리시스로 펜 올림/내림을 판정한다.</li>
+    <li>펜이 처음 내려가면 서명 버퍼 기록을 시작한다. 펜 올림 상태가 <b>1.0초</b> 이어지거나 KEY1을 누르면 끝으로 본다. 최대 6초까지 기록한다.</li>
+    <li>펜 내림 구간이 0.5초 미만이거나 추적이 끊긴 프레임이 20% 넘으면 "다시 서명해 주세요"를 띄우고 버린다.</li>
+    <li>전처리 후 임베딩 CNN으로 32차원 벡터를 얻고, 등록자별 기준 벡터와 거리를 계산한다.</li>
+    <li>5장의 판정 규칙으로 등록자 ID 또는 "미등록"을 정하고, LCD·VGA·LED·7세그에 결과를 표시한다. VGA에서는 3D 궤적을 시간 순서대로 재생한다.</li>
+  </ol>
+</section>
+
+<!-- 3 -->
+<section id="modes">
+  <h2><span class="n">3</span>동작 모드 (스위치·버튼)</h2>
+  <div class="tablewrap"><table>
+    <tr><th>입력</th><th>기능</th></tr>
+    <tr><td><code>SW[1:0]</code> = 00</td><td><b>식별 모드</b> (기본). 서명하면 이름 또는 미등록 표시</td></tr>
+    <tr><td><code>SW[1:0]</code> = 01</td><td><b>등록 모드</b>. <code>SW[4:2]</code>로 등록 슬롯(0~7) 선택, 같은 사람이 5번 서명하면 기준 벡터와 DTW 템플릿 저장</td></tr>
+    <tr><td><code>SW[1:0]</code> = 10</td><td><b>데이터 수집 모드</b>. 서명 원시 시계열을 JTAG UART로 PC에 전송 (학습용)</td></tr>
+    <tr><td><code>SW[5]</code></td><td>추론 방식 선택: 0 = Nios II 소프트웨어, 1 = 하드웨어 MAC 엔진 (속도 비교 시연용)</td></tr>
+    <tr><td><code>SW[6]</code></td><td>3D 화면 자동 회전 켜기/끄기</td></tr>
+    <tr><td><code>KEY0</code></td><td>기준 재측정 (펜을 판에서 치운 상태에서 지자기·오프셋 측정)</td></tr>
+    <tr><td><code>KEY1</code></td><td>서명 끝 (타임아웃을 기다리지 않고 바로 판정)</td></tr>
+    <tr><td><code>KEY2</code></td><td>등록 모드에서 마지막 서명 취소</td></tr>
+  </table></div>
+  <p>등록자 이름표(슬롯 번호 → 영문 이름, 한글 이름 비트맵)는 PC에서 미리 만들어 온칩 ROM에 넣는다. 현장 등록용 빈 슬롯은 "GUEST 1", "GUEST 2"처럼 표시한다.</p>
+</section>
+
+<!-- 4 -->
+<section id="data">
+  <h2><span class="n">4</span>서명 데이터와 전처리</h2>
+  <div class="tablewrap"><table>
+    <tr><th>단계</th><th>내용</th><th>이유</th></tr>
+    <tr><td>원시 기록</td><td>프레임마다 (t, x, y, z, θ, φ, pen) 저장. 50 Hz × 최대 6 s = 300프레임</td><td>공중 동작까지 포함</td></tr>
+    <tr><td>정규화</td><td>펜 내림 점들의 무게중심을 원점으로, 가로 폭을 1로 맞춤. z는 판 기준 높이 그대로</td><td>서명 위치·크기 차이를 지우고 모양·리듬만 남김</td></tr>
+    <tr><td>리샘플</td><td>시간축 기준으로 128점에 선형 보간 (전체 걸린 시간은 별도 숫자로 보관)</td><td>CNN 입력 길이 고정. 시간 기준이라 속도 정보가 보존됨</td></tr>
+    <tr><td>입력 채널 (8)</td><td>x, y, z, vx, vy, θ, φ, pen</td><td>모양 + 속도 + 높이·기울기 + 획 구분</td></tr>
+    <tr><td>양자화</td><td>채널별 스케일로 int8 변환</td><td>FPGA 추론과 비트 일치 검증</td></tr>
+  </table></div>
+  <p><span class="tag est">비교 실험</span>입력 채널을 ① x, y, pen만 ② + vx, vy ③ + z, θ, φ(공중 동작)로 늘려 가며 정확도를 비교한다. ③이 ②보다 나아야 "공중 동작이 식별에 도움이 된다"는 가설이 맞는 것이다.</p>
+</section>
+
+<!-- 5 -->
+<section id="ai">
+  <h2><span class="n">5</span>AI 구조와 판정 규칙</h2>
+  <div class="tablewrap"><table>
+    <tr><th>#</th><th>모델</th><th>입력 → 출력</th><th>크기 <span class="tag est">추정</span></th><th>학습</th></tr>
+    <tr><td>①</td><td><b>위치 복원 MLP</b> (기존)</td><td>센서 4개 × 3축 = 12 → (x, y, z, θ, φ)</td><td>약 5k MAC 이하 <span class="tag est">추정</span> (입력이 27→12로 줄어듦)</td><td>쌍극자 합성 데이터 사전학습 → 실측 미세조정</td></tr>
+    <tr><td>②</td><td><b>서명 임베딩 1D CNN</b> (신규)</td><td>128×8 시계열 → 32차원 벡터 (길이 1로 정규화)</td><td>약 35만 MAC, 가중치 약 7.3k개 (int8 약 7 KB)</td><td>PC에서 여러 사람 서명으로 "같은 사람은 가깝게, 다른 사람은 멀게" 학습 (triplet 또는 prototypical 손실)</td></tr>
+    <tr><td>③</td><td><b>DTW</b> (기준선, AI 아님)</td><td>새 서명 vs 등록 템플릿 → 정렬 거리</td><td>대역폭 16 제한 시 템플릿당 약 4k 셀</td><td>학습 없음</td></tr>
+  </table></div>
+
+  <h3>임베딩 CNN 구조 (초안)</h3>
+<pre><code>입력 128 × 8
+Conv1D  8→16, k=5, ReLU, MaxPool 2   → 64 × 16    (약 82k MAC)
+Conv1D 16→32, k=5, ReLU, MaxPool 2   → 32 × 32    (약 164k MAC)
+Conv1D 32→32, k=3, ReLU, MaxPool 2   → 16 × 32    (약 98k MAC)
+Global Average Pool                   → 32
+Dense  32→32                          → 32차원 임베딩 (L2 정규화)</code></pre>
+  <p>MAC 수와 가중치 크기는 위 구조로 계산한 추정치다. 온칩 메모리와 임베디드 곱셈기 사용량은 합성 리포트로 확인한다.</p>
+
+  <div class="callout info"><b>왜 "분류기"가 아니라 "임베딩"인가:</b> 사람 수만큼 출력이 있는 분류기는 등록자가 바뀔 때마다 PC에서 다시 학습해야 한다. 임베딩 방식은 등록할 때 서명 5개의 벡터 평균만 저장하면 되므로 <b>보드에서 바로 새 사람을 등록</b>할 수 있다. 시연에서 심사위원을 현장 등록하는 장면이 가능해진다. 다만 학습에 쓴 사람 수가 적으면 처음 보는 사람에게 일반화가 약할 수 있으므로, 안 되면 13장의 대안(등록자 고정 분류기 + 문턱)으로 바꾼다.</div>
+
+  <h3>판정 규칙 (등록자 vs 미등록)</h3>
+<pre><code>e      = CNN(서명)                       // 32차원 임베딩
+d_k    = 1 − cos(e, 기준벡터_k)            // 등록자 k와의 거리, k = 1..N
+k1, k2 = 거리가 가장 작은 두 등록자
+
+if  d_k1 &lt; τ_k1                          // ① 충분히 가깝고
+and (d_k2 − d_k1) ≥ m                     // ② 2순위와 확실히 차이 나고
+and DTW_z(k1) &lt; τ_dtw   (선택)           // ③ DTW도 같은 사람이라고 하면
+    → "등록자 k1" (이름 표시)
+else
+    → "미등록"</code></pre>
+  <ul>
+    <li><b>τ_k (사람별 문턱):</b> 등록할 때 그 사람 서명 5개끼리의 거리 평균 μ_k와 표준편차 σ_k를 저장하고 τ_k = μ_k + a·σ_k로 둔다. 서명이 들쭉날쭉한 사람과 일정한 사람을 공평하게 다루기 위해서다.</li>
+    <li><b>a, m, τ_dtw:</b> 11장에서 모은 검증 데이터(등록자의 다른 날 서명 + 미등록 역할의 서명)로 정한다. 시연에서는 <b>미등록자를 등록자로 잘못 받는 오류를 줄이는 쪽</b>으로 문턱을 잡는다(대신 등록자가 가끔 "다시 서명" 요청을 받을 수 있음).</li>
+    <li>③ DTW 동의 조건은 CNN 단독, DTW 단독, 둘 다 쓰는 결합 방식의 결과를 비교한 뒤 넣을지 정한다.</li>
+  </ul>
+
+  <h3>하드웨어 가속 계획</h3>
+  <ul>
+    <li>구현 순서: ① Nios II C로 CNN·DTW 소프트웨어 구현(기준) → ② 기존 기획의 <b>병렬 MAC 엔진</b>으로 CNN Conv 층 가속 → ③ (선택) DTW 대역 계산 가속.</li>
+    <li>PC(Python) · Nios II SW · HW 세 출력이 테스트 벡터 100개에서 비트 단위로 일치해야 한다.</li>
+    <li>DTW는 곱셈 없이 덧셈·비교만 반복해서, 곱셈기 없는 Nios II/e에서도 돌지만 느리다. 등록자 5명 × 템플릿 5개면 템플릿 25개를 비교해야 하므로 SW/HW 비교의 좋은 대상이다(측정 후 결정).</li>
+  </ul>
+</section>
+
+<!-- 6 -->
+<section id="display">
+  <h2><span class="n">6</span>출력 화면 설계</h2>
+
+  <h3>보드 LCD (16×2 문자, 영문만 가능)</h3>
+  <p>DE2에 붙어 있는 16×2 문자 LCD는 Qsys의 University Program "Character LCD" IP로 Nios II에서 문자열을 쓴다. 한글 글꼴이 없으므로 영문 이름을 쓴다.</p>
+  <div class="grid3">
+    <div><b style="color:var(--ok)">등록자</b><br><span class="lcd">ID02 YOON JAEGUK
+MATCH  d=0.18  OK</span></div>
+    <div><b style="color:var(--bad)">미등록</b><br><span class="lcd">NOT REGISTERED
+d=0.61   DENIED</span></div>
+    <div><b style="color:var(--warn)">서명 불량</b><br><span class="lcd">SIGN AGAIN
+TOO SHORT</span></div>
+  </div>
+  <p style="margin-top:12px">LED: 등록자면 <code>LEDG</code> 전체 점등, 미등록이면 <code>LEDR</code> 전체 3회 깜빡임. 7세그먼트: 임베딩 추론 지연(µs).</p>
+
+  <h3>VGA 화면 (320×240, 좌우 분할)</h3>
+  <figure>
+    <svg viewBox="0 0 960 330" role="img" aria-label="VGA 화면 예시 두 개. 왼쪽은 등록자로 판정되어 이름이 표시된 화면, 오른쪽은 미등록으로 판정된 화면">
+      <g font-family="Noto Sans KR, sans-serif">
+        <!-- screen 1 -->
+        <rect x="10" y="10" width="460" height="300" rx="8" fill="#0b1020" stroke="#334155"/>
+        <text x="24" y="34" fill="#94a3b8" font-size="12">2D 서명</text>
+        <text x="250" y="34" fill="#94a3b8" font-size="12">3D 궤적 (회전)</text>
+        <line x1="240" y1="22" x2="240" y2="230" stroke="#1e293b"/>
+        <path d="M40 150 C60 90, 80 90, 90 140 S120 190, 135 120 S165 80, 175 140 L200 130" stroke="#e2e8f0" stroke-width="2.5" fill="none"/>
+        <path d="M60 175 L190 172" stroke="#e2e8f0" stroke-width="2" fill="none"/>
+        <!-- 3D grid -->
+        <g stroke="#1e3a5f" stroke-width="1">
+          <path d="M260 200 L360 225 L455 195 L355 172 Z" fill="none"/>
+          <path d="M285 194 L380 219 M310 188 L405 212 M335 182 L430 206"/>
+          <path d="M285 207 L380 182 M310 213 L405 188 M335 219 L430 194"/>
+        </g>
+        <path d="M285 190 C300 140, 315 140, 322 178 S345 205, 355 160 S380 135, 388 178 L405 172" stroke="#e2e8f0" stroke-width="2.5" fill="none"/>
+        <path d="M405 172 C415 120, 360 110, 300 125 C292 150, 296 180, 300 200" stroke="#f59e0b" stroke-width="2" stroke-dasharray="5 4" fill="none"/>
+        <path d="M300 200 L420 196" stroke="#e2e8f0" stroke-width="2" fill="none"/>
+        <text x="372" y="118" fill="#f59e0b" font-size="11">공중 동작</text>
+        <rect x="10" y="240" width="460" height="70" fill="#052e16"/>
+        <circle cx="40" cy="275" r="12" fill="#22c55e"/>
+        <text x="62" y="270" fill="#bbf7d0" font-size="13">등록자 확인</text>
+        <text x="62" y="294" fill="#fff" font-size="22" font-weight="700">윤재국</text>
+        <text x="270" y="266" fill="#86efac" font-size="11.5">1순위 윤재국  0.18</text>
+        <text x="270" y="284" fill="#94a3b8" font-size="11.5">2순위 임창현  0.47</text>
+        <text x="270" y="302" fill="#94a3b8" font-size="11.5">지연 HW 412 µs</text>
+
+        <!-- screen 2 -->
+        <rect x="490" y="10" width="460" height="300" rx="8" fill="#0b1020" stroke="#334155"/>
+        <text x="504" y="34" fill="#94a3b8" font-size="12">2D 서명</text>
+        <text x="730" y="34" fill="#94a3b8" font-size="12">3D 궤적 (회전)</text>
+        <line x1="720" y1="22" x2="720" y2="230" stroke="#1e293b"/>
+        <path d="M520 160 L545 100 L565 160 M530 135 L558 135 M585 100 C620 100, 620 160, 585 160 Z M640 160 C640 110, 690 110, 690 140" stroke="#e2e8f0" stroke-width="2.5" fill="none"/>
+        <g stroke="#1e3a5f" stroke-width="1">
+          <path d="M740 200 L840 225 L935 195 L835 172 Z" fill="none"/>
+          <path d="M765 194 L860 219 M790 188 L885 212 M815 182 L910 206"/>
+          <path d="M765 207 L860 182 M790 213 L885 188 M815 219 L910 194"/>
+        </g>
+        <path d="M765 200 L790 140 L810 200 M800 175 L830 178 C850 140, 880 150, 870 200" stroke="#e2e8f0" stroke-width="2.5" fill="none"/>
+        <path d="M870 200 C880 150, 900 140, 915 160" stroke="#f59e0b" stroke-width="2" stroke-dasharray="5 4" fill="none"/>
+        <rect x="490" y="240" width="460" height="70" fill="#450a0a"/>
+        <circle cx="520" cy="275" r="12" fill="#ef4444"/>
+        <text x="542" y="270" fill="#fecaca" font-size="13">등록되지 않은 서명</text>
+        <text x="542" y="294" fill="#fff" font-size="22" font-weight="700">미등록</text>
+        <text x="750" y="266" fill="#fca5a5" font-size="11.5">가장 가까움 임창현 0.61</text>
+        <text x="750" y="284" fill="#94a3b8" font-size="11.5">문턱 0.35 초과</text>
+        <text x="750" y="302" fill="#94a3b8" font-size="11.5">지연 HW 409 µs</text>
+      </g>
+    </svg>
+    <figcaption>화면 예시. 숫자(거리, 지연)는 설명용 가상값이며 실측값으로 바뀐다. 흰 실선은 펜이 닿은 획, 주황 점선은 펜을 든 공중 동작.</figcaption>
+  </figure>
+
+  <h3>3D 표시 구현</h3>
+  <ul>
+    <li>DE2에는 GPU가 없으므로 Nios II가 3D 좌표를 회전·투영해 2D 화면 좌표로 바꾸고, 점 사이를 선(Bresenham)으로 그린다. 한 서명이 128~300점이라 계산량이 작다.</li>
+    <li>sin/cos 값은 표로 미리 만들어 두고 고정소수점으로 계산한다. 몇 프레임마다 각도를 바꿔 다시 그리면 천천히 회전한다.</li>
+    <li>VGA 픽셀 버퍼의 백 버퍼에 그린 뒤 교체해서 깜빡임을 없앤다.</li>
+    <li>z는 화면용으로만 가벼운 이동평균을 걸어 손 떨림을 줄이고, 판 위 약 8 cm를 넘는 구간은 추적 범위 밖이므로 잘라서 표시한다.</li>
+    <li>한글 이름은 PC에서 16×16 비트맵으로 만들어 온칩 ROM에 넣고 픽셀 버퍼에 복사한다.</li>
+  </ul>
+</section>
+
+<!-- 7 -->
+<section id="hw">
+  <h2><span class="n">7</span>하드웨어 구성과 핀 연결</h2>
+  <h3>센서 배열</h3>
+  <div class="tablewrap"><table>
+    <tr><th>구성</th><th>센서</th><th>격자</th><th>I²C 버스</th><th>비고</th></tr>
+    <tr><td><b>기준안 (현재)</b></td><td><b>4개, 예비 없음</b></td><td>2×2, ±3 cm</td><td>1개</td><td><b>게이트 1·2의 기준.</b> 시뮬레이션(교정 오차 포함, 서명형 궤적)에서 xy 약 1.7 mm. 단, z=4.5 cm 조건이라 필기면 구조(자석~칩 약 36 mm)로 재확인이 필요</td></tr>
+    <tr><td>확장안 A</td><td>9개 (센서 5개 추가)</td><td>3×3, ±6 cm</td><td>3개 (4+4+1)</td><td>게이트 1에서 오차 기준을 못 넘거나 간섭이 클 때. 시뮬레이션상 교정 오차가 있으면 4개와 정확도 차이가 거의 없고(약 2.0 mm), 이점은 간섭 보정 여지. 추가 약 ₩86,000, 도착 3~4일</td></tr>
+    <tr><td>확장안 B</td><td>16개 + 예비 2</td><td>4×4, ±6 cm</td><td>4개</td><td>예산·일정 여유 시</td></tr>
+  </table></div>
+
+  <h3>핀 연결 (GPIO_0, 3.3 V 로직)</h3>
+  <p style="font-size:13.5px;color:var(--muted)">기존 기획의 핀 대응을 따른다. 헤더 핀 번호는 DE2 User Manual의 확장 헤더 그림으로 반드시 재확인한다.</p>
+  <div class="tablewrap"><table>
+    <tr><th>DE2 헤더 핀</th><th>Verilog 신호</th><th>연결 대상</th><th>비고</th></tr>
+    <tr><td>29 / 30</td><td>VCC33 / GND</td><td>센서 전원 / 접지</td><td>센서 모듈의 VIN에 3.3 V를 넣어 I²C 로직이 3.3 V가 되게 함 (5 V 연결 금지)</td></tr>
+    <tr><td>1 / 3</td><td><code>GPIO_0[0]</code> / <code>[2]</code></td><td>버스 A SDA / SCL</td><td>센서 4개 (주소는 수령 후 I²C 스캔으로 확인 — 제품 페이지: 기본 0x18, 구형 0x0C)</td></tr>
+    <tr><td>5 / 7</td><td><code>GPIO_0[4]</code> / <code>[6]</code></td><td>버스 B SDA / SCL <span class="tag est">9개 확장 시</span></td><td>센서 4개</td></tr>
+    <tr><td>13 / 15 (예시)</td><td><code>GPIO_0[10]</code> / <code>[12]</code></td><td>버스 C SDA / SCL <span class="tag est">9개 확장 시</span></td><td>센서 1개</td></tr>
+    <tr><td>12</td><td>GND</td><td>공통 접지</td><td>모든 GND 연결</td></tr>
+    <tr><td>(보드 내장)</td><td><code>LCD_DATA[7:0]</code>, <code>LCD_RS/RW/EN/ON/BLON</code></td><td>16×2 LCD</td><td>DE2 핀 할당 CSV 그대로 사용</td></tr>
+    <tr><td>(보드 내장)</td><td><code>VGA_*</code></td><td>VGA DAC</td><td>VGA 픽셀 버퍼 IP</td></tr>
+  </table></div>
+  <ul>
+    <li>Adafruit 4022 모듈은 STEMMA QT 커넥터가 양쪽에 있어 케이블로 이어 붙이면(데이지 체인) 한 버스에 4개를 납땜 없이 연결할 수 있다. 주소는 A0/A1 핀 두 개로 4가지를 만든다(제품 페이지 기준). 납땜 점퍼인지 핀 결선인지는 수령 후 확인하고, 납땜이 필요하면 실습실 인두를 쓴다. 기본 주소가 0x18일 수 있으므로 Verilog 마스터의 기본 주소는 파라미터로 둔다.</li>
+    <li>보드 연결 케이블(4209)은 끝이 수 핀이라 DE2 GPIO 헤더(수 핀이라는 가정, 보드에서 확인)에 바로 꽂히지 않는다. 암-암 점퍼선으로 SDA, SCL, 3.3 V, GND 4가닥을 잇는다. 센서 4개(버스 1개)면 3.3 V·GND를 DE2 29·30번에 바로 연결하므로 브레드보드가 필요 없다.</li>
+    <li>모듈마다 풀업 저항이 있으므로 4개를 한 버스에 달면 병렬로 저항이 낮아진다. SignalTap이나 오실로스코프로 SDA/SCL 파형을 보고, 상승이 너무 가파르거나 LOW 전압이 높으면 일부 모듈의 풀업을 끊는다.</li>
+    <li>Cyclone II는 5 V 비내성. 모듈 전원은 반드시 DE2의 3.3 V로 공급한다.</li>
+    <li>미사용 핀은 Unused Pins → As input tri-stated.</li>
+  </ul>
+
+  <h3>기구</h3>
+  <ul>
+    <li><b>센서 판:</b> 3D 프린터로 센서 판을 출력한다. 모듈이 들어갈 얕은 홈 4개를 6 cm 간격으로 파면 위치가 1 mm 안에서 고정된다(시뮬레이션이 센서 위치 오차 1 mm를 가정). 모듈은 양면 폼테이프로 붙인다 — 고정 구멍 규격이 확인되지 않았다. 아크릴 판은 추후 구매하고, 그때까지는 3D 프린트 판이나 합판·폼보드처럼 자성이 없고 평평한 판을 임시로 쓴다. 철제 나사·책상 다리는 피한다.</li>
+    <li><b>필기면 높이:</b> 필기면을 센서 위에 바로 덮으면 자석~칩 거리가 약 12~15 mm가 되어 센서 바로 위에서 약 53~104 mT(쌍극자 근사)가 나와 포화될 수 있다. 3D 프린트 스페이서 4개(높이 30 mm)로 필기면을 띄우면 자석~칩이 약 36 mm, 센서 바로 위 자기장은 약 3.9 mT다. 네 개 높이가 같아야 필기면이 수평이다. 스페이서는 PLA/PETG로 출력하고 금속·철분 필라멘트는 쓰지 않는다.</li>
+    <li><b>펜:</b> 볼펜 몸체 끝에 φ10×10 원통 자석(N35 이상, 가능하면 N52)을 극 방향이 펜 축과 일치하도록 접착한다. 종이에 실제로 쓰게 하려면 잉크 심을 유지하고, 잉크 없이 쓰려면 심을 제거한다 — 어느 쪽인지 정한다.</li>
+    <li>모니터·노트북·어댑터는 센서 판에서 30~50 cm 이상 띄운다.</li>
+  </ul>
+</section>
+
+<!-- 8 -->
+<section id="bom">
+  <h2><span class="n">8</span>구매 목록과 가격</h2>
+  <p><span class="tag ok">확인</span>은 이전에 DigiKey KR에서 확인한 값, <span class="tag est">추정</span>은 판매처 가격을 확인하지 못했거나 환율 가정(1,400원/USD)으로 환산한 값이다. 국내 상품은 가격·재고를 확인하지 못했다. 결제 전에 모두 재확인한다. 세부 목록·링크는 구매 목록 엑셀(<code>DE2_magic_pen_BOM.xlsx</code>) 참고.</p>
+
+  <h3>기준안 (센서 4개, 예비 없음)</h3>
+  <div class="tablewrap"><table>
+    <tr><th>#</th><th>품목</th><th>모델 / 규격</th><th>구매처 (링크)</th><th class="num">단가</th><th class="num">수량</th><th class="num">소계</th><th>비고</th></tr>
+    <tr><td>1</td><td><b>3축 자기 센서 모듈</b></td><td>Adafruit <b>4022</b> (MLX90393, STEMMA QT)</td><td><a href="https://www.digikey.kr/en/products/detail/adafruit-industries-llc/4022/9924180">DigiKey KR</a></td><td class="num">₩15,532 <span class="tag ok">이전 확인</span></td><td class="num">4</td><td class="num">₩62,128</td><td>예비 없음 — 고장 시 재주문(3~4일). 11/2에 4개를 이미 주문했다면 추가 구매 없음. 오늘은 페이지에서 가격을 읽지 못해 결제 화면에서 재확인</td></tr>
+    <tr><td>2</td><td>센서↔센서 케이블 (100 mm)</td><td>Adafruit 4210</td><td><a href="https://www.digikey.kr/en/products/detail/adafruit-industries-llc/4210/10230021">DigiKey KR</a></td><td class="num">약 ₩1,330 <span class="tag est">추정</span></td><td class="num">4</td><td class="num">약 ₩5,320</td><td>모듈 간 연결 3개 + 예비 1. Adafruit 직영은 품절(11/4 확인) → DigiKey 재고 확인, 없으면 <a href="https://www.adafruit.com/product/4401">4401 (200 mm)</a></td></tr>
+    <tr><td>3</td><td>보드 연결 케이블 (JST SH → 수 핀, 150 mm)</td><td>Adafruit 4209</td><td><a href="https://www.adafruit.com/product/4209">Adafruit</a> / <a href="https://www.digikey.kr/en/products/result?keywords=4209">DigiKey KR 검색</a></td><td class="num">약 ₩1,330 <span class="tag est">추정</span></td><td class="num">2</td><td class="num">약 ₩2,660</td><td>사용 1 + 예비 1. 끝이 수 핀 → 암-암 점퍼선 필요. 암 소켓 케이블 <a href="https://www.digikey.kr/en/products/result?keywords=4397">4397</a>은 Adafruit 직영 품절(11/4 확인)</td></tr>
+    <tr><td>4</td><td><b>네오디뮴 자석</b></td><td>원통형 φ10×10 mm (N35 이상, 가능하면 N52), 10개 묶음</td><td><a href="https://www.coupang.com/np/search?q=%EB%84%A4%EC%98%A4%EB%94%94%EB%AE%B4%20%EC%9B%90%ED%86%B5%20%EC%9E%90%EC%84%9D%2010x10">쿠팡 검색</a></td><td class="num">약 ₩8,000 <span class="tag est">추정</span></td><td class="num">1팩</td><td class="num">약 ₩8,000</td><td>N35도 모멘트가 N52의 약 80%라 거리 36 mm에서 충분. 치수(φ10×10)·재고 우선</td></tr>
+    <tr><td>5</td><td>3D 프린트 센서 판·스페이서</td><td>PLA/PETG, 스페이서 높이 30 mm × 4</td><td>학교 3D 프린터</td><td class="num">₩0 <span class="tag est">확인 필요</span></td><td class="num">1식</td><td class="num">₩0</td><td>프린터 사용 가능 여부 확인. 금속·철분 필라멘트 금지</td></tr>
+    <tr><td>6</td><td>투명 아크릴 3 mm</td><td>필기면·센서 판용</td><td><a href="https://www.devicemart.co.kr/goods/brand?code=1991">디바이스마트 하나아크릴</a></td><td class="num">약 ₩6,000 <span class="tag est">추정</span></td><td class="num">0 (추후)</td><td class="num">₩0</td><td>나중에 구매. 센서 4개면 200×200 정도도 가능</td></tr>
+    <tr><td>7</td><td>양면 폼테이프(얇은 것)</td><td>두께 1 mm 이하</td><td>문구점 / <a href="https://www.coupang.com/np/search?q=%EC%96%91%EB%A9%B4%20%ED%8F%BC%ED%85%8C%EC%9D%B4%ED%94%84%201mm">쿠팡 검색</a></td><td class="num">약 ₩2,000 <span class="tag est">추정</span></td><td class="num">1</td><td class="num">약 ₩2,000</td><td>모듈 고정. 고정 구멍 규격 확인 전이라 나사 대신 사용</td></tr>
+    <tr><td>8</td><td>펜 몸체 + 접착제</td><td>일반 볼펜, 순간접착제/에폭시</td><td>문구점</td><td class="num">약 ₩2,000 <span class="tag est">추정</span></td><td class="num">1</td><td class="num">약 ₩2,000</td><td>잉크 심 유지 여부 결정</td></tr>
+    <tr><td>9</td><td>점퍼선 암-암 20 cm</td><td>40핀 세트</td><td><a href="https://www.coupang.com/np/search?q=%EC%A0%90%ED%8D%BC%EC%84%A0%20%EC%95%94%EC%95%94%2020cm%2040%ED%95%80">쿠팡 검색</a></td><td class="num">약 ₩3,000 <span class="tag est">추정</span></td><td class="num">1</td><td class="num">약 ₩3,000</td><td>4가닥 사용. 학과 보유품 있으면 생략. 기존 목록의 40핀 IDC 플랫 케이블은 불필요해 뺌</td></tr>
+    <tr class="total"><td colspan="6">합계 (기준안)</td><td class="num">약 ₩85,000</td><td>정확한 합계 ₩85,108. 부가세·배송비·관부가세 별도. 11/2에 센서 4개를 이미 주문했다면 약 ₩23,000</td></tr>
+  </table></div>
+
+  <h3>확장 시 추가 비용 (9개로 늘릴 때)</h3>
+  <div class="tablewrap"><table>
+    <tr><th>항목</th><th class="num">수량</th><th class="num">추가 비용</th><th>비고</th></tr>
+    <tr><td>센서 4022 추가</td><td class="num">5</td><td class="num">₩77,660</td><td>9개 사용, 예비 없음</td></tr>
+    <tr><td>센서↔센서 케이블 4210 추가 / 보드 연결 4209 추가</td><td class="num">3 / 2</td><td class="num">약 ₩6,650</td><td>버스 3개(4+4+1) 구성</td></tr>
+    <tr><td>미니 브레드보드</td><td class="num">1</td><td class="num">약 ₩2,000</td><td>버스 3개에 3.3 V·GND 분배 (DE2의 3.3 V 핀은 29번 하나)</td></tr>
+    <tr class="total"><td colspan="2">확장 추가 합계</td><td class="num">약 ₩86,000</td><td>기준안과 합치면 약 ₩171,000. 도착 3~4일</td></tr>
+  </table></div>
+
+  <h3>새로 사지 않아도 되는 것</h3>
+  <ul>
+    <li>16×2 LCD, VGA 출력, 스위치·버튼·LED·7세그먼트: DE2 보드에 내장.</li>
+    <li>VGA 모니터, 오실로스코프, 납땜 인두·납: 실습실·학교 대여.</li>
+    <li>서명 식별 기능은 소프트웨어·FPGA 설계 변경이라 <b>추가 부품이 거의 없다</b>.</li>
+  </ul>
+
+  <div class="callout"><b>주문 체크:</b>
+    <ul>
+      <li>11/2에 센서 4개를 이미 주문했는지 먼저 확인한다. 주문했다면 DigiKey 추가 주문은 케이블뿐이라 6만 원 무료 배송 기준을 못 넘어 배송비가 붙을 수 있다.</li>
+      <li>DigiKey KR은 6만 원 이상 무료 배송, 도착 3~4일로 이전에 확인했다. 결제 화면에서 배송비·관부가세 포함 여부를 다시 본다. 미국발 물품은 일반적으로 물품가 200달러 이하면 관부가세가 면제되지만, DigiKey 결제 조건이 우선이다.</li>
+      <li>센서 도착이 11/7~8이면 게이트 1(11/8)이 빠듯하다. 도착일을 결제 시 확인한다.</li>
+      <li>Adafruit 4022 외 SparkFun SEN-14571 등 다른 MLX90393 모듈을 섞지 않는다 (풀업·주소 설정 방식이 달라 배선이 복잡해짐).</li>
+      <li>해외 판매가 참고: Adafruit 직영 $9.95 (10개 이상 $8.96), Jameco $13.15, Mouser €8.56. 국내 결제가는 DigiKey KR 화면 기준.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 9 -->
+<section id="demo">
+  <h2><span class="n">9</span>시연 시나리오 (약 4분)</h2>
+  <ol>
+    <li><b>사전 등록:</b> 팀원 2명과 지원자 1명(3명)을 미리 등록해 둔다. 등록 화면에 이름 목록을 보여준다.</li>
+    <li><b>등록자 식별:</b> 윤재국이 서명 → LCD에 <code>YOON JAEGUK</code>, VGA에 "윤재국", 초록 LED. 임창현도 같은 방식으로.</li>
+    <li><b>미등록 거부:</b> 심사위원(또는 관객)에게 서명을 부탁 → LCD <code>NOT REGISTERED</code>, VGA "미등록", 빨간 LED.</li>
+    <li><b>현장 등록 (임베딩 방식이 동작할 때만):</b> 같은 심사위원을 등록 모드로 5번 서명시켜 GUEST 슬롯에 등록 → 다시 서명하면 이름(GUEST 1)이 뜬다.</li>
+    <li><b>3D 재생:</b> 방금 서명의 3D 궤적을 시간 순서대로 재생하고 회전시켜, 종이에 안 남는 공중 동작(주황 점선)을 보여준다.</li>
+    <li><b>SW/HW 속도 비교:</b> <code>SW[5]</code>를 바꿔 같은 서명을 소프트웨어/하드웨어로 추론, 7세그 지연 차이와 자원 사용량 표를 보여준다.</li>
+  </ol>
+  <div class="callout info"><b>발표 포인트:</b> "같은 펜으로 쓴 서명을 FPGA 안에서 AI로 바로 판별하고, 종이에 안 남는 공중 동작까지 쓴다. 같은 모델을 소프트웨어와 하드웨어로 구현해 몇 배 빨라졌는지 숫자로 보여준다." 정확도와 배율은 실측값만 쓰고 미리 약속하지 않는다.</div>
+  <div class="callout"><b>시연 위험 대비:</b> 현장 조명·노트북 위치에 따라 자기 간섭이 바뀌므로 시연 직전 <code>KEY0</code>으로 기준 재측정. 등록자가 긴장해서 평소와 다르게 쓰면 거부될 수 있으니 "평소처럼 한 번에 쓰기"를 미리 연습한다.</div>
+</section>
+
+<!-- 10 -->
+<section id="eval">
+  <h2><span class="n">10</span>평가 지표</h2>
+  <div class="tablewrap"><table>
+    <tr><th>#</th><th>지표</th><th>방법</th><th>내부 목표 <span class="tag est">잠정</span></th></tr>
+    <tr><td>1</td><td>위치 오차 (기존)</td><td>템플릿 따라 그리기 100점 이상</td><td>xy ≤5 mm (게이트 2)</td></tr>
+    <tr><td>2</td><td><b>등록자 식별 정확도</b></td><td>등록에 안 쓴 <b>다른 날</b> 서명으로 테스트, 사람별 혼동행렬</td><td>≥90%</td></tr>
+    <tr><td>3</td><td><b>미등록 오수락률 (FAR)</b></td><td>미등록 역할 5~10명 서명 중 누군가로 잘못 받은 비율</td><td>≤10%</td></tr>
+    <tr><td>4</td><td><b>등록자 오거부율 (FRR)</b></td><td>등록자 서명이 "미등록"으로 나온 비율</td><td>≤15%</td></tr>
+    <tr><td>5</td><td>방법 비교</td><td>DTW 단독 / CNN 단독 / 결합의 2~4번 지표</td><td>결과 그대로 보고</td></tr>
+    <tr><td>6</td><td>입력 채널 비교</td><td>x·y·pen / +속도 / +공중 동작(z, θ, φ)</td><td>공중 동작 효과 유무 보고</td></tr>
+    <tr><td>7</td><td>SW 대 HW 추론</td><td>지연(µs), LE·곱셈기·온칩 메모리 사용량</td><td>합성 리포트 + 타임스탬프 실측</td></tr>
+    <tr><td>8</td><td>비트 일치</td><td>Python / Nios II SW / HW 출력 비교</td><td>테스트 벡터 100개 전부 일치</td></tr>
+    <tr><td>9</td><td>서명 1회 판정 시간</td><td>서명 끝 → 이름 표시까지</td><td>≤1 s (타임아웃 1 s 제외)</td></tr>
+  </table></div>
+  <p>내부 목표는 방향을 잡기 위한 잠정값이다. 위치 오차 실측 결과를 본 뒤 조정하며, 목표에 못 미쳐도 측정값을 그대로 보고한다.</p>
+</section>
+
+<!-- 11 -->
+<section id="collect">
+  <h2><span class="n">11</span>데이터 수집 계획</h2>
+  <div class="tablewrap"><table>
+    <tr><th>그룹</th><th>인원</th><th>수집량</th><th>용도</th></tr>
+    <tr><td>등록자</td><td>3~5명 (팀원 2 + 지원자)</td><td>1인당 30회, <b>서로 다른 2일 이상</b>에 나눠서 (예: 11/13, 11/15)</td><td>임베딩 학습, 등록 기준 벡터, 테스트</td></tr>
+    <tr><td>미등록 역할</td><td>5~10명 (학과 친구)</td><td>1인당 10회</td><td>임베딩 학습(사람 수 늘리기), 미등록 문턱 결정</td></tr>
+    <tr><td>(선택) 따라 쓰기</td><td>2~3명</td><td>등록자 서명을 보고 따라 쓰기 1인당 5회</td><td>위조 판별이 <b>안 된다는 한계</b>를 정량으로 보여주는 참고 자료</td></tr>
+  </table></div>
+  <ul>
+    <li>임베딩 CNN은 학습에 쓴 사람 수가 많을수록 처음 보는 사람에게 잘 일반화된다. 등록자 외 인원을 최대한 모은다.</li>
+    <li>학습·검증·테스트는 <b>날짜로 나눈다</b> (같은 날 쓴 서명끼리만 비교하면 정확도가 부풀려진다).</li>
+    <li><b>개인정보:</b> 서명은 개인정보다. 수집 전에 용도(수업 프로젝트)와 보관 기간(학기 종료 후 삭제)을 알리고 동의를 받는다. 파일명은 이름 대신 번호로 저장한다.</li>
+  </ul>
+</section>
+
+<!-- 12 -->
+<section id="plan">
+  <h2><span class="n">12</span>일정과 게이트 (11/3 ~ 11/22)</h2>
+  <div class="week">
+    <h3>1주 차 (~11/8) — 주문 · 위치 추적</h3>
+    <ul>
+      <li><b>11/3~11/4:</b> 센서 주문 상태 확인 후 부족분 주문(8장). 교수님께 주제 변경(숫자 인식 → 서명 식별) 공유.</li>
+      <li>대기 중: 쌍극자 시뮬레이션·LM 기준선, Qsys에 Character LCD·VGA·PIO 추가, I²C 마스터 ModelSim 검증, PC에서 DTW·임베딩 CNN 코드 작성(공개 온라인 서명 데이터셋으로 동작 확인).</li>
+      <li>3D 프린트: 센서 판(홈 4개)·스페이서(30 mm) 설계·출력.</li>
+      <li>부품 도착 후: 센서 통신 확인(I²C 스캔으로 주소 확인), 4개 2×2 판으로 첫 위치 복원.</li>
+    </ul>
+    <span class="gate">게이트 1 (11/8): 센서 4개, 실측 위치 오차 ≤10 mm — 통과하면 4개로 계속, 불통과·간섭 심하면 9개 확장 주문</span>
+  </div>
+  <div class="week">
+    <h3>2주 차 (11/9 ~ 11/15) — 데이터 수집 · DTW 식별 (필요 시 9개 확장)</h3>
+    <ul>
+      <li>게이트 1 결과에 따라 센서 4개 유지 또는 9개(3×3, 버스 3개)로 확장. 확장하면 도착 3~4일이라 11/13 수집 일정에 영향. 위치 MLP 학습·미세조정.</li>
+      <li>서명 시작/끝 판정, 데이터 수집 모드, VGA 2D 서명 표시.</li>
+      <li><b>11/13, 11/15:</b> 서명 데이터 수집 (11장).</li>
+      <li>Nios II C로 DTW 식별 + LCD 이름 표시 동작.</li>
+    </ul>
+    <span class="gate">게이트 2 (11/15): 실측 오차 ≤5 mm, DTW로 등록자 3명 식별이 LCD에 표시. 불통과 시 13장 대안으로 축소</span>
+  </div>
+  <div class="week">
+    <h3>3주 차 (11/16 ~ 11/22) — AI · 가속 · 마무리</h3>
+    <ul>
+      <li>임베딩 CNN 학습·양자화·비트 일치 검증, Nios II SW 추론 → 병렬 MAC 가속.</li>
+      <li>미등록 판정 문턱 결정, 등록 모드(현장 등록), VGA 한글 이름·3D 재생.</li>
+      <li>평가 실험 (10장 2~7번).</li>
+      <li><b>11/20(금):</b> 시연 리허설 3회. 이후 기능 추가 금지, 결과 표·발표자료·보고서 정리.</li>
+    </ul>
+    <span class="ms">완료 기준: 9장 시연 1~3, 5, 6을 끊김 없이 3회 연속 성공 (4번 현장 등록은 가산점)</span>
+  </div>
+
+  <h3>역할 분담 (제안, 팀 합의 필요)</h3>
+  <div class="tablewrap"><table>
+    <tr><th>담당</th><th>업무</th></tr>
+    <tr><td>임창현</td><td>(제안) 위치 MLP·임베딩 CNN 학습과 양자화, DTW·문턱 결정, 평가 실험 분석, 발표자료</td></tr>
+    <tr><td>윤재국</td><td>(제안) 센서 판 제작·배선(3D 프린트 포함), Verilog I²C 마스터·병렬 MAC, Qsys(LCD·VGA·PIO) 통합, 자원/지연 측정</td></tr>
+    <tr><td>공동</td><td>Nios II C (서명 버퍼, 판정, 화면), 데이터 수집, 시연 리허설, 보고서</td></tr>
+  </table></div>
+</section>
+
+<!-- 13 -->
+<section id="risk">
+  <h2><span class="n">13</span>위험·한계와 대안</h2>
+  <div class="tablewrap"><table>
+    <tr><th>위험</th><th>내용</th><th>대응</th></tr>
+    <tr><td>위치 오차</td><td>실측 오차가 시뮬레이션보다 몇 배 클 수 있음 (문헌: 센서 16개 실측 약 4 mm)</td><td>모양보다 속도·리듬 채널 비중을 높임. 오차가 크면 등록 인원을 3명으로 줄임</td></tr>
+    <tr><td>펜 올림/내림 오판</td><td>서명은 펜을 짧게 자주 들어서 획이 붙거나 끊김</td><td>z 히스테리시스 조정, pen 채널 대신 z를 그대로 입력해 모델이 학습하게 하는 방안 비교</td></tr>
+    <tr><td>데이터 부족</td><td>사람 수가 적으면 임베딩이 처음 보는 사람에게 일반화 안 됨 → 현장 등록·미등록 판정 불안정</td><td>공개 온라인 서명 데이터셋(x, y, 시간)으로 사전학습 후 우리 데이터로 미세조정. 안 되면 아래 대안 1</td></tr>
+    <tr><td>날마다 다른 서명</td><td>같은 사람도 날·컨디션에 따라 서명이 달라짐</td><td>2일 이상 나눠 수집, 등록 시 5회 평균, 사람별 문턱</td></tr>
+    <tr><td>미등록 오수락</td><td>등록자가 적으면 낯선 서명도 누군가와 가까울 수 있음</td><td>거리 문턱 + 1·2순위 차이 + DTW 동의, 문턱은 오수락을 줄이는 쪽으로</td></tr>
+    <tr><td>위조</td><td>보고 따라 쓴 서명은 구분 못 할 가능성 높음</td><td>범위에서 명시적으로 제외. 따라 쓰기 실험으로 한계를 수치로 보고</td></tr>
+    <tr><td>자기 간섭</td><td>노트북·어댑터·철제 구조물. 센서 4개는 간섭을 모델에 넣어 보정할 여지가 9개보다 적음</td><td>30~50 cm 이격, 시연 전 기준 재측정, 비자성 재질. 실측에서 심하면 9개로 확장</td></tr>
+    <tr><td>센서 포화·필기면 높이</td><td>필기면을 센서 위에 바로 덮으면 자석이 가까워 측정 범위(±50 mT)를 넘을 수 있음. 쌍극자 모델도 가까우면 부정확</td><td>스페이서 30 mm(자석~칩 약 36 mm). 센서 게인 설정으로 포화 여부를 실측 확인</td></tr>
+    <tr><td>센서 고장·예비 없음</td><td>센서가 하나라도 고장나면 재주문에 3~4일</td><td>수령 즉시 통신·주소 확인, ESD 주의, 고장 시 바로 재주문</td></tr>
+    <tr><td>I²C 주소 불확실</td><td>Adafruit 4022 기본 주소가 0x18(구형 0x0C)이고 변경 방식(납땜/핀 결선)이 미확인</td><td>수령 후 I²C 스캔, Verilog 마스터의 기본 주소를 파라미터로</td></tr>
+  </table></div>
+
+  <h3>대안 (위에서부터 순서대로 축소)</h3>
+  <ol>
+    <li><b>등록자 고정 분류기:</b> 임베딩 대신 "등록자 N명 + 미등록" 분류 CNN을 PC에서 학습. 현장 등록은 포기하고 미등록 판정은 최대 확률 문턱으로.</li>
+    <li><b>DTW 단독:</b> AI 모델 없이 DTW로 식별 + 미등록 거부. AI 요소는 위치 MLP와 SW/HW 가속 비교로 유지.</li>
+    <li><b>숫자 인식 (기존 기획):</b> 서명 대신 0~9 숫자 인식 CNN으로 복귀. 하드웨어 변경 없음.</li>
+    <li><b>제스처 분류:</b> 스와이프·원·직선 등 굵은 제스처 분류와 커서 제어. 센서 4개로도 가능.</li>
+  </ol>
+</section>
+
+<!-- 14 -->
+<section id="open">
+  <h2><span class="n">14</span>미결 사항</h2>
+  <ul class="check">
+    <li>팀원과 주제 변경(숫자 → 서명 식별) 및 역할 합의</li>
+    <li>교수님 확인: 외부 부품 사용, Nios II 사용, 서명 데이터 수집(개인정보) 괜찮은지</li>
+    <li>11/2 센서 주문 여부 확인 → 부족분 주문 (8장)</li>
+    <li>DigiKey KR 결제 화면에서 Adafruit 4022·4209·4210 단가, 재고(4210이 없으면 4401), 배송비, 관부가세, 도착일 재확인</li>
+    <li>학교 3D 프린터 사용 가능 여부와 센서 판·스페이서 설계 (PLA/PETG)</li>
+    <li>아크릴 구매 시점과 크기 결정</li>
+    <li>DE2 GPIO 헤더가 수 핀인지 보드에서 확인, 센서 I²C 주소·변경 방식 수령 후 확인</li>
+    <li>펜에 잉크 심을 유지할지 결정</li>
+    <li>자석 φ10×10 판매처·가격 확정 (N35 이상, 등급·치수 표기 확인)</li>
+    <li>사용할 공개 온라인 서명 데이터셋 선정 (라이선스·수업 사용 가능 여부)</li>
+    <li>등록자 3~5명과 미등록 역할 5~10명 섭외, 수집 날짜 확정</li>
+    <li>Nios II 코어(/e 대 /f) 선택 — DTW·CNN SW 기준선 속도에 영향</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">·</span>출처와 근거</h2>
+  <ul>
+    <li>Adafruit 4022 (MLX90393, 16비트 출력, ±5~50 mT, 주소 점퍼 2개로 한 버스 최대 4개, STEMMA QT): Adafruit Learn Guide "MLX90393 Wide-Range 3-Axis Magnetometer"</li>
+    <li>MLX90393 사양 (2.2~3.6 V, I²C/SPI, A0·A1 하드웨어 주소): Melexis MLX90393 데이터시트 Rev.006</li>
+    <li>Adafruit 4022 해외 판매가: Jameco ($13.15), Mouser (€8.56), DigiKey 각국 사이트 (부품번호 1528-2864-ND)</li>
+    <li>케이블 재고·가격(2026-11-04 확인): Adafruit 제품 페이지 4210(품절), 4209(재고), 4397(품절), 4401(재고). 센서 주소 기본값 0x18은 Adafruit 4022 제품 페이지.</li>
+    <li>국내 단가 ₩15,532, 6만 원 이상 무료 배송, 3~4일: 기존 기획서의 DigiKey KR 검색 결과 (결제 전 재확인)</li>
+    <li>DE2 16×2 LCD 제어: Altera University Program "16x2 Character Display for Altera DE2-Series Boards" (Character LCD IP, <code>alt_up_character_lcd_string</code>)</li>
+    <li>해외직구 관부가세 면세 기준 (일반 150달러, 미국발 200달러): 관세 안내 자료 (zonos 대한민국 가이드 등)</li>
+    <li>위치 추적 선행연구·시뮬레이션 결과: 기존 기획서 「DE2 마법 펜 — 자석 펜 위치 추적·필기 인식」</li>
+  </ul>
+  <p style="font-size:13.5px;color:var(--muted)">"추정"·"잠정"으로 표시한 값(부품 가격 일부, CNN 크기, 내부 목표, 화면 예시 숫자)은 설계 가정이며 구매·구현 후 실측값으로 바꾼다.</p>
+</section>
+
+</div></main>
+<footer>마이크로프로세서 자유주제 프로젝트 · DE2 마법 펜 서명 식별 설계서 · 임창현 · 윤재국</footer>
+</body>
+</html>

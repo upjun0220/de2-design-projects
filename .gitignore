@@ -1,0 +1,65 @@
+# ---- Quartus II ----
+db/
+incremental_db/
+output_files/
+simulation/
+greybox_tmp/
+*.qws
+*.rpt
+*.summary
+*.smsg
+*.done
+*.pin
+*.jdi
+*.sld
+*.sof
+*.pof
+*.cmp
+*.bak
+*.qarlog
+*.ppf
+*.htm
+c5_pin_model_dump.txt
+
+# ---- Qsys / Nios II ----
+*.sopcinfo
+.qsys_edit/
+*/synthesis/
+*_sim/
+*.elf
+*.objdump
+*.map
+*.o
+*.d
+*.a
+.metadata/
+obj/
+
+# ---- ModelSim / GHDL ----
+work/
+transcript
+vsim.wlf
+*.wlf
+*.ghw
+*.vcd
+*.cf
+design1/sim/build/
+
+# ---- Python ----
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+*.npz
+*.pt
+*.pth
+
+# ---- 개인정보: 서명 원시 데이터는 저장소에 올리지 않는다 ----
+design2/pc/data/
+
+# ---- OS / 에디터 ----
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
