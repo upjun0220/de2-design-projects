@@ -94,7 +94,7 @@
   <h2><span class="n">1</span>프로젝트 개요</h2>
   <p>기존 기획(자석 펜 위치 추적 + 숫자 인식)의 하드웨어와 위치 복원 파이프라인은 그대로 쓰고, 마지막 단계의 <b>숫자 인식 CNN을 서명 식별로 바꾼다.</b></p>
   <div class="grid2">
-    <div class="kpi"><b>① 자기장 계측 (기존 유지)</b>MLX90393 3축 센서 4개(2×2)를 I²C 버스 1개로 읽는다. Verilog I²C 마스터가 샘플을 모은다. 게이트 1 실측 결과에 따라 9개로 확장할 수 있다.</div>
+    <div class="kpi"><b>① 자기장 계측 (기존 유지)</b>MLX90393 3축 센서 4개를 종이 둘레 네 모서리(14×14 cm)에 두고 I²C 버스 1개로 읽는다. Verilog I²C 마스터가 샘플을 모은다. 게이트 1 실측 결과에 따라 9개로 확장할 수 있다.</div>
     <div class="kpi"><b>② 위치·기울기 복원 (기존 유지)</b>쌍극자 모델 LM 피팅을 기준선으로, 소형 MLP가 (x, y, z, θ, φ)를 한 번의 순전파로 구한다.</div>
     <div class="kpi"><b>③ 서명 식별 <span class="tag new">신규</span></b>서명 한 번의 시계열을 1D CNN으로 32차원 특징 벡터(임베딩)로 바꾸고, 등록자별 기준 벡터와 비교해 가장 가까운 사람을 고른다. 기준선은 DTW(동적 시간 정렬) 템플릿 비교.</div>
     <div class="kpi"><b>④ 미등록 거부 <span class="tag new">신규</span></b>가장 가까운 사람과의 거리가 문턱값을 넘거나 1·2순위 차이가 작으면 "미등록"으로 판정한다.</div>
@@ -102,7 +102,7 @@
     <div class="kpi"><b>⑥ HW/SW 가속 비교 (기존 유지)</b>같은 int8 임베딩 CNN을 Nios II 소프트웨어와 병렬 MAC 엔진으로 각각 돌려 지연·LE·곱셈기 사용량을 비교한다.</div>
   </div>
 
-  <div class="callout"><b>범위를 분명히 한다:</b> 이 시스템은 <b>등록된 사람 중 누가 썼는지 식별</b>하고, 등록 안 된 사람을 거부하는 장치다. 다른 사람의 서명을 연습해서 흉내 낸 <b>위조 서명을 가려내는 "인증·보안" 장치가 아니다.</b> 위치 오차(목표 ≤5 mm)와 샘플링(약 50 Hz)으로는 숙련된 위조를 구분할 근거가 부족하므로 보고서·발표에서 "서명 인증", "보안"이라는 표현을 쓰지 않는다.</div>
+  <div class="callout"><b>범위를 분명히 한다:</b> 이 시스템은 <b>등록된 사람 중 누가 썼는지 식별</b>하고, 등록 안 된 사람을 거부하는 장치다. 서명 모양을 베낀 <b>위조가 얼마나 통과하는지는 측정해서 보고</b>한다(무작위·정적(이미지만 보고)·동적(영상 보고 연습) 세 종류, 모양만 쓸 때와 속도·기울기를 더할 때 비교). 막는다고 보장하지는 않으며, 이 평가 결과가 나오기 전에는 보고서·발표에서 "서명 인증", "보안"이라는 표현을 쓰지 않는다.</div>
 
   <h3>왜 이 장치로 서명을 구별할 수 있다고 보는가</h3>
   <ul>
@@ -136,9 +136,9 @@
         <rect x="20" y="260" width="230" height="170" rx="12" fill="#fff" stroke="#94a3b8"/>
         <text x="135" y="284" text-anchor="middle" font-weight="700">입력 장치</text>
         <rect x="40" y="298" width="190" height="34" rx="6" fill="#eef1f5" stroke="#94a3b8"/><text x="135" y="320" text-anchor="middle">자석 펜 (φ10×10)</text>
-        <rect x="40" y="344" width="190" height="34" rx="6" fill="#fff4e6" stroke="#c2410c"/><text x="135" y="366" text-anchor="middle">MLX90393 × 4 (2×2)</text>
+        <rect x="40" y="344" width="190" height="34" rx="6" fill="#fff4e6" stroke="#c2410c"/><text x="135" y="366" text-anchor="middle">MLX90393 × 4 (모서리)</text>
         <text x="135" y="400" text-anchor="middle" font-size="12" fill="#5b6675">3.3 V · I²C 버스 1개 (센서 4개)</text>
-        <text x="135" y="418" text-anchor="middle" font-size="12" fill="#5b6675">격자 간격 6 cm · 비자성 판</text>
+        <text x="135" y="418" text-anchor="middle" font-size="12" fill="#5b6675">14×14 cm 모서리 · 종이 중앙</text>
         <line x1="135" y1="333" x2="135" y2="342" stroke="#c2410c" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#ar)"/>
 
         <!-- FPGA -->
@@ -380,7 +380,7 @@ TOO SHORT</span></div>
   <h3>센서 배열</h3>
   <div class="tablewrap"><table>
     <tr><th>구성</th><th>센서</th><th>격자</th><th>I²C 버스</th><th>비고</th></tr>
-    <tr><td><b>기준안 (현재)</b></td><td><b>4개, 예비 없음</b></td><td>2×2, ±3 cm</td><td>1개</td><td><b>게이트 1·2의 기준.</b> 시뮬레이션(교정 오차 포함, 서명형 궤적)에서 xy 약 1.7 mm. 단, z=4.5 cm 조건이라 필기면 구조(자석~칩 약 36 mm)로 재확인이 필요</td></tr>
+    <tr><td><b>기준안 (현재)</b></td><td><b>4개, 예비 없음</b></td><td>2×2 모서리, ±7 cm (14×14 cm)</td><td>1개</td><td><b>게이트 1·2의 기준.</b> 시뮬레이션(교정 오차 포함, 서명형 궤적, 자석 높이 약 10 mm)에서 xy 약 1.9 mm, 기울기 약 1.2°, 최대 자기장 약 0.7 mT. 이상적인 조건이라 실측은 몇 배 클 수 있음. 허공 서명은 보류(8 cm에서 xy 약 3 mm)</td></tr>
     <tr><td>확장안 A</td><td>9개 (센서 5개 추가)</td><td>3×3, ±6 cm</td><td>3개 (4+4+1)</td><td>게이트 1에서 오차 기준을 못 넘거나 간섭이 클 때. 시뮬레이션상 교정 오차가 있으면 4개와 정확도 차이가 거의 없고(약 2.0 mm), 이점은 간섭 보정 여지. 추가 약 ₩86,000, 도착 3~4일</td></tr>
     <tr><td>확장안 B</td><td>16개 + 예비 2</td><td>4×4, ±6 cm</td><td>4개</td><td>예산·일정 여유 시</td></tr>
   </table></div>
@@ -398,7 +398,7 @@ TOO SHORT</span></div>
     <tr><td>(보드 내장)</td><td><code>VGA_*</code></td><td>VGA DAC</td><td>VGA 픽셀 버퍼 IP</td></tr>
   </table></div>
   <ul>
-    <li>Adafruit 4022 모듈은 STEMMA QT 커넥터가 양쪽에 있어 케이블로 이어 붙이면(데이지 체인) 한 버스에 4개를 납땜 없이 연결할 수 있다. 주소는 A0/A1 핀 두 개로 4가지를 만든다(제품 페이지 기준). 납땜 점퍼인지 핀 결선인지는 수령 후 확인하고, 납땜이 필요하면 실습실 인두를 쓴다. 기본 주소가 0x18일 수 있으므로 Verilog 마스터의 기본 주소는 파라미터로 둔다.</li>
+    <li>Adafruit 4022 모듈은 STEMMA QT 커넥터가 양쪽에 있어 케이블로 이어 붙이면(데이지 체인) 한 버스에 4개를 납땜 없이 연결할 수 있다. 주소는 A0/A1 핀 두 개로 4가지를 만든다(제품 페이지 기준). A0/A1은 기본 LOW라 1번 모듈은 그대로 두고, 2~4번 모듈은 두 핀을 각각 3.3 V에 연결해 주소를 나눈다(서로 다른 주소 4개). 헤더 핀 납땜과 가는 전선이 필요하므로 실습실 인두·납을 빌린다. 기본 주소가 0x18일 수 있으므로 Verilog 마스터의 기본 주소는 파라미터로 둔다.</li>
     <li>보드 연결 케이블(4209)은 끝이 수 핀이라 DE2 GPIO 헤더(수 핀이라는 가정, 보드에서 확인)에 바로 꽂히지 않는다. 암-암 점퍼선으로 SDA, SCL, 3.3 V, GND 4가닥을 잇는다. 센서 4개(버스 1개)면 3.3 V·GND를 DE2 29·30번에 바로 연결하므로 브레드보드가 필요 없다.</li>
     <li>모듈마다 풀업 저항이 있으므로 4개를 한 버스에 달면 병렬로 저항이 낮아진다. SignalTap이나 오실로스코프로 SDA/SCL 파형을 보고, 상승이 너무 가파르거나 LOW 전압이 높으면 일부 모듈의 풀업을 끊는다.</li>
     <li>Cyclone II는 5 V 비내성. 모듈 전원은 반드시 DE2의 3.3 V로 공급한다.</li>
@@ -407,46 +407,47 @@ TOO SHORT</span></div>
 
   <h3>기구</h3>
   <ul>
-    <li><b>센서 판:</b> 3D 프린터로 센서 판을 출력한다. 모듈이 들어갈 얕은 홈 4개를 6 cm 간격으로 파면 위치가 1 mm 안에서 고정된다(시뮬레이션이 센서 위치 오차 1 mm를 가정). 모듈은 양면 폼테이프로 붙인다 — 고정 구멍 규격이 확인되지 않았다. 아크릴 판은 추후 구매하고, 그때까지는 3D 프린트 판이나 합판·폼보드처럼 자성이 없고 평평한 판을 임시로 쓴다. 철제 나사·책상 다리는 피한다.</li>
-    <li><b>필기면 높이:</b> 필기면을 센서 위에 바로 덮으면 자석~칩 거리가 약 12~15 mm가 되어 센서 바로 위에서 약 53~104 mT(쌍극자 근사)가 나와 포화될 수 있다. 3D 프린트 스페이서 4개(높이 30 mm)로 필기면을 띄우면 자석~칩이 약 36 mm, 센서 바로 위 자기장은 약 3.9 mT다. 네 개 높이가 같아야 필기면이 수평이다. 스페이서는 PLA/PETG로 출력하고 금속·철분 필라멘트는 쓰지 않는다.</li>
-    <li><b>펜:</b> 볼펜 몸체 끝에 φ10×10 원통 자석(N35 이상, 가능하면 N52)을 극 방향이 펜 축과 일치하도록 접착한다. 종이에 실제로 쓰게 하려면 잉크 심을 유지하고, 잉크 없이 쓰려면 심을 제거한다 — 어느 쪽인지 정한다.</li>
-    <li>모니터·노트북·어댑터는 센서 판에서 30~50 cm 이상 띄운다.</li>
+    <li><b>구조:</b> 폼보드 한 장에 센서 4개를 14×14 cm 정사각형의 네 모서리에 붙이고, 가운데에 약 8×8 cm 서명 칸(종이)을 둔다. 종이 위에서 평소처럼 서명한다. 위판·블록·스탠드오프·나사는 쓰지 않는다. 서명 영역 가장자리에서도 센서까지 약 3 cm 이상 떨어져 센서 포화 걱정이 적다(시뮬레이션 최대 약 0.7 mT, 쌍극자 상한 약 6 mT).</li>
+    <li><b>센서 고정:</b> 센서·케이블을 양면 폼테이프로 단단히 붙이고 케이블은 바깥으로 빼 테이프로 고정한다. 손목이 몸쪽 모서리 센서를 건드리면 위치가 밀려 오차가 커지므로 손목 놓는 자리를 센서 바깥으로 둔다(시뮬레이션이 센서 위치 오차 1 mm를 가정). 모듈 고정 구멍 규격이 확인되지 않아 나사 대신 테이프를 쓴다.</li>
+    <li><b>종이 받침:</b> 종이 아래에 폼보드 5T 조각(약 8×8 cm)을 한 겹 깔아 종이면을 센서 칩 높이 근처로 올린다. 자석 중심~센서 칩 높이는 약 7~10 mm가 되게 하고, 실제 값은 조립 후 측정해 맞춘다. 판은 자성이 없고 평평해야 하며 철제 나사·책상 다리는 피한다.</li>
+    <li><b>펜:</b> 볼펜 끝(필기 끝 쪽)에 φ10×10 원통 자석(N35 이상, 가능하면 N52)을 극 방향이 펜 축과 일치하도록 접착한다. 종이에 실제로 쓰게 하려면 잉크 심을 유지하고, 잉크 없이 쓰려면 심을 제거한다 — 어느 쪽인지 정한다.</li>
+    <li><b>간섭 주의:</b> 서명할 때 스마트워치·팔찌를 풀고, 휴대폰·모니터·노트북·어댑터는 센서에서 30~50 cm 이상 띄운다. 센서 도착 후 자석 없이 손만 움직여 값이 변하는지 확인한다.</li>
   </ul>
 </section>
 
 <!-- 8 -->
 <section id="bom">
   <h2><span class="n">8</span>구매 목록과 가격</h2>
-  <p><span class="tag ok">확인</span>은 이전에 DigiKey KR에서 확인한 값, <span class="tag est">추정</span>은 판매처 가격을 확인하지 못했거나 환율 가정(1,400원/USD)으로 환산한 값이다. 국내 상품은 가격·재고를 확인하지 못했다. 결제 전에 모두 재확인한다. 세부 목록·링크는 구매 목록 엑셀(<code>DE2_magic_pen_BOM.xlsx</code>) 참고.</p>
+  <p><span class="tag ok">확인</span>은 이전에 DigiKey KR에서 확인한 값, <span class="tag ok">목록 확인</span>은 2026-11-05 쿠팡 검색 목록에서 읽은 값(규격·배송비는 상품 페이지에서 재확인), <span class="tag est">추정</span>은 판매처 가격을 확인하지 못했거나 환율 가정(1,400원/USD)으로 환산한 값이다. 구매처는 해외 DigiKey KR 한 곳, 국내 쿠팡 한 곳으로 통일했다. 국내 상품은 가격·재고·규격을 확인하지 못했다(쿠팡은 검색 링크). 결제 전에 모두 재확인한다. 세부 목록·링크는 구매 목록 엑셀(<code>DE2_magic_pen_BOM.xlsx</code>) 참고.</p>
 
   <h3>기준안 (센서 4개, 예비 없음)</h3>
   <div class="tablewrap"><table>
     <tr><th>#</th><th>품목</th><th>모델 / 규격</th><th>구매처 (링크)</th><th class="num">단가</th><th class="num">수량</th><th class="num">소계</th><th>비고</th></tr>
     <tr><td>1</td><td><b>3축 자기 센서 모듈</b></td><td>Adafruit <b>4022</b> (MLX90393, STEMMA QT)</td><td><a href="https://www.digikey.kr/en/products/detail/adafruit-industries-llc/4022/9924180">DigiKey KR</a></td><td class="num">₩15,532 <span class="tag ok">이전 확인</span></td><td class="num">4</td><td class="num">₩62,128</td><td>예비 없음 — 고장 시 재주문(3~4일). 11/2에 4개를 이미 주문했다면 추가 구매 없음. 오늘은 페이지에서 가격을 읽지 못해 결제 화면에서 재확인</td></tr>
-    <tr><td>2</td><td>센서↔센서 케이블 (100 mm)</td><td>Adafruit 4210</td><td><a href="https://www.digikey.kr/en/products/detail/adafruit-industries-llc/4210/10230021">DigiKey KR</a></td><td class="num">약 ₩1,330 <span class="tag est">추정</span></td><td class="num">4</td><td class="num">약 ₩5,320</td><td>모듈 간 연결 3개 + 예비 1. Adafruit 직영은 품절(11/4 확인) → DigiKey 재고 확인, 없으면 <a href="https://www.adafruit.com/product/4401">4401 (200 mm)</a></td></tr>
+    <tr><td>2</td><td>센서↔센서 케이블 (200 mm)</td><td>Adafruit <b>4401</b></td><td><a href="https://www.adafruit.com/product/4401">Adafruit</a> / <a href="https://www.digikey.kr/en/products/result?keywords=4401">DigiKey KR 검색</a></td><td class="num">약 ₩1,750 <span class="tag est">추정</span></td><td class="num">4</td><td class="num">약 ₩7,000</td><td>센서 4개를 모서리를 따라 한 줄로 연결: 연결 3개 + 예비 1. 센서 간격이 14 cm라 100 mm(4210)는 짧다. Adafruit 직영 재고 있음(11/4 확인), DigiKey KR 재고는 결제 화면에서 확인</td></tr>
     <tr><td>3</td><td>보드 연결 케이블 (JST SH → 수 핀, 150 mm)</td><td>Adafruit 4209</td><td><a href="https://www.adafruit.com/product/4209">Adafruit</a> / <a href="https://www.digikey.kr/en/products/result?keywords=4209">DigiKey KR 검색</a></td><td class="num">약 ₩1,330 <span class="tag est">추정</span></td><td class="num">2</td><td class="num">약 ₩2,660</td><td>사용 1 + 예비 1. 끝이 수 핀 → 암-암 점퍼선 필요. 암 소켓 케이블 <a href="https://www.digikey.kr/en/products/result?keywords=4397">4397</a>은 Adafruit 직영 품절(11/4 확인)</td></tr>
-    <tr><td>4</td><td><b>네오디뮴 자석</b></td><td>원통형 φ10×10 mm (N35 이상, 가능하면 N52), 10개 묶음</td><td><a href="https://www.coupang.com/np/search?q=%EB%84%A4%EC%98%A4%EB%94%94%EB%AE%B4%20%EC%9B%90%ED%86%B5%20%EC%9E%90%EC%84%9D%2010x10">쿠팡 검색</a></td><td class="num">약 ₩8,000 <span class="tag est">추정</span></td><td class="num">1팩</td><td class="num">약 ₩8,000</td><td>N35도 모멘트가 N52의 약 80%라 거리 36 mm에서 충분. 치수(φ10×10)·재고 우선</td></tr>
-    <tr><td>5</td><td>3D 프린트 센서 판·스페이서</td><td>PLA/PETG, 스페이서 높이 30 mm × 4</td><td>학교 3D 프린터</td><td class="num">₩0 <span class="tag est">확인 필요</span></td><td class="num">1식</td><td class="num">₩0</td><td>프린터 사용 가능 여부 확인. 금속·철분 필라멘트 금지</td></tr>
-    <tr><td>6</td><td>투명 아크릴 3 mm</td><td>필기면·센서 판용</td><td><a href="https://www.devicemart.co.kr/goods/brand?code=1991">디바이스마트 하나아크릴</a></td><td class="num">약 ₩6,000 <span class="tag est">추정</span></td><td class="num">0 (추후)</td><td class="num">₩0</td><td>나중에 구매. 센서 4개면 200×200 정도도 가능</td></tr>
-    <tr><td>7</td><td>양면 폼테이프(얇은 것)</td><td>두께 1 mm 이하</td><td>문구점 / <a href="https://www.coupang.com/np/search?q=%EC%96%91%EB%A9%B4%20%ED%8F%BC%ED%85%8C%EC%9D%B4%ED%94%84%201mm">쿠팡 검색</a></td><td class="num">약 ₩2,000 <span class="tag est">추정</span></td><td class="num">1</td><td class="num">약 ₩2,000</td><td>모듈 고정. 고정 구멍 규격 확인 전이라 나사 대신 사용</td></tr>
-    <tr><td>8</td><td>펜 몸체 + 접착제</td><td>일반 볼펜, 순간접착제/에폭시</td><td>문구점</td><td class="num">약 ₩2,000 <span class="tag est">추정</span></td><td class="num">1</td><td class="num">약 ₩2,000</td><td>잉크 심 유지 여부 결정</td></tr>
-    <tr><td>9</td><td>점퍼선 암-암 20 cm</td><td>40핀 세트</td><td><a href="https://www.coupang.com/np/search?q=%EC%A0%90%ED%8D%BC%EC%84%A0%20%EC%95%94%EC%95%94%2020cm%2040%ED%95%80">쿠팡 검색</a></td><td class="num">약 ₩3,000 <span class="tag est">추정</span></td><td class="num">1</td><td class="num">약 ₩3,000</td><td>4가닥 사용. 학과 보유품 있으면 생략. 기존 목록의 40핀 IDC 플랫 케이블은 불필요해 뺌</td></tr>
-    <tr class="total"><td colspan="6">합계 (기준안)</td><td class="num">약 ₩85,000</td><td>정확한 합계 ₩85,108. 부가세·배송비·관부가세 별도. 11/2에 센서 4개를 이미 주문했다면 약 ₩23,000</td></tr>
+    <tr><td>4</td><td><b>네오디뮴 자석</b></td><td>원통형 φ10×10 mm, 10개입 (제이스마그네트 D10x10T 등)</td><td><a href="https://www.coupang.com/np/search?q=%EB%84%A4%EC%98%A4%EB%94%94%EB%AE%B4%20%EC%9B%90%ED%86%B5%20%EC%9E%90%EC%84%9D%2010x10mm">쿠팡 검색</a></td><td class="num">₩15,890 <span class="tag ok">목록 확인</span></td><td class="num">1팩</td><td class="num">₩15,890</td><td>쿠팡 검색 목록 값(내일 도착). 30개입은 ₩32,890. 등급(N35 이상) 표기는 확인하지 못함 → 상품 페이지에서 확인</td></tr>
+    <tr><td>5</td><td>폼보드 A3 5T</td><td>29×44 cm, 자성 없는 평평한 판</td><td><a href="https://www.coupang.com/np/search?q=%ED%8F%BC%EB%B3%B4%EB%93%9C%20A3%205T">쿠팡 검색</a></td><td class="num">₩2,390 <span class="tag ok">목록 확인</span></td><td class="num">2</td><td class="num">₩4,780</td><td>1장은 센서 판(약 20×20 cm), 남은 조각으로 종이 받침(약 8×8 cm). 1장은 여분. 모레(토) 도착, 배송비 별도로 보임. 합판·MDF도 가능</td></tr>
+    <tr><td>6</td><td>양면 폼테이프(얇은 것)</td><td>EVA 1T × 10 mm × 10 m 등</td><td><a href="https://www.coupang.com/np/search?q=%EC%96%91%EB%A9%B4%20%ED%8F%BC%ED%85%8C%EC%9D%B4%ED%94%84%201mm">쿠팡 검색</a></td><td class="num">₩1,330 <span class="tag ok">목록 확인</span></td><td class="num">1</td><td class="num">₩1,330</td><td>센서 모듈·케이블 고정(손목이 걸려도 센서가 밀리지 않게). 스코라 초슬림 1 mm는 ₩7,050(내일 도착)</td></tr>
+    <tr><td>7</td><td>에폭시 접착제 (+ 볼펜)</td><td>록타이트 인스턴트 믹스 에폭시 14 ml 등</td><td><a href="https://www.coupang.com/np/search?q=5%EB%B6%84%20%EC%97%90%ED%8F%AD%EC%8B%9C%20%EC%A0%91%EC%B0%A9%EC%A0%9C">쿠팡 검색</a></td><td class="num">₩4,200 <span class="tag ok">목록 확인</span></td><td class="num">1</td><td class="num">₩4,200</td><td>자석을 펜 끝에 접착(극 방향이 펜 축과 일치). 내일 도착. 볼펜은 집에 있는 것 사용. 잉크 심 유지 여부 결정</td></tr>
+    <tr><td>8</td><td>점퍼선 암-암 20 cm</td><td>40핀 세트</td><td><a href="https://www.coupang.com/np/search?q=%EC%A0%90%ED%8D%BC%EC%84%A0%20%EC%95%94%EC%95%94%2020cm%2040%ED%95%80">쿠팡 검색</a></td><td class="num">₩1,500 <span class="tag ok">목록 확인</span></td><td class="num">1</td><td class="num">₩1,500</td><td>4209(수 핀) ↔ DE2 헤더 연결용 4가닥. 상품마다 ₩790~3,000, 모레(토) 도착. 학과 보유품 있으면 생략</td></tr>
+    <tr><td>9</td><td>인두 · 납 · 가는 전선</td><td>센서 주소 핀(A0/A1) 납땜용</td><td>학교 실습실</td><td class="num">₩0 <span class="tag est">대여 확인 필요</span></td><td class="num">1</td><td class="num">₩0</td><td>2~4번 모듈의 A0/A1을 3.3 V에 연결. 대여 불가면 인두 세트 약 ₩10,000 추가</td></tr>
+    <tr class="total"><td colspan="6">합계 (기준안)</td><td class="num">약 ₩99,000</td><td>정확한 합계 ₩99,488 (해외 ₩71,788 + 국내 ₩27,700). 부가세·배송비·관부가세 별도. 11/2에 센서 4개를 이미 주문했다면 약 ₩37,000 (₩37,360)</td></tr>
   </table></div>
 
   <h3>확장 시 추가 비용 (9개로 늘릴 때)</h3>
   <div class="tablewrap"><table>
     <tr><th>항목</th><th class="num">수량</th><th class="num">추가 비용</th><th>비고</th></tr>
     <tr><td>센서 4022 추가</td><td class="num">5</td><td class="num">₩77,660</td><td>9개 사용, 예비 없음</td></tr>
-    <tr><td>센서↔센서 케이블 4210 추가 / 보드 연결 4209 추가</td><td class="num">3 / 2</td><td class="num">약 ₩6,650</td><td>버스 3개(4+4+1) 구성</td></tr>
+    <tr><td>센서↔센서 케이블 4401 추가 / 보드 연결 4209 추가</td><td class="num">3 / 2</td><td class="num">약 ₩7,900</td><td>버스 3개(4+4+1) 구성</td></tr>
     <tr><td>미니 브레드보드</td><td class="num">1</td><td class="num">약 ₩2,000</td><td>버스 3개에 3.3 V·GND 분배 (DE2의 3.3 V 핀은 29번 하나)</td></tr>
-    <tr class="total"><td colspan="2">확장 추가 합계</td><td class="num">약 ₩86,000</td><td>기준안과 합치면 약 ₩171,000. 도착 3~4일</td></tr>
+    <tr class="total"><td colspan="2">확장 추가 합계</td><td class="num">약 ₩88,000</td><td>기준안과 합치면 약 ₩187,000. 도착 3~4일</td></tr>
   </table></div>
 
   <h3>새로 사지 않아도 되는 것</h3>
   <ul>
     <li>16×2 LCD, VGA 출력, 스위치·버튼·LED·7세그먼트: DE2 보드에 내장.</li>
-    <li>VGA 모니터, 오실로스코프, 납땜 인두·납: 실습실·학교 대여.</li>
+    <li>VGA 모니터, 오실로스코프, 납땜 인두·납·가는 전선: 실습실·학교 대여(센서 주소 핀 납땜에 필요, 구매 목록 9번).</li>
     <li>서명 식별 기능은 소프트웨어·FPGA 설계 변경이라 <b>추가 부품이 거의 없다</b>.</li>
   </ul>
 
@@ -454,7 +455,8 @@ TOO SHORT</span></div>
     <ul>
       <li>11/2에 센서 4개를 이미 주문했는지 먼저 확인한다. 주문했다면 DigiKey 추가 주문은 케이블뿐이라 6만 원 무료 배송 기준을 못 넘어 배송비가 붙을 수 있다.</li>
       <li>DigiKey KR은 6만 원 이상 무료 배송, 도착 3~4일로 이전에 확인했다. 결제 화면에서 배송비·관부가세 포함 여부를 다시 본다. 미국발 물품은 일반적으로 물품가 200달러 이하면 관부가세가 면제되지만, DigiKey 결제 조건이 우선이다.</li>
-      <li>센서 도착이 11/7~8이면 게이트 1(11/8)이 빠듯하다. 도착일을 결제 시 확인한다.</li>
+      <li>오늘(11/6) 주문하면 센서 도착이 빨라야 11/9~10이라 게이트 1(11/8)에 맞추기 어렵다. 도착일을 결제 시 확인하고, 11/8을 넘기면 게이트 1을 센서 도착 후 1~2일로 옮긴다. 도착 전에는 시뮬레이션·Verilog I²C 마스터·학습 파이프라인을 먼저 진행한다.</li>
+      <li>해외(DigiKey KR)와 국내(쿠팡) 두 곳만 쓴다. 쿠팡 링크는 검색 링크라 자석(φ10×10)·폼보드 규격과 배송비를 상품 페이지에서 확인한다. 쿠팡 단가는 11/5 검색 목록 값이다. 로켓배송이 아니면 도착이 늦을 수 있다.</li>
       <li>Adafruit 4022 외 SparkFun SEN-14571 등 다른 MLX90393 모듈을 섞지 않는다 (풀업·주소 설정 방식이 달라 배선이 복잡해짐).</li>
       <li>해외 판매가 참고: Adafruit 직영 $9.95 (10개 이상 $8.96), Jameco $13.15, Mouser €8.56. 국내 결제가는 DigiKey KR 화면 기준.</li>
     </ul>
@@ -485,7 +487,8 @@ TOO SHORT</span></div>
     <tr><td>2</td><td><b>등록자 식별 정확도</b></td><td>등록에 안 쓴 <b>다른 날</b> 서명으로 테스트, 사람별 혼동행렬</td><td>≥90%</td></tr>
     <tr><td>3</td><td><b>미등록 오수락률 (FAR)</b></td><td>미등록 역할 5~10명 서명 중 누군가로 잘못 받은 비율</td><td>≤10%</td></tr>
     <tr><td>4</td><td><b>등록자 오거부율 (FRR)</b></td><td>등록자 서명이 "미등록"으로 나온 비율</td><td>≤15%</td></tr>
-    <tr><td>5</td><td>방법 비교</td><td>DTW 단독 / CNN 단독 / 결합의 2~4번 지표</td><td>결과 그대로 보고</td></tr>
+    <tr><td>5</td><td><b>위조 통과율</b> (정적·동적)</td><td>등록자 서명을 ① 이미지만 보고 베낀 경우(정적) ② 서명하는 영상을 보고 연습한 경우(동적)로 따라 쓴 서명 중 등록자로 받아들여진 비율. 입력 채널을 모양만(x, y, pen) / + 속도(vx, vy) / + 기울기(θ, φ)·z로 늘려 가며 비교</td><td>결과 그대로 보고(목표값 없음). 보고 시 시도 횟수(n)와 95% 상한 3/n을 함께</td></tr>
+    <tr><td>6</td><td>방법 비교</td><td>DTW 단독 / CNN 단독 / 결합의 2~4번 지표</td><td>결과 그대로 보고</td></tr>
     <tr><td>6</td><td>입력 채널 비교</td><td>x·y·pen / +속도 / +공중 동작(z, θ, φ)</td><td>공중 동작 효과 유무 보고</td></tr>
     <tr><td>7</td><td>SW 대 HW 추론</td><td>지연(µs), LE·곱셈기·온칩 메모리 사용량</td><td>합성 리포트 + 타임스탬프 실측</td></tr>
     <tr><td>8</td><td>비트 일치</td><td>Python / Nios II SW / HW 출력 비교</td><td>테스트 벡터 100개 전부 일치</td></tr>
@@ -501,7 +504,8 @@ TOO SHORT</span></div>
     <tr><th>그룹</th><th>인원</th><th>수집량</th><th>용도</th></tr>
     <tr><td>등록자</td><td>3~5명 (팀원 2 + 지원자)</td><td>1인당 30회, <b>서로 다른 2일 이상</b>에 나눠서 (예: 11/13, 11/15)</td><td>임베딩 학습, 등록 기준 벡터, 테스트</td></tr>
     <tr><td>미등록 역할</td><td>5~10명 (학과 친구)</td><td>1인당 10회</td><td>임베딩 학습(사람 수 늘리기), 미등록 문턱 결정</td></tr>
-    <tr><td>(선택) 따라 쓰기</td><td>2~3명</td><td>등록자 서명을 보고 따라 쓰기 1인당 5회</td><td>위조 판별이 <b>안 된다는 한계</b>를 정량으로 보여주는 참고 자료</td></tr>
+    <tr><td>위조 시도 (정적)</td><td>2~3명</td><td>등록자 서명 이미지만 보고 따라 쓰기, 등록자 1명당 위조자 1인이 5회</td><td>5번 지표(정적 위조 통과율)</td></tr>
+    <tr><td>위조 시도 (동적)</td><td>2~3명</td><td>등록자 서명하는 영상을 보고 연습한 뒤 따라 쓰기, 1인 5회</td><td>5번 지표(동적 위조 통과율). 가장 어려운 경우</td></tr>
   </table></div>
   <ul>
     <li>임베딩 CNN은 학습에 쓴 사람 수가 많을수록 처음 보는 사람에게 잘 일반화된다. 등록자 외 인원을 최대한 모은다.</li>
@@ -518,7 +522,7 @@ TOO SHORT</span></div>
     <ul>
       <li><b>11/3~11/4:</b> 센서 주문 상태 확인 후 부족분 주문(8장). 교수님께 주제 변경(숫자 인식 → 서명 식별) 공유.</li>
       <li>대기 중: 쌍극자 시뮬레이션·LM 기준선, Qsys에 Character LCD·VGA·PIO 추가, I²C 마스터 ModelSim 검증, PC에서 DTW·임베딩 CNN 코드 작성(공개 온라인 서명 데이터셋으로 동작 확인).</li>
-      <li>3D 프린트: 센서 판(홈 4개)·스페이서(30 mm) 설계·출력.</li>
+      <li>기구 준비: 폼보드에 센서 4칸(14×14 cm 모서리)과 서명 칸(8×8 cm)을 표시하고 종이 받침을 만든다.</li>
       <li>부품 도착 후: 센서 통신 확인(I²C 스캔으로 주소 확인), 4개 2×2 판으로 첫 위치 복원.</li>
     </ul>
     <span class="gate">게이트 1 (11/8): 센서 4개, 실측 위치 오차 ≤10 mm — 통과하면 4개로 계속, 불통과·간섭 심하면 9개 확장 주문</span>
@@ -548,7 +552,7 @@ TOO SHORT</span></div>
   <div class="tablewrap"><table>
     <tr><th>담당</th><th>업무</th></tr>
     <tr><td>임창현</td><td>(제안) 위치 MLP·임베딩 CNN 학습과 양자화, DTW·문턱 결정, 평가 실험 분석, 발표자료</td></tr>
-    <tr><td>윤재국</td><td>(제안) 센서 판 제작·배선(3D 프린트 포함), Verilog I²C 마스터·병렬 MAC, Qsys(LCD·VGA·PIO) 통합, 자원/지연 측정</td></tr>
+    <tr><td>윤재국</td><td>(제안) 센서 판 제작·배선(폼보드·센서 고정 포함), Verilog I²C 마스터·병렬 MAC, Qsys(LCD·VGA·PIO) 통합, 자원/지연 측정</td></tr>
     <tr><td>공동</td><td>Nios II C (서명 버퍼, 판정, 화면), 데이터 수집, 시연 리허설, 보고서</td></tr>
   </table></div>
 </section>
@@ -563,11 +567,11 @@ TOO SHORT</span></div>
     <tr><td>데이터 부족</td><td>사람 수가 적으면 임베딩이 처음 보는 사람에게 일반화 안 됨 → 현장 등록·미등록 판정 불안정</td><td>공개 온라인 서명 데이터셋(x, y, 시간)으로 사전학습 후 우리 데이터로 미세조정. 안 되면 아래 대안 1</td></tr>
     <tr><td>날마다 다른 서명</td><td>같은 사람도 날·컨디션에 따라 서명이 달라짐</td><td>2일 이상 나눠 수집, 등록 시 5회 평균, 사람별 문턱</td></tr>
     <tr><td>미등록 오수락</td><td>등록자가 적으면 낯선 서명도 누군가와 가까울 수 있음</td><td>거리 문턱 + 1·2순위 차이 + DTW 동의, 문턱은 오수락을 줄이는 쪽으로</td></tr>
-    <tr><td>위조</td><td>보고 따라 쓴 서명은 구분 못 할 가능성 높음</td><td>범위에서 명시적으로 제외. 따라 쓰기 실험으로 한계를 수치로 보고</td></tr>
+    <tr><td>위조</td><td>속도·기울기까지 베끼기는 어렵지만 영상을 보고 연습한 위조는 통과할 수 있음. 보장 못 함</td><td>위조 세 종류(무작위·정적·동적)로 통과율을 측정해 보고. 속도·기울기를 더했을 때 줄어드는 정도를 비교. 위조 시도 30회에서 0회 통과해도 95% 상한은 약 10%(3/n)라 "막는다"고 단정하지 않음</td></tr>
     <tr><td>자기 간섭</td><td>노트북·어댑터·철제 구조물. 센서 4개는 간섭을 모델에 넣어 보정할 여지가 9개보다 적음</td><td>30~50 cm 이격, 시연 전 기준 재측정, 비자성 재질. 실측에서 심하면 9개로 확장</td></tr>
-    <tr><td>센서 포화·필기면 높이</td><td>필기면을 센서 위에 바로 덮으면 자석이 가까워 측정 범위(±50 mT)를 넘을 수 있음. 쌍극자 모델도 가까우면 부정확</td><td>스페이서 30 mm(자석~칩 약 36 mm). 센서 게인 설정으로 포화 여부를 실측 확인</td></tr>
+    <tr><td>센서 포화·필기면 높이</td><td>자석이 센서에 가까워지면 측정 범위(±50 mT)를 넘을 수 있음. 쌍극자 모델도 가까우면 부정확</td><td>센서를 서명 영역 바깥 모서리에 둠(가장 가까울 때 약 3 cm). 센서 게인 설정으로 포화 여부를 실측 확인</td></tr>
     <tr><td>센서 고장·예비 없음</td><td>센서가 하나라도 고장나면 재주문에 3~4일</td><td>수령 즉시 통신·주소 확인, ESD 주의, 고장 시 바로 재주문</td></tr>
-    <tr><td>I²C 주소 불확실</td><td>Adafruit 4022 기본 주소가 0x18(구형 0x0C)이고 변경 방식(납땜/핀 결선)이 미확인</td><td>수령 후 I²C 스캔, Verilog 마스터의 기본 주소를 파라미터로</td></tr>
+    <tr><td>I²C 주소 불확실</td><td>Adafruit 4022 기본 주소가 0x18(구형 0x0C)이고 변경은 A0/A1 핀 결선(납땜 필요 가능)이라 수령 후 확인</td><td>수령 후 I²C 스캔, Verilog 마스터의 기본 주소를 파라미터로</td></tr>
   </table></div>
 
   <h3>대안 (위에서부터 순서대로 축소)</h3>
@@ -586,8 +590,9 @@ TOO SHORT</span></div>
     <li>팀원과 주제 변경(숫자 → 서명 식별) 및 역할 합의</li>
     <li>교수님 확인: 외부 부품 사용, Nios II 사용, 서명 데이터 수집(개인정보) 괜찮은지</li>
     <li>11/2 센서 주문 여부 확인 → 부족분 주문 (8장)</li>
-    <li>DigiKey KR 결제 화면에서 Adafruit 4022·4209·4210 단가, 재고(4210이 없으면 4401), 배송비, 관부가세, 도착일 재확인</li>
-    <li>학교 3D 프린터 사용 가능 여부와 센서 판·스페이서 설계 (PLA/PETG)</li>
+    <li>DigiKey KR 결제 화면에서 Adafruit 4022·4209·4401 단가, 재고, 배송비, 관부가세, 도착일 재확인</li>
+    <li>실습실 인두·납·가는 전선 대여 가능 여부, 폼보드 자르는 칼 확인</li>
+    <li>센서 도착일과 게이트 1(11/8) 일정 조정, 11/2에 센서 4개를 이미 주문했는지 확인</li>
     <li>아크릴 구매 시점과 크기 결정</li>
     <li>DE2 GPIO 헤더가 수 핀인지 보드에서 확인, 센서 I²C 주소·변경 방식 수령 후 확인</li>
     <li>펜에 잉크 심을 유지할지 결정</li>
@@ -604,6 +609,8 @@ TOO SHORT</span></div>
     <li>Adafruit 4022 (MLX90393, 16비트 출력, ±5~50 mT, 주소 점퍼 2개로 한 버스 최대 4개, STEMMA QT): Adafruit Learn Guide "MLX90393 Wide-Range 3-Axis Magnetometer"</li>
     <li>MLX90393 사양 (2.2~3.6 V, I²C/SPI, A0·A1 하드웨어 주소): Melexis MLX90393 데이터시트 Rev.006</li>
     <li>Adafruit 4022 해외 판매가: Jameco ($13.15), Mouser (€8.56), DigiKey 각국 사이트 (부품번호 1528-2864-ND)</li>
+    <li>쿠팡 단가(2026-11-05 검색 목록 값): 자석 D10x10T 10개입 ₩15,890, 폼보드 A3 5T ₩2,390, EVA 폼테이프 1T ₩1,330, 록타이트 에폭시 14 ml ₩4,200, 점퍼선 40핀 ₩1,500.</li>
+    <li>구조 비교 시뮬레이션: <code>sim/sim_scenarios.py</code> (자석 모멘트 0.9 A·m², 노이즈 3 µT, 교정 오차 포함).</li>
     <li>케이블 재고·가격(2026-11-04 확인): Adafruit 제품 페이지 4210(품절), 4209(재고), 4397(품절), 4401(재고). 센서 주소 기본값 0x18은 Adafruit 4022 제품 페이지.</li>
     <li>국내 단가 ₩15,532, 6만 원 이상 무료 배송, 3~4일: 기존 기획서의 DigiKey KR 검색 결과 (결제 전 재확인)</li>
     <li>DE2 16×2 LCD 제어: Altera University Program "16x2 Character Display for Altera DE2-Series Boards" (Character LCD IP, <code>alt_up_character_lcd_string</code>)</li>
