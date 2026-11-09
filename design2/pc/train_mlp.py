@@ -1,0 +1,157 @@
+"""위치 복원 MLP 학습 → 정수화 → nios/mlp_weights.h 출력. 지금은 쌍극자 시뮬레이션 데이터로 학습한다.
+
+구조: 입력 12 → 은닉 64 → 은닉 64 → 출력 5 (x, y, z, ux, uy). 곱셈 5,184회/프레임.
+순수 numpy(Adam)라 PyTorch가 필요 없다.
+
+한계: 참값 생성에 쌍극자 모델을 쓴다. 실제 자석·센서 위치로 교정한 M0, HALF를 넣고 다시 돌리고,
+실측 참값(템플릿 따라 그리기)으로 오차를 재야 한다. 결과 수치는 시뮬레이션이지 실측이 아니다.
+
+실행: python pc/train_mlp.py [--m0 0.9] [--half 0.07] [--epochs 40] [--zmin 0.006]
+"""
+import argparse
+import os
+import numpy as np
+import pen_model as pm
+
+HIDDEN = (64, 64)
+NORM = 0.05        # 출력 위치 눈금: 5 cm = 1.0
+SIGMA_T = 3e-6     # 축당 노이즈 (시뮬레이션 가정, 실측으로 교체)
+
+
+def sample(n, rng, sensors, m0, zmin, calib=True):
+    """서명 영역 ±5 cm. 높이의 70%는 펜이 닿은 근처(zmin~15 mm), 30%는 펜을 든 구간(~8 cm). 기울기 0~60°"""
+    z = np.where(rng.uniform(0, 1, n) < 0.7, rng.uniform(zmin, 0.015, n), rng.uniform(zmin, 0.08, n))
+    p = np.stack([rng.uniform(-0.05, 0.05, n), rng.uniform(-0.05, 0.05, n), z], 1)
+    th, ph = np.deg2rad(rng.uniform(0, 60, n)), rng.uniform(0, 2*np.pi, n)
+    ux, uy = np.sin(th)*np.cos(ph), np.sin(th)*np.sin(ph)
+    s = sensors
+    gain = 1.0
+    if calib:   # 센서 위치 1 mm, 이득 2% 오차에 둔감하도록 학습한다
+        s = sensors + rng.normal(0, 1e-3, (n, 4, 3))
+        gain = 1 + rng.normal(0, 0.02, (n, 4, 1))
+    b = pm.field(p, pm.tilt_vec(ux, uy), m0, s) * gain + rng.normal(0, SIGMA_T, (n, 4, 3))
+    X = pm.input_float(b.reshape(n, 12))
+    Y = np.stack([p[:, 0]/NORM, p[:, 1]/NORM, p[:, 2]/NORM, ux, uy], 1)
+    return X, Y
+
+
+def init(rng, sizes):
+    return [[rng.normal(0, np.sqrt(2/a), (b, a)), np.zeros(b)] for a, b in zip(sizes, sizes[1:])]
+
+
+def forward(net, x):
+    acts = [x]
+    for i, (W, b) in enumerate(net):
+        h = acts[-1] @ W.T + b
+        acts.append(np.maximum(h, 0) if i < len(net)-1 else h)
+    return acts
+
+
+def train(args, rng, sensors):
+    net = init(rng, (12, *HIDDEN, 5))
+    m = [[np.zeros_like(p) for p in l] for l in net]
+    v = [[np.zeros_like(p) for p in l] for l in net]
+    t, lr0, batch = 0, 2e-3, 512
+    for ep in range(args.epochs):
+        X, Y = sample(200000, rng, sensors, args.m0, args.zmin)
+        lr = lr0 * 0.5 * (1 + np.cos(np.pi * ep / args.epochs))
+        idx = rng.permutation(len(X))
+        for s in range(0, len(X), batch):
+            bi = idx[s:s+batch]
+            t += 1
+            acts = forward(net, X[bi])
+            g = (acts[-1] - Y[bi]) * 2
+            for i in reversed(range(len(net))):
+                W, b = net[i]
+                gW = g.T @ acts[i] / len(bi)
+                gb = g.mean(0)
+                for j, gr in enumerate((gW, gb)):   # Adam
+                    m[i][j] = 0.9*m[i][j] + 0.1*gr
+                    v[i][j] = 0.999*v[i][j] + 0.001*gr*gr
+                    net[i][j] -= lr * (m[i][j]/(1-0.9**t)) / (np.sqrt(v[i][j]/(1-0.999**t)) + 1e-8)
+                if i:
+                    g = (g @ W) * (acts[i] > 0)
+        if ep % 10 == 0 or ep == args.epochs-1:
+            print("epoch %d: %s" % (ep, report(net, rng, sensors, args)), flush=True)
+    return net
+
+
+def report(net, rng, sensors, args):
+    X, Y = sample(20000, rng, sensors, args.m0, args.zmin)
+    e = forward(net, X)[-1] - Y
+    xy = np.sqrt((e[:, :2]**2).sum(1).mean()) * NORM * 1e3
+    z = np.sqrt((e[:, 2]**2).mean()) * NORM * 1e3
+    return "xy %.2f mm, z %.2f mm, ux/uy %.3f" % (xy, z, np.sqrt((e[:, 3:]**2).mean()))
+
+
+def quantize(net):
+    layers = []
+    for W, b in net:
+        layers.append((np.round(W * 1024).astype(int), np.round(b * 65536).astype(int)))
+    for W, _ in layers:
+        assert np.abs(W).max() < 32768, "가중치가 Q10 int16 범위를 넘음"
+    return layers
+
+
+def int_input(b_tesla_12):
+    """센서가 내놓을 정수값을 만들어 보드와 같은 경로로 입력을 얻는다."""
+    return pm.input_from_lsb(np.round(pm.lsb_from_tesla(b_tesla_12.reshape(4, 3)).ravel()).astype(int).tolist())
+
+
+def eval_int(layers, rng, sensors, args, n=3000, calib=False):
+    """정수 모델을 서명 영역(±4 cm, 펜 닿은 높이 근처)에서 평가. 32비트 넘침도 검사."""
+    p = np.stack([rng.uniform(-0.04, 0.04, n), rng.uniform(-0.04, 0.04, n), rng.uniform(args.zmin, 0.012, n)], 1)
+    th, ph = np.deg2rad(rng.uniform(20, 50, n)), rng.uniform(0, 2*np.pi, n)
+    ux, uy = np.sin(th)*np.cos(ph), np.sin(th)*np.sin(ph)
+    s, gain = sensors, 1.0
+    if calib:
+        s = sensors + rng.normal(0, 1e-3, (n, 4, 3))
+        gain = 1 + rng.normal(0, 0.02, (n, 4, 1))
+    b = pm.field(p, pm.tilt_vec(ux, uy), args.m0, s) * gain + rng.normal(0, SIGMA_T, (n, 4, 3))
+    err, peak = [], 0
+    for k in range(n):
+        o, pk = pm.mlp_forward_int(layers, int_input(b[k]))
+        peak = max(peak, pk)
+        u = pm.output_to_units(o)
+        err.append([u[0]*1e-4 - p[k, 0], u[1]*1e-4 - p[k, 1], u[2]*1e-4 - p[k, 2], u[3]/256 - ux[k], u[4]/256 - uy[k]])
+    e = np.array(err)
+    assert peak < 2**31, "정수 MLP 합이 32비트를 넘음: %d" % peak
+    return np.sqrt((e[:, :2]**2).sum(1).mean())*1e3, np.sqrt((e[:, 2]**2).mean())*1e3, np.sqrt((e[:, 3:]**2).mean()), peak
+
+
+def write_header(layers, path, meta):
+    with open(path, "w", encoding="ascii") as f:
+        f.write("/* Generated by pc/train_mlp.py. Do not edit. %s */\n" % meta)
+        f.write("#ifndef MLP_WEIGHTS_H\n#define MLP_WEIGHTS_H\n#include <stdint.h>\n")
+        f.write("#define MLP_IN 12\n#define MLP_H1 %d\n#define MLP_H2 %d\n#define MLP_OUT 5\n" % HIDDEN)
+        for i, (W, b) in enumerate(layers):
+            f.write("static const int16_t mlp_w%d[%d][%d] = {\n" % (i, *W.shape))
+            for r in W:
+                f.write("  {" + ",".join(str(v) for v in r) + "},\n")
+            f.write("};\nstatic const int32_t mlp_b%d[%d] = {" % (i, len(b)) + ",".join(str(v) for v in b) + "};\n")
+        f.write("#endif\n")
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--m0", type=float, default=pm.M0)
+    ap.add_argument("--half", type=float, default=pm.HALF)
+    ap.add_argument("--zmin", type=float, default=0.006)
+    ap.add_argument("--epochs", type=int, default=40)
+    ap.add_argument("--seed", type=int, default=1)
+    args = ap.parse_args()
+    rng = np.random.default_rng(args.seed)
+    sensors = np.array([(x, y, 0.0) for x in (-args.half, args.half) for y in (-args.half, args.half)])
+    net = train(args, rng, sensors)
+    layers = quantize(net)
+    a = eval_int(layers, rng, sensors, args)
+    c = eval_int(layers, rng, sensors, args, calib=True)
+    print("정수 모델, 서명 영역(시뮬레이션): 교정오차 없음 xy %.2f mm, z %.2f mm, 기울기벡터 %.3f, 합 최대 %d" % a)
+    print("                                 교정오차 있음 xy %.2f mm, z %.2f mm, 기울기벡터 %.3f, 합 최대 %d" % c)
+    here = os.path.dirname(os.path.abspath(__file__))
+    write_header(layers, os.path.join(here, "..", "nios", "mlp_weights.h"),
+                 "m0=%g half=%g zmin=%g seed=%d" % (args.m0, args.half, args.zmin, args.seed))
+
+
+if __name__ == "__main__":
+    main()

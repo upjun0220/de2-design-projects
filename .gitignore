@@ -63,3 +63,7 @@ design2/pc/data/
 Thumbs.db
 .vscode/
 .idea/
+
+# ---- Design 2: generated test data (run_checks.sh regenerates) ----
+design2/hw/vectors/
+design2/build/
