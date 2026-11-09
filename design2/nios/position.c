@@ -43,7 +43,7 @@ void mount_correct(int32_t lsb[12])
         }
         v[0] *= FIELD_SIGN;
         v[1] *= FIELD_SIGN;
-        v[2] *= FIELD_SIGN;
+        v[2] *= FIELD_SIGN * Z_SIGN;
     }
 }
 

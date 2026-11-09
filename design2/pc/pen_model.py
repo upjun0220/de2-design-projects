@@ -57,13 +57,13 @@ def tdiv(a, b):
     return q if (a >= 0) == (b >= 0) else -q
 
 
-def mount_correct(lsb, rot=(0, 0, 0, 0), sign=1):
+def mount_correct(lsb, rot=(0, 0, 0, 0), sign=1, zsign=1):
     """nios/position.c의 mount_correct와 같다. 센서 k의 X,Y를 보드 축으로 돌리고 극성을 곱한다."""
     out = [int(v) for v in lsb]
     for k in range(4):
         for _ in range(rot[k]):
             out[3*k], out[3*k+1] = -out[3*k+1], out[3*k]
-        out[3*k:3*k+3] = [sign * v for v in out[3*k:3*k+3]]
+        out[3*k], out[3*k+1], out[3*k+2] = sign*out[3*k], sign*out[3*k+1], sign*zsign*out[3*k+2]
     return out
 
 

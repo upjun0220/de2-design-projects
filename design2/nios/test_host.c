@@ -142,7 +142,7 @@ static void test_screen(void)
 static void test_mount(void)
 {
 #ifdef TEST_MOUNT
-    static const int32_t want[12] = { 2, -1, -3, 4, 5, -6, -8, 7, -9, -10, -11, -12 };
+    static const int32_t want[12] = { 2, -1, 3, 4, 5, 6, -8, 7, 9, -10, -11, 12 };
 #else
     static const int32_t want[12] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
 #endif

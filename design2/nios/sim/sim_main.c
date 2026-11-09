@@ -5,7 +5,11 @@
  * It checks what the unit tests cannot: the CPU reaching the reader and the
  * accelerator over the Avalon fabric, and how long the C code really takes.
  * Times come from the reader's microsecond counter. Simulated, not measured
- * on a board; SDRAM is a model with no refresh penalty from the real chip. */
+ * on a board. Simulation runs only hundreds of clocks per second, so the slow
+ * measurements run once.
+ * Report codes: 2 sensor values ok, 3 sensor error flags, 4/14 MLP us (cold/warm),
+ * 5 MLP matches Python, 6 software DTW us, 7 its result ok, 8 hardware DTW us,
+ * 9 hardware clocks, 10 its result ok, 11 preprocessing us, 12 VGA done, 99 end. */
 #include "system.h"
 #include "io.h"
 #include "core.h"
@@ -53,17 +57,15 @@ int main(void)
         field_to_input(lsb, in);
         mlp_forward(in, &p);
         t1 = NOW();
-        report(4, t1 - t0);
+        report(i == 0 ? 4 : 14, t1 - t0);   /* 4 cold cache, 14 warm */
     }
     report(5, p.x == vec_pos[0] && p.y == vec_pos[1] && p.z == vec_pos[2] && p.ux == vec_pos[3] && p.uy == vec_pos[4]);
 
     /* ---- software DTW ---- */
-    for (i = 0; i < 2; i++) {
-        t0 = NOW();
-        d = dtw_sw(vec_x, vec_y);
-        t1 = NOW();
-        report(6, t1 - t0);
-    }
+    t0 = NOW();
+    d = dtw_sw(vec_x, vec_y);
+    t1 = NOW();
+    report(6, t1 - t0);
     report(7, d == vec_expected);
 
     /* ---- hardware DTW ---- */
@@ -94,6 +96,14 @@ int main(void)
     sig_preprocess(&s, out);
     t1 = NOW();
     report(11, t1 - t0);
+
+    /* ---- VGA through Avalon: the testbench looks at the frame buffer ---- */
+    IOWR(VGA_0_BASE, 0, 1);
+    while (IORD(VGA_0_BASE, 0) & 1) ;
+    IOWR(VGA_0_BASE, 1, (20 << 16) | 10);
+    IOWR(VGA_0_BASE, 2, (20 << 16) | 12);
+    while (IORD(VGA_0_BASE, 0) & 1) ;
+    report(12, 1);
 
     report(99, 1);
     while (1) ;

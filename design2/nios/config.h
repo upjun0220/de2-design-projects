@@ -41,13 +41,17 @@
 /* How the sensors and the magnet are mounted. pc/gate1.py --find-mount finds these
  * from a measurement. ESTIMATE until then.
  * MOUNT_ROT: quarter turns (counter-clockwise, seen from above) of each sensor
- * module relative to the board axes. FIELD_SIGN: -1 if the magnet is upside down. */
+ * module relative to the board axes. FIELD_SIGN: -1 if the magnet is upside down.
+ * Z_SIGN: -1 if the sensor's Z axis points the other way from the model's. The datasheet
+ * text does not state the axis polarity, so this has to come from a measurement. */
 #ifdef TEST_MOUNT             /* only for nios/test_host.c */
 #define MOUNT_ROT  { 1, 2, 3, 0 }
 #define FIELD_SIGN (-1)
+#define Z_SIGN     (-1)
 #else
 #define MOUNT_ROT  { 0, 0, 0, 0 }
 #define FIELD_SIGN 1
+#define Z_SIGN     1
 #endif
 
 #endif

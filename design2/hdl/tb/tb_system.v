@@ -55,6 +55,10 @@ module tb_system;
             3: if (hex !== 32'd0) begin errors = errors + 1; $display("FAIL: sensor error flags %h", hex); end
             default: ;
         endcase
+        if (led == 12 && !(u_sys.vga_0.fb[20*320 + 10] === 1'b1 && u_sys.vga_0.fb[20*320 + 12] === 1'b1 &&
+                           u_sys.vga_0.fb[20*320 + 13] === 1'b0 && u_sys.vga_0.fb[21*320 + 11] === 1'b0)) begin
+            errors = errors + 1; $display("FAIL: VGA frame buffer");
+        end
         if (led == 99) begin
             if (errors == 0) $display("SYSTEM PASS"); else $display("SYSTEM FAILED %0d", errors);
             $finish;

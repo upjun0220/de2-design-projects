@@ -4,8 +4,8 @@
  1. python pc/collect.py --participant 0 --role genuine --target 0
  2. 종이에 격자를 그리고, 펜을 수직으로 첫 점에 대고 약 1초 멈춘 뒤 KEY1. 다음 점으로 옮겨 반복.
  3. python pc/gate1.py pc/data/p00_....log --find-mount   맞는 장착 설정(회전, 극성) 찾기
- 4. 결과를 nios/config.h의 MOUNT_ROT, FIELD_SIGN에 넣는다.
- 5. python pc/gate1.py 같은로그 --rot 0 0 0 0 --sign 1     위치 오차 보고
+ 4. 결과를 nios/config.h의 MOUNT_ROT, FIELD_SIGN, Z_SIGN에 넣는다.
+ 5. python pc/gate1.py 같은로그 --rot 0 0 0 0 --sign 1 --zsign 1     위치 오차 보고
 
 격자 기본값: 서명 영역 ±3 cm, 3 cm 간격, 왼쪽 아래부터 x가 커지는 쪽으로 줄 단위 (9점).
 RMS는 격자 원점을 센서 판 중심에 정확히 맞췄다는 가정의 값이다. 평행이동을 빼고 구한 값도 함께 보고한다.
@@ -37,9 +37,10 @@ def read_points(lines):
     return np.array(points)
 
 
-def correct(raw, rot, sign):
+def correct(raw, rot, sign, zsign=1):
     """pm.mount_correct와 같은 변환의 실수 배열판"""
     out = np.array(raw, float)
+    out[..., 2::3] *= zsign
     for k in range(4):
         for _ in range(rot[k]):
             x, y = out[..., 3*k].copy(), out[..., 3*k+1].copy()
@@ -49,19 +50,19 @@ def correct(raw, rot, sign):
 
 def fit_point(raw, sensors, m0):
     b = raw_to_tesla(raw)
-    sols = [fit_frame(b, sensors, m0, np.array([*s, 0.05, 0.05])) for s in STARTS]
+    sols = [fit_frame(b, sensors, m0, np.array([*s, 0.05, 0.05])) for s in STARTS[:3]]
     return min(sols, key=lambda r: r.cost)
 
 
 def find_mount(points, sensors, m0):
-    """회전 4^4 × 극성 2를 전부 시험해 잔차가 가장 작은 조합을 찾는다.
+    """회전 4^4 × 극성 2 × Z 방향 2를 전부 시험해 잔차가 가장 작은 조합을 찾는다.
     센서별로 독립이 아니라 조합을 봐야 해서 전수조사다. 격자점 3개만 쓴다."""
     use = points[np.linspace(0, len(points) - 1, min(3, len(points))).astype(int)]
     results = []
     for rot in itertools.product(range(4), repeat=4):
-        for sign in (1, -1):
-            c = sum(fit_point(correct(p, rot, sign), sensors, m0).cost for p in use)
-            results.append((c, rot, sign))
+        for sign, zsign in itertools.product((1, -1), repeat=2):
+            c = sum(fit_point(correct(p, rot, sign, zsign), sensors, m0).cost for p in use)
+            results.append((c, rot, sign, zsign))
     results.sort(key=lambda r: r[0])
     return results[:3]
 
@@ -71,11 +72,11 @@ def grid(half, step):
     return np.array([(x, y) for y in v for x in v])
 
 
-def errors(points, truth, rot, sign, sensors, m0):
+def errors(points, truth, rot, sign, zsign, sensors, m0):
     est = []
     res = []
     for p in points:
-        s = fit_point(correct(p, rot, sign), sensors, m0)
+        s = fit_point(correct(p, rot, sign, zsign), sensors, m0)
         est.append(s.x)
         res.append(np.sqrt(2 * s.cost / 12))
     est = np.array(est)
@@ -89,14 +90,14 @@ def check():
     """정답을 아는 합성 로그: 일부러 돌려 붙인 장착을 찾아내는지, 오차 계산이 맞는지 본다."""
     rng = np.random.default_rng(4)
     truth = grid(0.03, 0.03)
-    true_rot, true_sign = (1, 0, 3, 2), -1
+    true_rot, true_sign, true_z = (1, 0, 3, 2), -1, -1
     lines = []
     for x, y in truth:
         pos = np.array([x, y, 0.009])
         b = pm.field(pos, pm.tilt_vec(0.05, -0.05)).reshape(12)
         lsb = pm.lsb_from_tesla(b.reshape(4, 3)).ravel()
         # 보드 축의 값을 센서가 내놓을 값으로 되돌린다(correct의 역변환)
-        inv = correct(lsb, [(4 - r) % 4 for r in true_rot], true_sign)
+        inv = correct(lsb, [(4 - r) % 4 for r in true_rot], true_sign, true_z)
         for f in range(DWELL):
             noise = rng.normal(0, 8, 12)
             lines.append("R,%d,0,0," % f + ",".join(str(int(v + n)) for v, n in zip(inv, noise)) + ",0,0,0,0,0,0,0")
@@ -104,13 +105,13 @@ def check():
     pts = read_points(lines)
     assert len(pts) == 9
     best = find_mount(pts, pm.SENSORS, pm.M0)
-    assert best[0][1] == true_rot and best[0][2] == true_sign, best[0]
-    _, rms, rms0, _, _ = errors(pts, truth, true_rot, true_sign, pm.SENSORS, pm.M0)
+    assert best[0][1:] == (true_rot, true_sign, true_z), best[0]
+    _, rms, rms0, _, _ = errors(pts, truth, true_rot, true_sign, true_z, pm.SENSORS, pm.M0)
     assert rms < 1.0e-3, rms
     # 파이썬 정수판과 일치하는지
     v = list(range(1, 13))
-    assert pm.mount_correct(v, (1, 2, 3, 0), -1) == [int(x) for x in correct(v, (1, 2, 3, 0), -1)]
-    assert pm.mount_correct(v, (1, 2, 3, 0), -1) == [2, -1, -3, 4, 5, -6, -8, 7, -9, -10, -11, -12]  # nios/test_host.c
+    assert pm.mount_correct(v, (1, 2, 3, 0), -1, -1) == [int(x) for x in correct(v, (1, 2, 3, 0), -1, -1)]
+    assert pm.mount_correct(v, (1, 2, 3, 0), -1, -1) == [2, -1, 3, 4, 5, 6, -8, 7, 9, -10, -11, 12]  # nios/test_host.c
     print("gate1 OK (합성 로그 xy %.2f mm)" % (rms * 1e3))
 
 
@@ -121,6 +122,7 @@ def main():
     ap.add_argument("--find-mount", action="store_true")
     ap.add_argument("--rot", type=int, nargs=4, default=[0, 0, 0, 0])
     ap.add_argument("--sign", type=int, default=1)
+    ap.add_argument("--zsign", type=int, default=1)
     ap.add_argument("--half", type=float, default=pm.HALF, help="센서 격자 반폭 [m]")
     ap.add_argument("--m0", type=float, default=pm.M0)
     ap.add_argument("--grid-half", type=float, default=0.03)
@@ -132,12 +134,12 @@ def main():
     pts = read_points(open(a.log, errors="replace"))
     print("MARK 지점 %d개" % len(pts))
     if a.find_mount:
-        for cost, rot, sign in find_mount(pts, sensors, a.m0):
-            print("  MOUNT_ROT {%d, %d, %d, %d}  FIELD_SIGN %d  비용 %.1f" % (*rot, sign, cost))
+        for cost, rot, sign, zsign in find_mount(pts, sensors, a.m0):
+            print("  MOUNT_ROT {%d, %d, %d, %d}  FIELD_SIGN %d  Z_SIGN %d  비용 %.1f" % (*rot, sign, zsign, cost))
         print("첫 줄이 둘째 줄보다 뚜렷이 작아야 믿을 수 있다.")
         return
     truth = grid(a.grid_half, a.grid_step)
-    est, rms, rms0, bias, res = errors(pts, truth, a.rot, a.sign, sensors, a.m0)
+    est, rms, rms0, bias, res = errors(pts, truth, a.rot, a.sign, a.zsign, sensors, a.m0)
     print("실측 xy RMS %.2f mm, 평행이동(%.2f, %.2f mm) 제거 후 %.2f mm, 평균 잔차 %.1f µT" % (
         rms * 1e3, bias[0] * 1e3, bias[1] * 1e3, rms0 * 1e3, res))
     print("z 평균 %.1f mm" % (est[:, 2].mean() * 1e3))
