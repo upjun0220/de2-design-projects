@@ -85,8 +85,8 @@ nios2-terminal
 3. 종이에 ±3 cm, 3 cm 간격의 격자 9점을 그린다.
 4. `python design2/pc/collect.py --participant 0 --role genuine --target 0`
 5. 왼쪽 아래 점부터 x가 커지는 쪽으로, 펜을 수직으로 약 1초 대고 KEY1을 누른다. 9점 반복. Ctrl+C.
-6. 장착 설정 찾기: `python design2/pc/gate1.py 로그파일 --find-mount`. 첫 줄 값을 `nios/config.h`의 `MOUNT_ROT`, `FIELD_SIGN`에 넣는다.
-7. 위치 오차: `python design2/pc/gate1.py 로그파일 --rot a b c d --sign s --half 0.07`. **게이트 1 기준 ≤10 mm.**
+6. 장착 설정 찾기: `python design2/pc/gate1.py 로그파일 --find-mount`. 첫 줄 값을 `nios/config.h`의 `MOUNT_ROT`, `FIELD_SIGN`, `Z_SIGN`에 넣는다(몇 분 걸린다).
+7. 위치 오차: `python design2/pc/gate1.py 로그파일 --rot a b c d --sign s --zsign z --half 0.07`. **게이트 1 기준 ≤10 mm.**
 
 잔차(µT)가 크게 나오면(수십 µT 이상) 모델이 안 맞는 것이다. 자석 세기 `--m0`, 센서 간격 `--half`를 의심한다.
 
@@ -113,12 +113,15 @@ python design2/pc/collect.py --participant 1 --role genuine --target 1
 role: `genuine` 본인 / `random` 무작위 / `static` 이미지 보고 따라 쓰기 / `dynamic` 영상 보고 연습 후 따라 쓰기. target은 따라 쓰려는 사람 번호다.
 
 평가: `python design2/pc/evaluate.py`. 날짜를 나눠 수집해야 신뢰할 수 있는 값이 나온다.
+그림: `python design2/pc/plot_log.py 로그파일 --lm`. 궤적, 높이와 펜 판정, 센서별 자기장을 보여 준다. 그림도 개인정보이므로 `pc/data/`에 저장된다.
 
 ## 8. 시연 동작
 
 - `SW[1:0]=01`, `SW[4:2]`=슬롯(0~4), 서명 5회 → 등록. LCD에 `1/5`...`5/5`.
 - `SW[1:0]=00` → 식별. `SW[5]`로 SW/HW DTW 전환, 7세그에 지연(µs).
 - KEY0 기준값 재측정, KEY1 서명 강제 종료, KEY2 마지막 등록 취소, KEY3 리셋.
+- VGA 모니터를 연결하면 서명하는 동안 획이 그려진다. 크기는 `config.h`의 `SCREEN_SCALE`.
+- `SW[7]=1`이면 LEDR에 센서별 자기장 세기가 막대로 나온다(LEDR[17]은 포화 경고). 배선 확인에 쓴다.
 
 슬롯은 0~4(5명)이다. README의 0~7(8명)에서 줄였다. 가속기 RAM에 템플릿 25개만 들어가기 때문이다.
 
@@ -130,6 +133,6 @@ role: `genuine` 본인 / `random` 무작위 / `static` 이미지 보고 따라 �
 | 부팅 후 LCD 무반응 | 터미널 출력 확인. SDRAM 클럭 위상. `LCD_ON`, 백라이트는 보드마다 다름 |
 | `SENSORS OK` 수가 부족 | 주소·배선, 3장의 스캔 결과 |
 | 값이 변하지 않음 | ERR 레지스터, SDA/SCL 파형, `reg2` 설정 |
-| 펜을 대도 `SIGNING` 안 뜸 | `Z_DOWN` 값, 기준값 재측정, `MOUNT_ROT`, `FIELD_SIGN` |
+| 펜을 대도 `SIGNING` 안 뜸 | `Z_DOWN` 값, 기준값 재측정, `MOUNT_ROT`, `FIELD_SIGN`, `Z_SIGN` |
 | 서명이 조각남 | `Z_UP`, `END_UP_FRAMES` |
 | 로그에 프레임 번호가 건너뜀 | JTAG 전송이 밀림. 터미널 외 다른 JTAG 프로그램 종료 |

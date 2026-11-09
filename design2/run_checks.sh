@@ -15,7 +15,7 @@ mkdir -p build/ms
 echo "--- 1. Python reference models"
 python hw/dtw_ref.py
 python hw/dtw_ref.py --vectors
-(cd pc && python parse_log.py && python position_lm.py --check && python evaluate.py --check && python gate1.py --check && python sim_e2e.py --check)
+(cd pc && python parse_log.py && python position_lm.py --check && python evaluate.py --check && python gate1.py --check && python sim_e2e.py --check && python plot_log.py --check)
 
 echo "--- 2. C code on the PC against Python, bit by bit"
 (cd pc && python gen_golden.py ../build/golden.txt)
