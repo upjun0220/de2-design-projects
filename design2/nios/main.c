@@ -48,6 +48,7 @@ static person  people[MAX_SLOTS];
 static sig_buf sig;
 static int8_t  query[SIG_N][SIG_CH];
 static FILE   *lcd;
+static int     templates_changed = 1;
 
 /* The LCD has 16 columns. Printing more wraps or scrolls, so length is cut here. */
 static void lcd_show(const char *a, const char *b)
@@ -171,7 +172,8 @@ static void accel_write(uint32_t base_word, const int8_t s[SIG_N][SIG_CH])
 }
 
 /* Distance to each enrolled person: the smallest over that person's templates.
- * ponytail: templates are re-copied every run, keep a dirty flag if that shows up in latency. */
+ * The time includes copying the query, which every hardware run needs, so the SW/HW
+ * comparison stays fair. Templates are copied only after they change. */
 static uint32_t identify_all(uint32_t d[MAX_SLOTS], int use_hw)
 {
     uint32_t t0, t1;
@@ -179,13 +181,14 @@ static uint32_t identify_all(uint32_t d[MAX_SLOTS], int use_hw)
     for (k = 0; k < MAX_SLOTS; k++) d[k] = DTW_BIG;
 
     if (use_hw) {
-        accel_write(DTW_QUERY, (csig)query);
         for (k = 0; k < MAX_SLOTS; k++)
             for (j = 0; j < people[k].count; j++, n++)
-                accel_write(DTW_TEMPL + 256*n, (csig)templates[k][j]);
+                if (templates_changed) accel_write(DTW_TEMPL + 256*n, (csig)templates[k][j]);
+        templates_changed = 0;
         if (n == 0) return 0;
         IOWR(DTW_ACCEL_0_BASE, DTW_NTEMPL, n);
         t0 = MLX(MLX_NOW);
+        accel_write(DTW_QUERY, (csig)query);
         IOWR(DTW_ACCEL_0_BASE, DTW_CTRL, 1);
         while (IORD(DTW_ACCEL_0_BASE, DTW_STATUS) & 1) ;
         t1 = MLX(MLX_NOW);
@@ -240,6 +243,7 @@ static void do_enroll(int slot)
     if (p->count == ENROLL_COUNT) p->count = 0;   /* full: start the person again */
     sig_preprocess(&sig, templates[slot][p->count]);
     p->count++;
+    templates_changed = 1;
     if (p->count == ENROLL_COUNT) {
         uint32_t pair[ENROLL_COUNT * (ENROLL_COUNT - 1) / 2];
         int i, j, n = 0;
@@ -302,6 +306,7 @@ int main(void)
         if ((pressed & 4) && mode == 1) {
             int slot = (inputs >> 2) & 7;
             if (slot < MAX_SLOTS && people[slot].count > 0) people[slot].count--;
+            templates_changed = 1;
             lcd_show("CANCELLED", "LAST SIGNATURE");
         }
 
