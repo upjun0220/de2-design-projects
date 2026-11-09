@@ -101,7 +101,7 @@ module dtw_accel #(
         end else begin
             feed_d <= feed;
             if (avs_write && avs_address == 15'h2) n_templ <= avs_writedata[5:0];
-            if (avs_write && avs_address == 15'h0 && avs_writedata[0] && !busy) begin
+            if (avs_write && avs_address == 15'h0 && avs_writedata[0] && !busy && n_templ != 0) begin
                 busy <= 1'b1; done <= 1'b0; cycles <= 0; templ <= 0;
                 cnt <= 0; rd_sample <= 0; clear <= 1'b1;
             end

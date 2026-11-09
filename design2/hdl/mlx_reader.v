@@ -10,8 +10,8 @@
 //          copy the shadow registers to the output registers in one clock
 //
 // The CPU can read two frames apart: read FRAME, read the 12 values, read FRAME
-// again; if it changed, read again. 4 sensors take about 1.3 ms of bus time
-// at 400 kHz, so most of the 20 ms frame is idle.
+// again; if it changed, read again. 4 sensors take about 1.5 ms of bus time
+// at 350 kHz, so most of the 20 ms frame is idle.
 //
 // Avalon registers (word offset, 32-bit, read latency 1):
 //   0 FRAME    frame counter (read), write anything: restart init sequence
@@ -31,7 +31,7 @@
 // Check: hdl/tb/tb_mlx_reader.v.
 module mlx_reader #(
     parameter CLK_HZ   = 50000000,
-    parameter SCL_HZ   = 400000,
+    parameter SCL_HZ   = 350000,  // with 50% duty, 400 kHz would give 1.25 us low; minimum is 1.3 us
     parameter FRAME_HZ = 50,
     parameter CONV_US  = 9000,   // TCONV 7.6 ms (OSR=1, DIG_FILT=4) plus trim and drift margin
     parameter RESET_US = 2000,   // datasheet: wait 1.5 ms after RT
@@ -174,12 +174,13 @@ module mlx_reader #(
             ST_INIT: if (!i2c_busy) begin
                 // A sensor that does not answer must not stop the others, so errors are
                 // only reported through the frame ERR register.
+                // Datasheet 15.4.1.2: EX, wait 1 ms, RT, wait 1.5 ms. RESET_US covers both.
                 case (init_step)
                 0: begin_xact(cfg[s], {CMD_EX, 24'h0}, 1, 1, ST_INIT);
-                1: begin_xact(cfg[s], {CMD_RT, 24'h0}, 1, 1, ST_INIT);
-                2: begin wait_until <= now_us + RESET_US; state <= ST_INIT_WAIT; end
-                3: begin_xact(cfg[s], {CMD_WR, reg0, 6'd0, 2'b00}, 4, 1, ST_INIT);
-                4: begin_xact(cfg[s], {CMD_WR, reg2, 6'd2, 2'b00}, 4, 1, ST_INIT);
+                1, 3: begin wait_until <= now_us + RESET_US; state <= ST_INIT_WAIT; end
+                2: begin_xact(cfg[s], {CMD_RT, 24'h0}, 1, 1, ST_INIT);
+                4: begin_xact(cfg[s], {CMD_WR, reg0, 6'd0, 2'b00}, 4, 1, ST_INIT);
+                5: begin_xact(cfg[s], {CMD_WR, reg2, 6'd2, 2'b00}, 4, 1, ST_INIT);
                 default: begin
                     if (last_sensor) begin
                         s <= 0; next_frame <= now_us; state <= ST_FRAME_WAIT;
@@ -189,11 +190,9 @@ module mlx_reader #(
                     init_step <= 0;
                 end
                 endcase
-                if (init_step != 2 && init_step < 5) init_step <= init_step + 1'b1;
+                if (init_step < 6) init_step <= init_step + 1'b1;
             end
-            ST_INIT_WAIT: if ((now_us - wait_until) < 32'h80000000) begin
-                init_step <= 3; state <= ST_INIT;
-            end
+            ST_INIT_WAIT: if ((now_us - wait_until) < 32'h80000000) state <= ST_INIT;
             ST_FRAME_WAIT: begin
                 if (restart_req) state <= ST_RESTART;
                 else if (probe_req) begin

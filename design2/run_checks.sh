@@ -21,8 +21,8 @@ echo "--- 2. C code on the PC against Python, bit by bit"
 (cd pc && python gen_golden.py ../build/golden.txt)
 gcc_cyg() { ( PATH="$CYG:$PATH"; cd nios && "$CYG/gcc" -std=gnu99 -O1 -Wall -Wextra "$@" ) > build/gcc.log 2>&1 || { cat build/gcc.log; exit 1; }; grep -E "warning|error" build/gcc.log || true; }
 run_cyg() { ( PATH="$CYG:$PATH"; "$@" ) 2>/dev/null; }
-gcc_cyg -o ../build/test_host.exe test_host.c position.c signature.c dtw.c decide.c
-gcc_cyg -DTEST_MOUNT -o ../build/test_mount.exe test_host.c position.c signature.c dtw.c decide.c
+gcc_cyg -o ../build/test_host.exe test_host.c position.c signature.c dtw.c decide.c display.c
+gcc_cyg -DTEST_MOUNT -o ../build/test_mount.exe test_host.c position.c signature.c dtw.c decide.c display.c
 run_cyg ./build/test_host.exe build/golden.txt | tee build/c.log
 grep -q "C core OK" build/c.log
 run_cyg ./build/test_mount.exe | tee build/c2.log
@@ -33,13 +33,17 @@ cd build/ms
 "$VSIM_DIR/vlib" work > /dev/null 2>&1 || true
 H="$ROOT/hdl"
 "$VSIM_DIR/vlog" -quiet "$(win "$H/i2c_master.v")" "$(win "$H/mlx_reader.v")" "$(win "$H/dtw_array.v")" "$(win "$H/dtw_accel.v")" \
-    "$(win "$H/tb/mlx90393_model.v")" "$(win "$H/tb/tb_mlx_reader.v")"
-"$VSIM_DIR/vlog" -quiet -sv "$(win "$H/tb/tb_dtw_accel.v")"
+    "$(win "$H/vga_trace.v")" "$(win "$H/tb/mlx90393_model.v")" "$(win "$H/tb/tb_mlx_reader.v")"
+"$VSIM_DIR/vlog" -quiet -sv "$(win "$H/tb/tb_dtw_accel.v")" "$(win "$H/tb/tb_vga_trace.v")"
 "$VSIM_DIR/vsim" -c -quiet tb_mlx_reader -do "run -all; quit -f" > mlx.log 2>&1 || true
 grep -E "PASS|FAIL" mlx.log
 grep -q "# PASS" mlx.log
 "$VSIM_DIR/vsim" -c -quiet tb_dtw_accel "+VEC=$(win "$ROOT/hw/vectors")" -do "run -all; quit -f" > dtw.log 2>&1 || true
 grep -E "PASS|FAIL|clocks" dtw.log
 grep -q "# PASS 100/100" dtw.log
+
+"$VSIM_DIR/vsim" -c -quiet tb_vga_trace -do "run -all; quit -f" > vga.log 2>&1 || true
+grep -E "PASS|FAIL" vga.log
+grep -q "# PASS" vga.log
 
 echo "ALL CHECKS PASSED"

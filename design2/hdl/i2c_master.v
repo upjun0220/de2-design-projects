@@ -12,12 +12,15 @@
 // is high (step 2). START and STOP are the only SDA changes while SCL is high.
 // The pins are open drain: *_oe = 1 pulls the line low, 0 releases it and the
 // pull-up resistor raises it. If SCL stays low after release (slow rise or
-// clock stretching), the step counter waits.
+// clock stretching), the step counter waits, up to STUCK_LIMIT clocks. After that
+// the transaction is abandoned and reported as a NACK, so a shorted line cannot
+// stop the rest of the system.
 //
 // Check: hdl/tb/tb_mlx_reader.v runs this against a behavioural MLX90393.
 module i2c_master #(
     parameter CLK_HZ = 50000000,
-    parameter SCL_HZ = 400000
+    parameter SCL_HZ = 350000,
+    parameter STUCK_LIMIT = 50000     // 1 ms at 50 MHz
 )(
     input             clk,
     input             reset,
@@ -49,6 +52,7 @@ module i2c_master #(
     reg [3:0]  rx_left;
     reg [31:0] tx_reg;
     reg        addr_phase_r; // current byte is the addr+R byte
+    reg [16:0] stuck;
 
     wire tick = (div == 0);
     // SCL is released in steps 1 and 2. Do not advance until it is really high.
@@ -59,26 +63,31 @@ module i2c_master #(
         if (reset) begin
             state <= S_IDLE; busy <= 1'b0; nack <= 1'b0;
             sda_oe <= 1'b0; scl_oe <= 1'b0; div <= 0; step <= 0;
-            bit_cnt <= 0; reading <= 1'b0; addr_phase_r <= 1'b0;
+            bit_cnt <= 0; reading <= 1'b0; addr_phase_r <= 1'b0; stuck <= 0;
         end else if (state == S_IDLE) begin
             busy <= 1'b0;
             sda_oe <= 1'b0; scl_oe <= 1'b0;
             if (start) begin
                 busy <= 1'b1; nack <= 1'b0;
                 tx_reg <= tx_data; tx_left <= n_tx; rx_left <= n_rx;
-                state <= S_START; div <= QUARTER - 1; step <= 0;
+                state <= S_START; div <= QUARTER - 1; step <= 0; stuck <= 0;
             end
         end else if (!tick) begin
             div <= div - 1'b1;
-        end else if (!stretched) begin
+        end else if (stretched) begin
+            stuck <= stuck + 1'b1;
+            if (stuck == STUCK_LIMIT) begin nack <= 1'b1; state <= S_IDLE; end
+        end else begin
+            stuck <= 0;
             div <= QUARTER - 1;
             step <= step + 1'b1;
             case (state)
             S_START, S_RSTART: begin
-                // step 0: SDA high, SCL low->high. 1: SCL high. 2: SDA falls. 3: SCL falls.
+                // step 0: SDA released. 1: SCL rises. 2: SDA falls. 3: SCL falls.
+                // For a repeated START, SCL stays low through step 0 so its low time meets 1.3 us.
                 case (step)
-                0: begin sda_oe <= 1'b0; scl_oe <= 1'b0; end
-                1: ;
+                0: sda_oe <= 1'b0;
+                1: scl_oe <= 1'b0;
                 2: sda_oe <= 1'b1;
                 3: begin
                     scl_oe <= 1'b1;

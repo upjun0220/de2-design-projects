@@ -9,11 +9,12 @@ module tb_mlx_reader;
     always #10 clk = ~clk;   // 50 MHz
 
     wire [3:0] sda_oe, scl_oe;
+    reg  [3:0] stuck_scl = 0;  // test 6: SCL shorted to ground
     tri1 [3:0] sda, scl;     // pull-ups
     genvar g;
     generate for (g = 0; g < 4; g = g + 1) begin : gb
         assign sda[g] = sda_oe[g] ? 1'b0 : 1'bz;
-        assign scl[g] = scl_oe[g] ? 1'b0 : 1'bz;
+        assign scl[g] = (scl_oe[g] || stuck_scl[g]) ? 1'b0 : 1'bz;
     end endgenerate
 
     reg  [4:0]  address = 0;
@@ -114,9 +115,37 @@ module tb_mlx_reader;
         rd_reg(25, v);
         if (v[15:12] !== 4'h4) begin errors = errors + 1; $display("FAIL s3 X %h", v); end
 
+        // Checked here because test 5 resets in the middle of a clock on purpose.
+        if (s0.timing_errors != 0) begin errors = errors + 1; $display("FAIL I2C timing violations %0d", s0.timing_errors); end
+
+        // ---- 5. reset in the middle of a read, while sensor 0 holds SDA low: must recover ----
+        wait (s0.state == 3 && s0.sda_low);
+        @(negedge clk); reset = 1;
+        repeat (5) @(negedge clk); reset = 0;
+        wr_reg(7, (1 << 8) | 7'h18);       // reset restored the default configuration
+        wr_reg(0, 0);
+        #15000000;
+        wait_frame(f1);
+        wait_frame(f1);
+        rd_reg(1, v); check("err after reset mid-read", v, 0);
+
+        // ---- 6. SCL shorted on sensor 3's bus: frames continue, only sensor 3 flagged ----
+        stuck_scl[1] = 1;
+        #30000000;
+        wait_frame(f1);
+        wait_frame(f1);
+        rd_reg(1, v); check("err stuck scl", v, 32'h8);
+        rd_reg(16, x);
+        if (x[15:12] !== 4'h1) begin errors = errors + 1; $display("FAIL s0 after stuck %h", x); end
+        stuck_scl[1] = 0;
+        #1000000;
+        wait_frame(f1);
+        wait_frame(f1);
+        rd_reg(1, v); check("err after stuck released", v, 0);
+
         if (errors == 0) $display("PASS"); else $display("FAILED errors=%0d", errors);
         $finish;
     end
 
-    initial begin #300000000; $display("FAILED timeout"); $finish; end
+    initial begin #900000000; $display("FAILED timeout"); $finish; end
 endmodule

@@ -26,13 +26,19 @@ add_instance sdram altera_avalon_new_sdram_controller
 foreach {p v} {
     model custom dataWidth 16 rowWidth 12 columnWidth 8 numberOfBanks 4 numberOfChipSelects 1
     casLatency 3 initRefreshCommands 2 powerUpDelay 100 refreshPeriod 15.625 initNOPDelay 0
-    TRCD 20 TRFC 70 TRP 20 TWR 14 TAC 5.5 TMRD 3 registerDataIn true pinsSharedViaTriState false
+    TRCD 20 TRFC 70 TRP 20 TWR 14 TAC 5.5 TMRD 3 registerDataIn true pinsSharedViaTriState false generateSimulationModel true
 } { set_instance_parameter_value sdram $p $v }
 set_interface_property sdram_wire EXPORT_OF sdram.wire
 
 add_instance jtag_uart altera_avalon_jtag_uart
 set_instance_parameter_value jtag_uart writeBufferDepth 512
 set_instance_parameter_value jtag_uart readBufferDepth 64
+
+# Without a system timer the HAL JTAG UART driver waits forever when no terminal
+# is attached, so printf could stop the demo.
+add_instance sys_timer altera_avalon_timer
+set_instance_parameter_value sys_timer period 1
+set_instance_parameter_value sys_timer periodUnits MSEC
 
 add_instance sysid altera_avalon_sysid_qsys
 set_instance_parameter_value sysid id 0x4D50454E
@@ -60,15 +66,18 @@ set_interface_property i2c EXPORT_OF mlx_reader_0.i2c
 
 add_instance dtw_accel_0 dtw_accel
 
+add_instance vga_0 vga_trace
+set_interface_property vga EXPORT_OF vga_0.vga
+
 add_connection clk_0.clk cpu.clk
 add_connection clk_0.clk_reset cpu.reset_n
 add_connection cpu.jtag_debug_module_reset cpu.reset_n
-foreach c {sdram jtag_uart sysid lcd_0 pio_in pio_led pio_hex} {
+foreach c {sdram jtag_uart sys_timer sysid lcd_0 pio_in pio_led pio_hex} {
     add_connection clk_0.clk $c.clk
     add_connection clk_0.clk_reset $c.reset
     add_connection cpu.jtag_debug_module_reset $c.reset
 }
-foreach c {mlx_reader_0 dtw_accel_0} {
+foreach c {mlx_reader_0 dtw_accel_0 vga_0} {
     add_connection clk_0.clk $c.clock
     add_connection clk_0.clk_reset $c.reset
     add_connection cpu.jtag_debug_module_reset $c.reset
@@ -91,10 +100,14 @@ data_slave lcd_0.control_slave 0x01001020
 data_slave pio_in.s1 0x01001030
 data_slave pio_led.s1 0x01001040
 data_slave pio_hex.s1 0x01001050
+data_slave sys_timer.s1 0x01001060
+data_slave vga_0.s0 0x01001080
 data_slave mlx_reader_0.s0 0x01002000
 data_slave dtw_accel_0.s0 0x01100000
 
 add_connection cpu.d_irq jtag_uart.irq
 set_connection_parameter_value cpu.d_irq/jtag_uart.irq irqNumber 0
+add_connection cpu.d_irq sys_timer.irq
+set_connection_parameter_value cpu.d_irq/sys_timer.irq irqNumber 1
 
 save_system magic_pen_sys.qsys

@@ -12,6 +12,11 @@ set_fileset_property QUARTUS_SYNTH TOP_LEVEL dtw_accel
 add_fileset_file dtw_array.v VERILOG PATH dtw_array.v
 add_fileset_file dtw_accel.v VERILOG PATH dtw_accel.v TOP_LEVEL_FILE
 
+add_fileset SIM_VERILOG SIM_VERILOG "" ""
+set_fileset_property SIM_VERILOG TOP_LEVEL dtw_accel
+add_fileset_file dtw_array.v VERILOG PATH dtw_array.v
+add_fileset_file dtw_accel.v VERILOG PATH dtw_accel.v
+
 add_interface clock clock end
 set_interface_property clock clockRate 0
 add_interface_port clock clk clk Input 1

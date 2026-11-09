@@ -139,6 +139,7 @@ def main():
     ap.add_argument("--zmin", type=float, default=0.006)
     ap.add_argument("--epochs", type=int, default=40)
     ap.add_argument("--seed", type=int, default=1)
+    ap.add_argument("--out", default=None, help="헤더 출력 경로 (기본 nios/mlp_weights.h)")
     args = ap.parse_args()
     rng = np.random.default_rng(args.seed)
     sensors = np.array([(x, y, 0.0) for x in (-args.half, args.half) for y in (-args.half, args.half)])
@@ -149,7 +150,7 @@ def main():
     print("정수 모델, 서명 영역(시뮬레이션): 교정오차 없음 xy %.2f mm, z %.2f mm, 기울기벡터 %.3f, 합 최대 %d" % a)
     print("                                 교정오차 있음 xy %.2f mm, z %.2f mm, 기울기벡터 %.3f, 합 최대 %d" % c)
     here = os.path.dirname(os.path.abspath(__file__))
-    write_header(layers, os.path.join(here, "..", "nios", "mlp_weights.h"),
+    write_header(layers, args.out or os.path.join(here, "..", "nios", "mlp_weights.h"),
                  "m0=%g half=%g zmin=%g seed=%d" % (args.m0, args.half, args.zmin, args.seed))
 
 

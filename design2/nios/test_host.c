@@ -124,6 +124,20 @@ static void test_decide(void)
     CHECK("best is person 1", decide(d, p, 3), 1);
 }
 
+static void test_screen(void)
+{
+    pen_pos p = { 0, 0, 0, 0, 0 };
+    int x, y;
+    screen_xy(&p, &x, &y);
+    CHECK("centre x", x, 160); CHECK("centre y", y, 120);
+    p.x = 4 * 100; p.y = 4 * 50;     /* right and up on the board */
+    screen_xy(&p, &x, &y);
+    CHECK("right", x, 260); CHECK("up is smaller y", y, 70);
+    p.x = 30000; p.y = -30000;
+    screen_xy(&p, &x, &y);
+    CHECK("clamp x", x, 319); CHECK("clamp y", y, 239);
+}
+
 /* Compiled twice by run_checks.sh; the second time with -DTEST_MOUNT (see config.h) */
 static void test_mount(void)
 {
@@ -154,6 +168,7 @@ int main(int argc, char **argv)
     test_signature();
     test_dtw();
     test_decide();
+    test_screen();
     if (fails) { printf("FAILED %d checks\n", fails); return 1; }
     printf("C core OK\n");
     return 0;

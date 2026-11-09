@@ -29,6 +29,9 @@ int  sig_feed(sig_buf *s, const pen_pos *p, int lost);  /* returns SIG_* */
 int  sig_finish(sig_buf *s);                            /* KEY1: end now */
 void sig_preprocess(const sig_buf *s, int8_t out[SIG_N][SIG_CH]);
 
+/* ---- display.c: pen position (0.1 mm) to screen, for hdl/vga_trace.v ---- */
+void screen_xy(const pen_pos *p, int *sx, int *sy);
+
 /* ---- dtw.c ---- */
 #define DTW_BIG 0xFFFFFF
 uint32_t dtw_sw(const int8_t x[SIG_N][SIG_CH], const int8_t y[SIG_N][SIG_CH]);

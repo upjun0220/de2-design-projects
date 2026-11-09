@@ -8,7 +8,8 @@
 module mlx90393_model #(
     parameter [6:0] ADDR = 7'h18,
     parameter [15:0] BASE = 16'h1000,
-    parameter CONV_NS = 7600000
+    parameter CONV_NS = 7600000,
+    parameter CHECK_TIMING = 1     // datasheet Table 15, fast mode
 )(
     inout  sda,
     input  scl,
@@ -32,6 +33,20 @@ module mlx90393_model #(
     reg [15:0] vx, vy, vz;
 
     initial begin reg0 = 16'hFFFF; reg2 = 16'hFFFF; seen_rt = 0; end
+
+    // SCL low at least 1.3 us, high at least 0.6 us
+    integer timing_errors = 0;
+    time t_scl_fall = 0, t_scl_rise = 0;
+    always @(negedge scl) begin
+        t_scl_fall = $time;
+        if (CHECK_TIMING && t_scl_rise != 0 && $time - t_scl_rise < 600) timing_errors = timing_errors + 1;
+    end
+    always @(posedge scl) begin
+        t_scl_rise = $time;
+        if (CHECK_TIMING && t_scl_fall != 0 && $time - t_scl_fall < 1300) timing_errors = timing_errors + 1;
+    end
+    // Datasheet: wait 1 ms after EX before RT
+    time t_ex = 0;
 
     // START (or repeated START): SDA falls while SCL is high. STOP: SDA rises.
     always @(negedge sda) if (scl === 1'b1) begin
@@ -75,6 +90,8 @@ module mlx90393_model #(
                 if (nbytes == 0) cmd = rxb;
                 wbuf[nbytes % 4] = rxb;
                 nbytes = nbytes + 1;
+                if (nbytes == 1 && cmd == 8'h80) t_ex = $time;
+                if (nbytes == 1 && cmd == 8'hF0 && CHECK_TIMING && $time - t_ex < 1000000) timing_errors = timing_errors + 1;
                 if (nbytes == 1 && cmd == 8'hF0) begin seen_rt = 1; reg0 = 16'h007C; reg2 = 16'h0000; end
                 if (nbytes == 1 && cmd[7:4] == 4'h3) conv_done = $time + CONV_NS;
                 if (nbytes == 4 && cmd == 8'h60) begin

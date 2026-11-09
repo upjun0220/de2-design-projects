@@ -15,7 +15,7 @@ env SHELLOPTS=igncr "$CYG/bash" -c "
   mkdir -p app bsp &&
   cp ../nios/*.c ../nios/*.h app/ && rm -f app/test_host.c &&
   $UNIX_ALT/nios2eds/nios2_command_shell.sh nios2-bsp hal bsp q/magic_pen_sys.sopcinfo --cpu-name cpu \
-      --set hal.make.bsp_cflags_optimization -O2 --set hal.enable_small_c_library false &&
+      --set hal.make.bsp_cflags_optimization -O2 --set hal.enable_small_c_library false --set hal.sys_clk_timer sys_timer &&
   cd app &&
   $UNIX_ALT/nios2eds/nios2_command_shell.sh nios2-app-generate-makefile --bsp-dir ../bsp --elf-name magic_pen.elf --src-dir . --set APP_CFLAGS_OPTIMIZATION -O2 &&
   $UNIX_ALT/nios2eds/nios2_command_shell.sh make

@@ -18,11 +18,25 @@
 
 #define BASELINE_FRAMES 32    /* frames averaged for KEY0 baseline (0.64 s) */
 
+/* Which of the 8 DTW input channels are used, bit 0 = x ... bit 7 = pen. Set after
+ * comparing channel sets with pc/evaluate.py. Unused channels become 0. */
+#define CHANNEL_MASK 0xFF
+
 /* Identification rule, README section 6.4. ESTIMATE: set from validation data. */
 #define ENROLL_COUNT 5        /* signatures per person */
 #define MAX_SLOTS    5        /* 25 templates fit the accelerator RAM */
 #define TAU_A_Q8     (2*256)  /* a in tau_k = mu_k + a*sigma_k */
 #define MARGIN_M     500      /* required gap between best and second best */
+
+/* Screen mapping: this many 0.1 mm per pixel. 4 means +-48 mm fits the 240 pixel height */
+#define SCREEN_SCALE 4
+
+/* I2C of each sensor: (bus << 8) | address. One bus, four addresses needs A0/A1 wired:
+ *   { 0x018, 0x019, 0x01A, 0x01B }
+ * Four buses need no soldering; all sensors may keep the same address:
+ *   { 0x018, 0x118, 0x218, 0x318 }
+ * The default address depends on the module: check the scan printed at power up. */
+#define SENSOR_CFG { 0x018, 0x019, 0x01A, 0x01B }
 
 /* How the sensors and the magnet are mounted. pc/gate1.py --find-mount finds these
  * from a measurement. ESTIMATE until then.

@@ -119,4 +119,10 @@ void sig_preprocess(const sig_buf *s, int8_t out[SIG_N][SIG_CH])
         out[i][3] = clamp8((out[q][0] - out[p][0]) * 2);
         out[i][4] = clamp8((out[q][1] - out[p][1]) * 2);
     }
+    /* Second loop: the speed above needs x, y even if they are masked out. */
+    for (i = 0; i < SIG_N; i++) {
+        int c;
+        for (c = 0; c < SIG_CH; c++)
+            if (!((CHANNEL_MASK >> c) & 1)) out[i][c] = 0;
+    }
 }

@@ -8,6 +8,8 @@
  *   KEY0 re-measure baseline (pen away), KEY1 end signature, KEY2 cancel last enrolled
  *   KEY3 is the hardware reset.
  * Display: LCD result, HEX latency in us, LEDG all = enrolled person, LEDR blink = not.
+ * VGA shows the strokes while they are written.
+ * SW[7]: LEDR shows the field strength at each sensor (for checking wiring).
  *
  * Bring-up: at power up the LCD shows which of the four sensors answer, and the
  * I2C addresses found are printed to the JTAG UART. Run this before anything else.
@@ -60,6 +62,48 @@ static uint32_t read_inputs(void)
     return IORD(PIO_IN_BASE, 0);   /* bits 17:0 SW, bits 21:18 KEY (pressed = 0) */
 }
 
+/* ---- VGA: lines from pen frame to pen frame while the pen is down ---- */
+static void vga_clear(void)
+{
+    while (IORD(VGA_0_BASE, 0) & 1) ;
+    IOWR(VGA_0_BASE, 0, 1);
+}
+
+static void vga_line(const pen_pos *a, const pen_pos *b)
+{
+    int x0, y0, x1, y1;
+    screen_xy(a, &x0, &y0);
+    screen_xy(b, &x1, &y1);
+    while (IORD(VGA_0_BASE, 0) & 1) ;
+    IOWR(VGA_0_BASE, 1, (y0 << 16) | x0);
+    IOWR(VGA_0_BASE, 2, (y1 << 16) | x1);
+}
+
+static void leds(uint32_t green, uint32_t red)
+{
+    IOWR(PIO_LED_BASE, 0, (green << 18) | red);
+}
+
+/* SW[7]: field strength bars on LEDR for checking the sensors. Four LEDs per sensor,
+ * one more LED per factor of 8 above 16 LSB (4 uT). LEDR[17]: some axis is near saturation. */
+static void show_field_bars(const int32_t lsb[12], uint32_t raw_peak)
+{
+    uint32_t bars = 0;
+    int k, c;
+    for (k = 0; k < 4; k++) {
+        uint32_t m = 0;
+        int leds_on = 0;
+        for (c = 0; c < 3; c++) {
+            uint32_t a = lsb[3*k + c] < 0 ? -lsb[3*k + c] : lsb[3*k + c];
+            if (a > m) m = a;
+        }
+        while (m >= 16 && leds_on < 4) { leds_on++; m >>= 3; }
+        bars |= ((1u << leds_on) - 1) << (4 * k);
+    }
+    if (raw_peak > 30000) bars |= 1u << 17;
+    leds(0, bars);
+}
+
 static void hex_show(uint32_t value)
 {
     uint32_t bcd = 0;
@@ -69,11 +113,6 @@ static void hex_show(uint32_t value)
         value /= 10;
     }
     IOWR(PIO_HEX_BASE, 0, bcd);
-}
-
-static void leds(uint32_t green, uint32_t red)
-{
-    IOWR(PIO_LED_BASE, 0, (green << 18) | red);
 }
 
 static int wait_frame(uint32_t *last, int32_t lsb[12], uint32_t *err)
@@ -219,12 +258,23 @@ int main(void)
     uint32_t last_frame = 0, err = 0, prev_keys = 0xF, inputs;
     int32_t base[12], lsb[12], corrected[12], in[12];
     pen_pos pos;
+    pen_pos prev_pos;
+    int prev_down = 0;
     uint32_t us_mlp = 0;
     int k, n_ok;
+
+    memset(&prev_pos, 0, sizeof(prev_pos));
 
     lcd = fopen("/dev/lcd_0", "w");
     memset(people, 0, sizeof(people));
     sig_reset(&sig);
+
+    /* Tell the reader where the sensors are, then restart its init sequence */
+    {
+        static const uint32_t cfg[4] = SENSOR_CFG;
+        for (k = 0; k < 4; k++) IOWR(MLX_READER_0_BASE, MLX_CFG0 + k, cfg[k]);
+        IOWR(MLX_READER_0_BASE, MLX_FRAME, 0);
+    }
 
     /* Bring-up report: which sensors answered in the first frames */
     usleep(200000);
@@ -257,7 +307,13 @@ int main(void)
 
         ev = SIG_NONE;
         if (wait_frame(&last_frame, lsb, &err)) {
-            for (k = 0; k < 12; k++) lsb[k] -= base[k];
+            uint32_t raw_peak = 0;
+            for (k = 0; k < 12; k++) {
+                uint32_t a = lsb[k] < 0 ? -lsb[k] : lsb[k];
+                if (a > raw_peak) raw_peak = a;
+                lsb[k] -= base[k];
+            }
+            if (inputs & (1u << 7)) show_field_bars(lsb, raw_peak);
             t0 = MLX(MLX_NOW);
             for (k = 0; k < 12; k++) corrected[k] = lsb[k];
             mount_correct(corrected);
@@ -266,6 +322,10 @@ int main(void)
             us_mlp = MLX(MLX_NOW) - t0;
             lost = err != 0;
             ev = sig_feed(&sig, &pos, lost);
+            if (ev == SIG_STARTED) vga_clear();
+            if (sig.is_down && prev_down) vga_line(&prev_pos, &pos);
+            prev_pos = pos;
+            prev_down = sig.is_down;
             if (mode == 2) {
                 /* Raw values are logged too (before mount_correct): the tracker and
                  * the mount settings can be changed and everything re-computed later. */

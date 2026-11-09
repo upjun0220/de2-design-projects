@@ -24,7 +24,9 @@ module de2_top (
     inout  [15:0] DRAM_DQ,
     output        DRAM_BA_0, DRAM_BA_1, DRAM_LDQM, DRAM_UDQM,
     output        DRAM_RAS_N, DRAM_CAS_N, DRAM_WE_N, DRAM_CS_N, DRAM_CLK, DRAM_CKE,
-    inout  [35:0] GPIO_0
+    inout  [35:0] GPIO_0,
+    output        VGA_CLK, VGA_HS, VGA_VS, VGA_BLANK, VGA_SYNC,
+    output [9:0]  VGA_R, VGA_G, VGA_B
 );
     wire [3:0] sda_oe, scl_oe;
     wire [1:0] ba, dqm;
@@ -34,6 +36,7 @@ module de2_top (
     assign {DRAM_BA_1, DRAM_BA_0} = ba;
     assign {DRAM_UDQM, DRAM_LDQM} = dqm;
     assign {LEDG, LEDR} = leds;
+    assign VGA_SYNC = 1'b0;    // no sync on green
     assign LCD_ON = 1'b1;
     assign LCD_BLON = 1'b1;
 
@@ -66,6 +69,13 @@ module de2_top (
         .pio_in_export   ({KEY, SW}),
         .pio_led_export  (leds),
         .pio_hex_export  (bcd),
+        .vga_clk         (VGA_CLK),
+        .vga_hs          (VGA_HS),
+        .vga_vs          (VGA_VS),
+        .vga_blank_n     (VGA_BLANK),
+        .vga_r           (VGA_R),
+        .vga_g           (VGA_G),
+        .vga_b           (VGA_B),
         .i2c_sda_oe      (sda_oe),
         .i2c_scl_oe      (scl_oe),
         .i2c_sda_in      ({GPIO_0[14], GPIO_0[10], GPIO_0[4], GPIO_0[0]}),
