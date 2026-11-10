@@ -70,14 +70,17 @@ int main(void)
 
     /* ---- hardware DTW ---- */
     for (i = 0; i < SIG_N; i++) {
-        const uint32_t *wx = (const void *)vec_x[i], *wy = (const void *)vec_y[i];
-        IOWR(DTW_ACCEL_0_BASE, 0x1000 + 2*i, wx[0]);
-        IOWR(DTW_ACCEL_0_BASE, 0x1000 + 2*i + 1, wx[1]);
+        const uint32_t *wy = (const void *)vec_y[i];
         IOWR(DTW_ACCEL_0_BASE, 0x2000 + 2*i, wy[0]);
         IOWR(DTW_ACCEL_0_BASE, 0x2000 + 2*i + 1, wy[1]);
     }
     IOWR(DTW_ACCEL_0_BASE, 2, 1);
-    t0 = NOW();
+    t0 = NOW();     /* same as nios/main.c: the query copy counts, the template copy does not */
+    for (i = 0; i < SIG_N; i++) {
+        const uint32_t *wx = (const void *)vec_x[i];
+        IOWR(DTW_ACCEL_0_BASE, 0x1000 + 2*i, wx[0]);
+        IOWR(DTW_ACCEL_0_BASE, 0x1000 + 2*i + 1, wx[1]);
+    }
     IOWR(DTW_ACCEL_0_BASE, 0, 1);
     while (IORD(DTW_ACCEL_0_BASE, 1) & 1) ;
     t1 = NOW();
