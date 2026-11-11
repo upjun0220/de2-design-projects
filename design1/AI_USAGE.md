@@ -13,6 +13,7 @@
 | 2026-11-05 | 사용자 요청으로 777 잭팟에 LED 번갈아 점멸과 LCD 축하 문구 추가, LCD 핀 할당 추가, testbench에 LCD·점멸 검사 추가 |
 | 2026-11-05 | 사용자 요청으로 LCD 문구를 모드 표시(`COUNTER`/`CALCULATOR`)로 변경, testbench 갱신 |
 | 2026-11-05 | 사용자 요청으로 777일 때 LCD 축하 문구를 다시 추가(모드 표시와 함께), testbench 갱신 |
+| 2026-11-11 | 사용자 요청으로 190줄 코드의 줄별 설명 HTML(`docs/DE2_Project1_line_by_line.html`) 작성 |
 
 ## 확인할 일
 
