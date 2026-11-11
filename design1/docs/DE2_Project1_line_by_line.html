@@ -38,7 +38,7 @@ ul{padding-left:1.2em}
 <body>
 <main>
 <h1>DE2 Design Project #1 — 줄별 설명</h1>
-<p class="sub">카운터 + 한 자리 계산기 (보너스 포함) · <code>design1/src/DE2_Project1.vhd</code> 190줄 · 발표 준비용</p>
+<p class="sub">카운터 + 한 자리 계산기 (보너스 포함) · <code>design1/src/DE2_Project1.vhd</code> 188줄 · 발표 준비용</p>
 <nav><a href="#s1">머리말 주석</a><a href="#s2">라이브러리와 입출력 핀</a><a href="#s3">선언부 — 상수, 신호, 표</a><a href="#s4">카운터</a><a href="#s5">LED와 잭팟 판정</a><a href="#s6">계산기</a><a href="#s7">7세그 표시 결정</a><a href="#s8">LCD 출력</a><a href="#s9">출력 연결</a><a href="#qa">예상 질문</a><a href="#notes">알아둘 점</a></nav>
 
 <div class="flow">
@@ -108,7 +108,7 @@ ul{padding-left:1.2em}
 <span class="ln">56</span>    constant COUNTER_TXT : string(1 to 32) := &quot;COUNTER         &quot; &amp; &quot;                &quot;;
 <span class="ln">57</span>    constant CALC_TXT    : string(1 to 32) := &quot;CALCULATOR      &quot; &amp; &quot;                &quot;;
 <span class="ln">58</span>    constant JACKPOT_TXT : string(1 to 32) := &quot;* JACKPOT  777 *&quot; &amp; &quot;CONGRATULATIONS!&quot;;</pre></div><div class="why">LCD에 보낼 글자. 1행 16글자와 2행 16글자를 <code>&amp;</code>(이어 붙이기)로 합쳐 32글자로 만든다. 평소엔 모드 이름, 777이면 축하 문구. LCD는 영문만 표시한다.</div></div>
-<div class="row"><div class="code"><div class="rng">59줄</div><pre><span class="ln">59</span>    signal tick : unsigned(25 downto 0) := (others =&gt; &#x27;0&#x27;);  -- free running counter (LED flash, LCD timing)</pre></div><div class="why"><code>tick</code>: 클럭마다 1씩 오르는 26비트 카운터. 두 곳에서 쓴다. LED 점멸(23번 비트가 약 0.17초마다 뒤집힘)과 LCD 전송 박자.</div></div>
+<div class="row"><div class="code"><div class="rng">59줄</div><pre><span class="ln">59</span>    signal tick : unsigned(23 downto 0) := (others =&gt; &#x27;0&#x27;);  -- free running counter (LED flash, LCD timing)</pre></div><div class="why"><code>tick</code>: 클럭마다 1씩 오르는 24비트 카운터(가장 높게 쓰는 비트가 23번). 두 곳에서 쓴다. LED 점멸(23번 비트가 약 0.17초마다 뒤집힘)과 LCD 전송 박자.</div></div>
 <div class="row"><div class="code"><div class="rng">60줄</div><pre><span class="ln">60</span>    signal step : integer range 0 to 41 := 0;                -- which byte the LCD gets now</pre></div><div class="why">LCD에 지금 보낼 바이트 번호(0~41).</div></div>
 <div class="row"><div class="code"><div class="rng">61줄</div><pre><span class="ln">61</span>    signal jp   : std_logic;                                 -- 1 = jackpot (counter mode and value 777)</pre></div><div class="why"><code>jp</code>: 잭팟 신호. 카운터 모드이고 값이 777이면 1.</div></div>
 <div class="row"><div class="code"><div class="rng">62줄</div><pre><span class="ln">62</span>begin</pre></div><div class="why"><code>begin</code>: 여기서부터 실제 동작을 기술한다.</div></div>
@@ -153,101 +153,99 @@ ul{padding-left:1.2em}
 <span class="ln">98</span>    b &lt;= to_integer(unsigned(SW(13 downto 10)));</pre></div><div class="why"><code>SW(17 downto 14)</code>를 <code>unsigned</code>로 보고 <code>to_integer</code>로 정수 0~15를 만든다. 이것이 A, 같은 식으로 SW13~10이 B.</div></div>
 <div class="row"><div class="code"><div class="rng">99줄</div><pre><span class="ln">99</span>    err &lt;= &#x27;1&#x27; when SW(2 downto 1) = &quot;11&quot; and b = 0 else &#x27;0&#x27;;</pre></div><div class="why">나눗셈(SW2~1=11)인데 B=0이면 <code>err</code>=1.</div></div>
 <div class="row"><div class="code"><div class="rng">100~101줄</div><pre><span class="ln">100</span>    valid &lt;= &#x27;1&#x27; when SW(3) = &#x27;1&#x27; or (a &lt; 10 and b &lt; 10) else &#x27;0&#x27;;</pre></div><div class="why">16진수 모드(SW3=1)이거나 A, B가 모두 10 미만이면 유효. 십진 모드에서 10 이상이면 무효.</div></div>
-<div class="row"><div class="code"><div class="rng">102~104줄</div><pre><span class="ln">102</span>    process (SW, a, b)
-<span class="ln">103</span>        variable q : integer range 0 to 15;
-<span class="ln">104</span>    begin</pre></div><div class="why">계산 process. 괄호 안은 감지 목록으로, SW, a, b가 바뀔 때마다 다시 계산한다. <code>q</code>는 process 안에서만 쓰는 임시 변수(몫).</div></div>
-<div class="row"><div class="code"><div class="rng">105~108줄</div><pre><span class="ln">105</span>        result &lt;= 0;
-<span class="ln">106</span>        quot &lt;= 0;
-<span class="ln">107</span>        remain &lt;= 0;
-<span class="ln">108</span>        neg &lt;= &#x27;0&#x27;;</pre></div><div class="why">먼저 모든 결과를 기본값으로 둔다. 어떤 경우에도 값이 정해지므로 불필요한 래치가 생기지 않는다.</div></div>
-<div class="row"><div class="code"><div class="rng">109줄</div><pre><span class="ln">109</span>        case SW(2 downto 1) is</pre></div><div class="why"><code>case SW(2 downto 1)</code>: 연산 선택.</div></div>
-<div class="row"><div class="code"><div class="rng">110줄</div><pre><span class="ln">110</span>            when &quot;00&quot; =&gt; result &lt;= a + b;</pre></div><div class="why">00 덧셈.</div></div>
-<div class="row"><div class="code"><div class="rng">111~117줄</div><pre><span class="ln">111</span>            when &quot;01&quot; =&gt;
-<span class="ln">112</span>                if a &gt;= b then
-<span class="ln">113</span>                    result &lt;= a - b;
-<span class="ln">114</span>                else
-<span class="ln">115</span>                    result &lt;= b - a;     -- a is smaller : calculate b - a and mark negative
-<span class="ln">116</span>                    neg &lt;= &#x27;1&#x27;;
-<span class="ln">117</span>                end if;</pre></div><div class="why">01 뺄셈. A≥B이면 <code>a-b</code>. 작으면 <code>b-a</code>를 계산하고 <code>neg</code>=1로 표시해 둔다(음수 기호는 표시 단계에서 붙인다).</div></div>
-<div class="row"><div class="code"><div class="rng">118줄</div><pre><span class="ln">118</span>            when &quot;10&quot; =&gt; result &lt;= a * b;</pre></div><div class="why">10 곱셈.</div></div>
-<div class="row"><div class="code"><div class="rng">119~124줄</div><pre><span class="ln">119</span>            when others =&gt;
-<span class="ln">120</span>                if b /= 0 then
-<span class="ln">121</span>                    q := to_integer(to_unsigned(a, 4) / to_unsigned(b, 4));
-<span class="ln">122</span>                    quot &lt;= q;
-<span class="ln">123</span>                    remain &lt;= a - q * b;     -- remainder = a - quotient * b
-<span class="ln">124</span>                end if;</pre></div><div class="why">11 나눗셈. B≠0일 때만 한다. 몫 <code>q</code>는 4비트 unsigned 나눗셈(<code>/</code>), 나머지는 <code>a - q*b</code>로 구한다.</div></div>
-<div class="row"><div class="code"><div class="rng">125~127줄</div><pre><span class="ln">125</span>        end case;
-<span class="ln">126</span>    end process;</pre></div><div class="why"><code>case</code>와 <code>process</code>를 닫는다.</div></div>
+<div class="row"><div class="code"><div class="rng">102~103줄</div><pre><span class="ln">102</span>    process (SW, a, b)
+<span class="ln">103</span>    begin</pre></div><div class="why">계산 process. 괄호 안은 감지 목록으로, SW, a, b가 바뀔 때마다 다시 계산한다.</div></div>
+<div class="row"><div class="code"><div class="rng">104~107줄</div><pre><span class="ln">104</span>        result &lt;= 0;
+<span class="ln">105</span>        quot &lt;= 0;
+<span class="ln">106</span>        remain &lt;= 0;
+<span class="ln">107</span>        neg &lt;= &#x27;0&#x27;;</pre></div><div class="why">먼저 모든 결과를 기본값으로 둔다. 어떤 경우에도 값이 정해지므로 불필요한 래치가 생기지 않는다.</div></div>
+<div class="row"><div class="code"><div class="rng">108줄</div><pre><span class="ln">108</span>        case SW(2 downto 1) is</pre></div><div class="why"><code>case SW(2 downto 1)</code>: 연산 선택.</div></div>
+<div class="row"><div class="code"><div class="rng">109줄</div><pre><span class="ln">109</span>            when &quot;00&quot; =&gt; result &lt;= a + b;</pre></div><div class="why">00 덧셈.</div></div>
+<div class="row"><div class="code"><div class="rng">110~116줄</div><pre><span class="ln">110</span>            when &quot;01&quot; =&gt;
+<span class="ln">111</span>                if a &gt;= b then
+<span class="ln">112</span>                    result &lt;= a - b;
+<span class="ln">113</span>                else
+<span class="ln">114</span>                    result &lt;= b - a;     -- a is smaller : calculate b - a and mark negative
+<span class="ln">115</span>                    neg &lt;= &#x27;1&#x27;;
+<span class="ln">116</span>                end if;</pre></div><div class="why">01 뺄셈. A≥B이면 <code>a-b</code>. 작으면 <code>b-a</code>를 계산하고 <code>neg</code>=1로 표시해 둔다(음수 기호는 표시 단계에서 붙인다).</div></div>
+<div class="row"><div class="code"><div class="rng">117줄</div><pre><span class="ln">117</span>            when &quot;10&quot; =&gt; result &lt;= a * b;</pre></div><div class="why">10 곱셈.</div></div>
+<div class="row"><div class="code"><div class="rng">118~122줄</div><pre><span class="ln">118</span>            when others =&gt;
+<span class="ln">119</span>                if b /= 0 then
+<span class="ln">120</span>                    quot &lt;= a / b;
+<span class="ln">121</span>                    remain &lt;= a mod b;
+<span class="ln">122</span>                end if;</pre></div><div class="why">11 나눗셈. B≠0일 때만 한다. 몫은 <code>a / b</code>(소수점 아래는 버림), 나머지는 <code>a mod b</code>로 구한다. 표시 단계의 <code>/</code>, <code>mod</code>와 같은 연산이다.</div></div>
+<div class="row"><div class="code"><div class="rng">123~125줄</div><pre><span class="ln">123</span>        end case;
+<span class="ln">124</span>    end process;</pre></div><div class="why"><code>case</code>와 <code>process</code>를 닫는다.</div></div>
 </section>
 <section id="s7"><h2>7세그 표시 결정</h2><p class="intro">각 HEX에 무엇을 보일지 문자 코드(<code>d0~d7</code>)로 정한다.</p>
-<div class="row"><div class="code"><div class="rng">128~130줄</div><pre><span class="ln">128</span>    -- decide what each 7-segment shows
-<span class="ln">129</span>    process (SW, cnt, a, b, result, quot, remain, neg, err, valid)
-<span class="ln">130</span>    begin</pre></div><div class="why">표시 내용을 정하는 process. 값이 바뀌면 다시 계산하는 조합 회로.</div></div>
-<div class="row"><div class="code"><div class="rng">131~133줄</div><pre><span class="ln">131</span>        d7 &lt;= BLANK; d6 &lt;= BLANK; d5 &lt;= BLANK; d4 &lt;= BLANK;     -- everything off first
-<span class="ln">132</span>        d3 &lt;= BLANK; d2 &lt;= BLANK; d1 &lt;= BLANK; d0 &lt;= BLANK;</pre></div><div class="why">먼저 8칸 모두 빈칸으로 두고 시작한다. 아래에서 필요한 칸만 덮어쓴다.</div></div>
-<div class="row"><div class="code"><div class="rng">134줄</div><pre><span class="ln">134</span>        if SW(0) = &#x27;0&#x27; then              -- counter : thousands, hundreds, tens, ones</pre></div><div class="why">카운터 모드.</div></div>
-<div class="row"><div class="code"><div class="rng">135~138줄</div><pre><span class="ln">135</span>            d3 &lt;= cnt / 1000;
-<span class="ln">136</span>            d2 &lt;= (cnt / 100) mod 10;
-<span class="ln">137</span>            d1 &lt;= (cnt / 10) mod 10;
-<span class="ln">138</span>            d0 &lt;= cnt mod 10;</pre></div><div class="why">값을 자릿수로 쪼갠다. 예) 1234 → <code>/1000</code>=1, <code>/100 mod 10</code>=2, <code>/10 mod 10</code>=3, <code>mod 10</code>=4. HEX3(천)~HEX0(일).</div></div>
-<div class="row"><div class="code"><div class="rng">139~141줄</div><pre><span class="ln">139</span>            if cnt = 777 then            -- jackpot : show 7777
-<span class="ln">140</span>                d7 &lt;= 7; d6 &lt;= 7; d5 &lt;= 7; d4 &lt;= 7;
-<span class="ln">141</span>            end if;</pre></div><div class="why">잭팟(777)이면 HEX7~4에 7을 4개 띄운다.</div></div>
-<div class="row"><div class="code"><div class="rng">142줄</div><pre><span class="ln">142</span>        else                             -- calculator</pre></div><div class="why">계산기 모드.</div></div>
-<div class="row"><div class="code"><div class="rng">143~144줄</div><pre><span class="ln">143</span>            if SW(3) = &#x27;1&#x27; or a &lt; 10 then d6 &lt;= a; end if;   -- decimal mode shows 0~9 only
-<span class="ln">144</span>            if SW(3) = &#x27;1&#x27; or b &lt; 10 then d4 &lt;= b; end if;</pre></div><div class="why">A는 HEX6, B는 HEX4에 표시. 십진 모드에서 10 이상이면 빈칸으로 둔다.</div></div>
-<div class="row"><div class="code"><div class="rng">145줄</div><pre><span class="ln">145</span>            if valid = &#x27;1&#x27; then</pre></div><div class="why">입력이 유효할 때만 결과를 표시한다.</div></div>
-<div class="row"><div class="code"><div class="rng">146~147줄</div><pre><span class="ln">146</span>                if err = &#x27;1&#x27; then                            -- divide by zero : &quot; Err&quot;
-<span class="ln">147</span>                    d2 &lt;= CH_E;  d1 &lt;= CH_R;  d0 &lt;= CH_R;</pre></div><div class="why">0으로 나눔: HEX2~0에 ' Err'(E, r, r).</div></div>
-<div class="row"><div class="code"><div class="rng">148~149줄</div><pre><span class="ln">148</span>                elsif SW(2 downto 1) = &quot;11&quot; then             -- division : &quot;quotient r remainder&quot;
-<span class="ln">149</span>                    d3 &lt;= quot;  d1 &lt;= CH_R;  d0 &lt;= remain;</pre></div><div class="why">나눗셈: HEX3=몫, HEX1='r', HEX0=나머지. 예) 7÷3 → <code>2 r1</code>.</div></div>
-<div class="row"><div class="code"><div class="rng">150~151줄</div><pre><span class="ln">150</span>                else
-<span class="ln">151</span>                    if neg = &#x27;1&#x27; then d3 &lt;= MINUS; end if;</pre></div><div class="why">+, -, ×: 결과가 음수이면 HEX3에 '-'.</div></div>
-<div class="row"><div class="code"><div class="rng">152~154줄</div><pre><span class="ln">152</span>                    if SW(3) = &#x27;1&#x27; then                      -- hexadecimal result : 2 digits
-<span class="ln">153</span>                        d1 &lt;= result / 16;
-<span class="ln">154</span>                        d0 &lt;= result mod 16;</pre></div><div class="why">16진수 모드: 결과를 16으로 나눈 몫과 나머지로 두 자리를 만든다(225 → E1).</div></div>
-<div class="row"><div class="code"><div class="rng">155~158줄</div><pre><span class="ln">155</span>                    else                                     -- decimal result : 3 digits
-<span class="ln">156</span>                        d2 &lt;= result / 100;
-<span class="ln">157</span>                        d1 &lt;= (result / 10) mod 10;
-<span class="ln">158</span>                        d0 &lt;= result mod 10;</pre></div><div class="why">십진 모드: 세 자리(최대 81).</div></div>
-<div class="row"><div class="code"><div class="rng">159~164줄</div><pre><span class="ln">159</span>                    end if;
-<span class="ln">160</span>                end if;
-<span class="ln">161</span>            end if;
-<span class="ln">162</span>        end if;
-<span class="ln">163</span>    end process;</pre></div><div class="why">열려 있던 <code>if</code>들과 <code>process</code>를 닫는다.</div></div>
+<div class="row"><div class="code"><div class="rng">126~128줄</div><pre><span class="ln">126</span>    -- decide what each 7-segment shows
+<span class="ln">127</span>    process (SW, cnt, a, b, result, quot, remain, neg, err, valid)
+<span class="ln">128</span>    begin</pre></div><div class="why">표시 내용을 정하는 process. 값이 바뀌면 다시 계산하는 조합 회로.</div></div>
+<div class="row"><div class="code"><div class="rng">129~131줄</div><pre><span class="ln">129</span>        d7 &lt;= BLANK; d6 &lt;= BLANK; d5 &lt;= BLANK; d4 &lt;= BLANK;     -- everything off first
+<span class="ln">130</span>        d3 &lt;= BLANK; d2 &lt;= BLANK; d1 &lt;= BLANK; d0 &lt;= BLANK;</pre></div><div class="why">먼저 8칸 모두 빈칸으로 두고 시작한다. 아래에서 필요한 칸만 덮어쓴다.</div></div>
+<div class="row"><div class="code"><div class="rng">132줄</div><pre><span class="ln">132</span>        if SW(0) = &#x27;0&#x27; then              -- counter : thousands, hundreds, tens, ones</pre></div><div class="why">카운터 모드.</div></div>
+<div class="row"><div class="code"><div class="rng">133~136줄</div><pre><span class="ln">133</span>            d3 &lt;= cnt / 1000;
+<span class="ln">134</span>            d2 &lt;= (cnt / 100) mod 10;
+<span class="ln">135</span>            d1 &lt;= (cnt / 10) mod 10;
+<span class="ln">136</span>            d0 &lt;= cnt mod 10;</pre></div><div class="why">값을 자릿수로 쪼갠다. 예) 1234 → <code>/1000</code>=1, <code>/100 mod 10</code>=2, <code>/10 mod 10</code>=3, <code>mod 10</code>=4. HEX3(천)~HEX0(일).</div></div>
+<div class="row"><div class="code"><div class="rng">137~139줄</div><pre><span class="ln">137</span>            if cnt = 777 then            -- jackpot : show 7777
+<span class="ln">138</span>                d7 &lt;= 7; d6 &lt;= 7; d5 &lt;= 7; d4 &lt;= 7;
+<span class="ln">139</span>            end if;</pre></div><div class="why">잭팟(777)이면 HEX7~4에 7을 4개 띄운다.</div></div>
+<div class="row"><div class="code"><div class="rng">140줄</div><pre><span class="ln">140</span>        else                             -- calculator</pre></div><div class="why">계산기 모드.</div></div>
+<div class="row"><div class="code"><div class="rng">141~142줄</div><pre><span class="ln">141</span>            if SW(3) = &#x27;1&#x27; or a &lt; 10 then d6 &lt;= a; end if;   -- decimal mode shows 0~9 only
+<span class="ln">142</span>            if SW(3) = &#x27;1&#x27; or b &lt; 10 then d4 &lt;= b; end if;</pre></div><div class="why">A는 HEX6, B는 HEX4에 표시. 십진 모드에서 10 이상이면 빈칸으로 둔다.</div></div>
+<div class="row"><div class="code"><div class="rng">143줄</div><pre><span class="ln">143</span>            if valid = &#x27;1&#x27; then</pre></div><div class="why">입력이 유효할 때만 결과를 표시한다.</div></div>
+<div class="row"><div class="code"><div class="rng">144~145줄</div><pre><span class="ln">144</span>                if err = &#x27;1&#x27; then                            -- divide by zero : &quot; Err&quot;
+<span class="ln">145</span>                    d2 &lt;= CH_E;  d1 &lt;= CH_R;  d0 &lt;= CH_R;</pre></div><div class="why">0으로 나눔: HEX2~0에 ' Err'(E, r, r).</div></div>
+<div class="row"><div class="code"><div class="rng">146~147줄</div><pre><span class="ln">146</span>                elsif SW(2 downto 1) = &quot;11&quot; then             -- division : &quot;quotient r remainder&quot;
+<span class="ln">147</span>                    d3 &lt;= quot;  d1 &lt;= CH_R;  d0 &lt;= remain;</pre></div><div class="why">나눗셈: HEX3=몫, HEX1='r', HEX0=나머지. 예) 7÷3 → <code>2 r1</code>.</div></div>
+<div class="row"><div class="code"><div class="rng">148~149줄</div><pre><span class="ln">148</span>                else
+<span class="ln">149</span>                    if neg = &#x27;1&#x27; then d3 &lt;= MINUS; end if;   -- MINUS = code 17 = &#x27;-&#x27; (d3 is an integer code, not a character)</pre></div><div class="why">+, -, ×: 결과가 음수이면 HEX3에 '-'.</div></div>
+<div class="row"><div class="code"><div class="rng">150~152줄</div><pre><span class="ln">150</span>                    if SW(3) = &#x27;1&#x27; then                      -- hexadecimal result : 2 digits
+<span class="ln">151</span>                        d1 &lt;= result / 16;
+<span class="ln">152</span>                        d0 &lt;= result mod 16;</pre></div><div class="why">16진수 모드: 결과를 16으로 나눈 몫과 나머지로 두 자리를 만든다(225 → E1).</div></div>
+<div class="row"><div class="code"><div class="rng">153~156줄</div><pre><span class="ln">153</span>                    else                                     -- decimal result : 3 digits
+<span class="ln">154</span>                        d2 &lt;= result / 100;
+<span class="ln">155</span>                        d1 &lt;= (result / 10) mod 10;
+<span class="ln">156</span>                        d0 &lt;= result mod 10;</pre></div><div class="why">십진 모드: 세 자리(최대 81).</div></div>
+<div class="row"><div class="code"><div class="rng">157~162줄</div><pre><span class="ln">157</span>                    end if;
+<span class="ln">158</span>                end if;
+<span class="ln">159</span>            end if;
+<span class="ln">160</span>        end if;
+<span class="ln">161</span>    end process;</pre></div><div class="why">열려 있던 <code>if</code>들과 <code>process</code>를 닫는다.</div></div>
 </section>
 <section id="s8"><h2>LCD 출력</h2><p class="intro">HD44780 계열 16×2 문자 LCD에 2.6 ms마다 바이트 하나씩 보낸다.</p>
-<div class="row"><div class="code"><div class="rng">165~167줄</div><pre><span class="ln">165</span>    -- LCD (16x2, HD44780, 8 bit bus, write only) : one byte per 2^17 clocks (2.6 ms), sent in a loop
-<span class="ln">166</span>    -- step 0~5 function set, 6 display on, 7 entry mode, 8 line 1 address, 9~24 line 1 text,
-<span class="ln">167</span>    -- 25 line 2 address, 26~41 line 2 text (after step 41 it goes back to step 8)</pre></div><div class="why">LCD는 8비트 데이터 선으로 쓰기만 하고(busy 확인 없음) 정해진 시간마다 바이트를 보낸다. 번호별 역할: 0~5 초기화(function set), 6 화면 켜기, 7 입력 방식, 8 1행 시작 위치, 9~24 1행 글자, 25 2행 시작 위치, 26~41 2행 글자. 41 다음은 8로 돌아가 글자를 계속 다시 쓴다(내용이 바뀌면 약 0.1초 안에 반영).</div></div>
-<div class="row"><div class="code"><div class="rng">168줄</div><pre><span class="ln">168</span>    LCD_RW  &lt;= &#x27;0&#x27;;  LCD_ON &lt;= &#x27;1&#x27;;  LCD_BLON &lt;= &#x27;1&#x27;;</pre></div><div class="why">RW=0(쓰기 전용), LCD 전원 ON, 백라이트 ON.</div></div>
-<div class="row"><div class="code"><div class="rng">169줄</div><pre><span class="ln">169</span>    LCD_EN  &lt;= &#x27;1&#x27; when tick(16 downto 15) = &quot;10&quot; else &#x27;0&#x27;;   -- pulse in the 3rd quarter, data is stable then</pre></div><div class="why">EN 펄스: 2.6 ms 구간의 세 번째 4분의 1 동안만 1. 데이터는 구간 시작에 이미 정해져 있고, EN이 내려가는 순간 LCD가 값을 읽어 간다.</div></div>
-<div class="row"><div class="code"><div class="rng">170~171줄</div><pre><span class="ln">170</span>    LCD_RS  &lt;= &#x27;1&#x27; when step &gt; 8 and step /= 25 else &#x27;0&#x27;;     -- 1 = text, 0 = command</pre></div><div class="why">RS: 글자를 보내는 번호(9~24, 26~41)일 때 1, 명령일 때 0.</div></div>
-<div class="row"><div class="code"><div class="rng">172~174줄</div><pre><span class="ln">172</span>    process (step, SW, jp)
-<span class="ln">173</span>        variable i : integer range 1 to 32;      -- position in the 32 characters of the text
-<span class="ln">174</span>    begin</pre></div><div class="why">보낼 바이트를 고르는 process. 번호(<code>step</code>), 모드(<code>SW</code>), 잭팟(<code>jp</code>)이 바뀌면 다시 계산한다. <code>i</code>는 32글자 중 몇 번째 글자인지.</div></div>
-<div class="row"><div class="code"><div class="rng">175~176줄</div><pre><span class="ln">175</span>        i := 1;
-<span class="ln">176</span>        if step &gt; 25 then i := step - 9; elsif step &gt; 8 then i := step - 8; end if;</pre></div><div class="why">글자 위치 계산. 1행 글자(9~24번)는 번호-8로 1~16, 2행 글자(26~41번)는 번호-9로 17~32.</div></div>
-<div class="row"><div class="code"><div class="rng">177줄</div><pre><span class="ln">177</span>        if    step &lt; 6  then LCD_DATA &lt;= x&quot;38&quot;;            -- function set : 8 bit bus, 2 lines</pre></div><div class="why">0~5번: <code>x"38"</code> function set(8비트 버스, 2줄). 여러 번 보내서 전원 직후 대기 시간(약 15 ms)을 번다.</div></div>
-<div class="row"><div class="code"><div class="rng">178줄</div><pre><span class="ln">178</span>        elsif step = 6  then LCD_DATA &lt;= x&quot;0C&quot;;            -- display on, cursor off</pre></div><div class="why">6번: <code>x"0C"</code> 화면 켜기, 커서 끔.</div></div>
-<div class="row"><div class="code"><div class="rng">179줄</div><pre><span class="ln">179</span>        elsif step = 7  then LCD_DATA &lt;= x&quot;06&quot;;            -- cursor moves right after each character</pre></div><div class="why">7번: <code>x"06"</code> 글자를 쓸 때마다 커서가 오른쪽으로 이동.</div></div>
-<div class="row"><div class="code"><div class="rng">180줄</div><pre><span class="ln">180</span>        elsif step = 8  then LCD_DATA &lt;= x&quot;80&quot;;            -- go to line 1</pre></div><div class="why">8번: <code>x"80"</code> 1행 맨 앞으로.</div></div>
-<div class="row"><div class="code"><div class="rng">181줄</div><pre><span class="ln">181</span>        elsif step = 25 then LCD_DATA &lt;= x&quot;C0&quot;;            -- go to line 2</pre></div><div class="why">25번: <code>x"C0"</code> 2행 맨 앞으로.</div></div>
-<div class="row"><div class="code"><div class="rng">182~184줄</div><pre><span class="ln">182</span>        elsif jp = &#x27;1&#x27;        then LCD_DATA &lt;= std_logic_vector(to_unsigned(character&#x27;pos(JACKPOT_TXT(i)), 8));
-<span class="ln">183</span>        elsif SW(0) = &#x27;0&#x27;     then LCD_DATA &lt;= std_logic_vector(to_unsigned(character&#x27;pos(COUNTER_TXT(i)), 8));
-<span class="ln">184</span>        else                       LCD_DATA &lt;= std_logic_vector(to_unsigned(character&#x27;pos(CALC_TXT(i)), 8));</pre></div><div class="why">글자 번호이면 문구의 i번째 글자의 ASCII 코드(<code>character'pos</code>)를 보낸다. 우선순위는 잭팟 문구 &gt; 카운터 문구 &gt; 계산기 문구.</div></div>
-<div class="row"><div class="code"><div class="rng">185~187줄</div><pre><span class="ln">185</span>        end if;
-<span class="ln">186</span>    end process;</pre></div><div class="why"><code>if</code>와 <code>process</code>를 닫는다.</div></div>
+<div class="row"><div class="code"><div class="rng">163~165줄</div><pre><span class="ln">163</span>    -- LCD (16x2, HD44780, 8 bit bus, write only) : one byte per 2^17 clocks (2.6 ms), sent in a loop
+<span class="ln">164</span>    -- step 0~5 function set, 6 display on, 7 entry mode, 8 line 1 address, 9~24 line 1 text,
+<span class="ln">165</span>    -- 25 line 2 address, 26~41 line 2 text (after step 41 it goes back to step 8)</pre></div><div class="why"><b>이 블록이 필요한 이유:</b> LCD는 켜 놓는다고 글자가 나오지 않고, 컨트롤러에 명령과 글자를 바이트 단위로 직접 보내 줘야 한다. 이 프로젝트에는 CPU가 없어서 VHDL이 그 일을 한다. 과제 필수가 아니라 잭팟 연출과 모드 표시를 위해 추가한 부분이며, 지워도 카운터·계산기·LED·7세그는 그대로 동작한다. 바이트 번호는 0~41, 총 42개(초기화 명령 8개 + 줄 이동 2개 + 글자 32개). LCD는 8비트 데이터 선으로 쓰기만 하고(busy 확인 없음) 정해진 시간마다 바이트를 보낸다. 번호별 역할: 0~5 초기화(function set), 6 화면 켜기, 7 입력 방식, 8 1행 시작 위치, 9~24 1행 글자, 25 2행 시작 위치, 26~41 2행 글자. 41 다음은 8로 돌아가 글자를 계속 다시 쓴다(내용이 바뀌면 약 0.1초 안에 반영).</div></div>
+<div class="row"><div class="code"><div class="rng">166줄</div><pre><span class="ln">166</span>    LCD_RW  &lt;= &#x27;0&#x27;;  LCD_ON &lt;= &#x27;1&#x27;;  LCD_BLON &lt;= &#x27;1&#x27;;</pre></div><div class="why">RW=0(쓰기 전용), LCD 전원 ON, 백라이트 ON.</div></div>
+<div class="row"><div class="code"><div class="rng">167줄</div><pre><span class="ln">167</span>    LCD_EN  &lt;= &#x27;1&#x27; when tick(16 downto 15) = &quot;10&quot; else &#x27;0&#x27;;   -- pulse in the 3rd quarter, data is stable then</pre></div><div class="why">EN 펄스: 2.6 ms 구간(2<sup>17</sup> 클럭)의 세 번째 4분의 1 동안만 1. <code>tick(16 downto 15)</code> 두 비트는 구간 안에서 00, 01, 10, 11 순서로 바뀌고, <code>"10"</code>이 세 번째다. 데이터는 구간 시작에 이미 정해져 있고, EN이 내려가는 순간(다음 4분의 1이 시작될 때) LCD가 값을 읽어 간다.</div></div>
+<div class="row"><div class="code"><div class="rng">168~169줄</div><pre><span class="ln">168</span>    LCD_RS  &lt;= &#x27;1&#x27; when step &gt; 8 and step /= 25 else &#x27;0&#x27;;     -- 1 = text, 0 = command</pre></div><div class="why">RS: 글자를 보내는 번호(9~24, 26~41)일 때 1, 명령일 때 0.</div></div>
+<div class="row"><div class="code"><div class="rng">170~172줄</div><pre><span class="ln">170</span>    process (step, SW, jp)
+<span class="ln">171</span>        variable i : integer range 1 to 32;      -- position in the 32 characters of the text
+<span class="ln">172</span>    begin</pre></div><div class="why">보낼 바이트를 고르는 process. 번호(<code>step</code>), 모드(<code>SW</code>), 잭팟(<code>jp</code>)이 바뀌면 다시 계산한다. <code>i</code>는 32글자 중 몇 번째 글자인지.</div></div>
+<div class="row"><div class="code"><div class="rng">173~174줄</div><pre><span class="ln">173</span>        i := 1;
+<span class="ln">174</span>        if step &gt; 25 then i := step - 9; elsif step &gt; 8 then i := step - 8; end if;</pre></div><div class="why">글자 위치 계산. 1행 글자(9~24번)는 번호-8로 1~16, 2행 글자(26~41번)는 번호-9로 17~32.</div></div>
+<div class="row"><div class="code"><div class="rng">175줄</div><pre><span class="ln">175</span>        if    step &lt; 6  then LCD_DATA &lt;= x&quot;38&quot;;            -- function set : 8 bit bus, 2 lines (repeated = also the power-up wait)</pre></div><div class="why">0~5번: <code>x"38"</code> function set. <code>0011 1000</code>에서 DL=1(8비트 버스), N=1(<b>2줄 모드</b>, 이 LCD가 16×2라서), 글자 크기 5×8. 같은 명령을 여러 번 보내는 것은 전원 직후 LCD가 준비될 때까지 <b>시간을 벌기 위해서</b>다(function set은 반복해도 부작용이 없다). 별도 타이머 없이 <code>step</code> 박자(2.6 ms)를 그대로 쓴다. 계산상 마지막 <code>x"38"</code>이 시작 후 약 12.5 ms, <code>x"0C"</code>가 약 15 ms 지점이라 규격(약 15 ms 대기)에 아슬아슬하다. 보드에서 LCD가 비면 이 대기를 늘려야 한다.</div></div>
+<div class="row"><div class="code"><div class="rng">176줄</div><pre><span class="ln">176</span>        elsif step = 6  then LCD_DATA &lt;= x&quot;0C&quot;;            -- display on, cursor off</pre></div><div class="why">6번: <code>x"0C"</code> 화면 켜기, 커서 끔.</div></div>
+<div class="row"><div class="code"><div class="rng">177줄</div><pre><span class="ln">177</span>        elsif step = 7  then LCD_DATA &lt;= x&quot;06&quot;;            -- cursor moves right after each character</pre></div><div class="why">7번: <code>x"06"</code> 글자를 쓸 때마다 커서가 오른쪽으로 이동.</div></div>
+<div class="row"><div class="code"><div class="rng">178줄</div><pre><span class="ln">178</span>        elsif step = 8  then LCD_DATA &lt;= x&quot;80&quot;;            -- go to line 1</pre></div><div class="why">8번: <code>x"80"</code> 1행 맨 앞으로.</div></div>
+<div class="row"><div class="code"><div class="rng">179줄</div><pre><span class="ln">179</span>        elsif step = 25 then LCD_DATA &lt;= x&quot;C0&quot;;            -- go to line 2</pre></div><div class="why">25번: <code>x"C0"</code> 2행 맨 앞으로.</div></div>
+<div class="row"><div class="code"><div class="rng">180~182줄</div><pre><span class="ln">180</span>        elsif jp = &#x27;1&#x27;        then LCD_DATA &lt;= std_logic_vector(to_unsigned(character&#x27;pos(JACKPOT_TXT(i)), 8));
+<span class="ln">181</span>        elsif SW(0) = &#x27;0&#x27;     then LCD_DATA &lt;= std_logic_vector(to_unsigned(character&#x27;pos(COUNTER_TXT(i)), 8));
+<span class="ln">182</span>        else                       LCD_DATA &lt;= std_logic_vector(to_unsigned(character&#x27;pos(CALC_TXT(i)), 8));</pre></div><div class="why">글자 번호이면 문구의 i번째 글자의 ASCII 코드(<code>character'pos</code>)를 보낸다. 우선순위는 잭팟 문구 &gt; 카운터 문구 &gt; 계산기 문구.</div></div>
+<div class="row"><div class="code"><div class="rng">183~185줄</div><pre><span class="ln">183</span>        end if;
+<span class="ln">184</span>    end process;</pre></div><div class="why"><code>if</code>와 <code>process</code>를 닫는다.</div></div>
 </section>
 <section id="s9"><h2>출력 연결</h2><p class="intro">문자 코드를 7세그 패턴으로 바꿔 핀으로 내보낸다.</p>
-<div class="row"><div class="code"><div class="rng">188~189줄</div><pre><span class="ln">188</span>    HEX0 &lt;= SEG7(d0);  HEX1 &lt;= SEG7(d1);  HEX2 &lt;= SEG7(d2);  HEX3 &lt;= SEG7(d3);
-<span class="ln">189</span>    HEX4 &lt;= SEG7(d4);  HEX5 &lt;= SEG7(d5);  HEX6 &lt;= SEG7(d6);  HEX7 &lt;= SEG7(d7);</pre></div><div class="why">문자 코드 <code>dN</code>을 <code>SEG7</code> 표에서 찾아 <code>HEXN</code> 핀으로 내보낸다.</div></div>
-<div class="row"><div class="code"><div class="rng">190줄</div><pre><span class="ln">190</span>end behavior;</pre></div><div class="why">architecture 끝.</div></div>
+<div class="row"><div class="code"><div class="rng">186~187줄</div><pre><span class="ln">186</span>    HEX0 &lt;= SEG7(d0);  HEX1 &lt;= SEG7(d1);  HEX2 &lt;= SEG7(d2);  HEX3 &lt;= SEG7(d3);
+<span class="ln">187</span>    HEX4 &lt;= SEG7(d4);  HEX5 &lt;= SEG7(d5);  HEX6 &lt;= SEG7(d6);  HEX7 &lt;= SEG7(d7);</pre></div><div class="why">문자 코드 <code>dN</code>을 <code>SEG7</code> 표에서 찾아 <code>HEXN</code> 핀으로 내보낸다.</div></div>
+<div class="row"><div class="code"><div class="rng">188줄</div><pre><span class="ln">188</span>end behavior;</pre></div><div class="why">architecture 끝.</div></div>
 </section>
 
-<section id="qa"><h2>발표 예상 질문</h2><p class="intro">코드를 보지 않고 답해 보면 좋은 질문.</p><details><summary>버튼을 길게 눌러도 왜 한 번만 오르나?</summary><p>70~71줄에서 버튼을 두 클럭에 걸쳐 저장하고, 77~84줄이 <code>k2='1' and k1='0'</code>(1→0으로 바뀐 순간)에만 값을 바꾼다. 누르고 있는 동안은 k2와 k1이 모두 0이라 조건이 거짓이다.</p></details><details><summary>뺄셈이 음수면 어떻게 처리하나?</summary><p>111~117줄에서 큰 수에서 작은 수를 빼서 <code>result</code>에 절댓값을 넣고 <code>neg</code>를 1로 둔다. 표시 단계(150~151줄)가 HEX3에 '-'를 붙인다.</p></details><details><summary>나머지는 어떻게 구하나?</summary><p>119~124줄: 몫 <code>q = a / b</code>를 먼저 구하고 <code>a - q*b</code>가 나머지다.</p></details><details><summary>16진수 결과는 어떻게 두 자리로 나누나?</summary><p>152~154줄: 결과를 16으로 나눈 몫이 HEX1, 나머지가 HEX0. 225는 14와 1이라서 E1이다.</p></details><details><summary>동시에 버튼 두 개를 누르면?</summary><p>77~84줄이 <code>elsif</code> 체인이라 KEY0 &gt; KEY3 &gt; KEY2 &gt; KEY1 순서로 하나만 적용된다.</p></details><details><summary>777일 때 LEDR의 이진수 표시는 어떻게 되나?</summary><p>92~93줄에서 잭팟이면 이진수 대신 <code>tick(23)</code>을 따라 전체가 깜빡인다. 잭팟이 끝나면 다시 이진수로 돌아온다.</p></details><details><summary>LCD는 왜 busy 상태를 읽지 않나?</summary><p>코드를 짧게 하려고 바이트마다 약 2.6 ms를 기다리는 고정 시간 방식을 썼다. 실제 LCD에서의 동작은 보드에서 확인해야 한다.</p></details></section>
+<section id="qa"><h2>발표 예상 질문</h2><p class="intro">코드를 보지 않고 답해 보면 좋은 질문.</p><details><summary>버튼을 길게 눌러도 왜 한 번만 오르나?</summary><p>70~71줄에서 버튼을 두 클럭에 걸쳐 저장하고, 77~84줄이 <code>k2='1' and k1='0'</code>(1→0으로 바뀐 순간)에만 값을 바꾼다. 누르고 있는 동안은 k2와 k1이 모두 0이라 조건이 거짓이다.</p></details><details><summary>뺄셈이 음수면 어떻게 처리하나?</summary><p>110~116줄에서 큰 수에서 작은 수를 빼서 <code>result</code>에 절댓값을 넣고 <code>neg</code>를 1로 둔다. 표시 단계(148~149줄)가 HEX3에 '-'를 붙인다.</p></details><details><summary>나머지는 어떻게 구하나?</summary><p>118~122줄: 몫은 <code>a / b</code>, 나머지는 <code>a mod b</code>로 구한다.</p></details><details><summary>16진수 결과는 어떻게 두 자리로 나누나?</summary><p>150~152줄: 결과를 16으로 나눈 몫이 HEX1, 나머지가 HEX0. 225는 14와 1이라서 E1이다.</p></details><details><summary>동시에 버튼 두 개를 누르면?</summary><p>77~84줄이 <code>elsif</code> 체인이라 KEY0 &gt; KEY3 &gt; KEY2 &gt; KEY1 순서로 하나만 적용된다.</p></details><details><summary>777일 때 LEDR의 이진수 표시는 어떻게 되나?</summary><p>92~93줄에서 잭팟이면 이진수 대신 <code>tick(23)</code>을 따라 전체가 깜빡인다. 잭팟이 끝나면 다시 이진수로 돌아온다.</p></details><details><summary>LCD는 왜 busy 상태를 읽지 않나?</summary><p>코드를 짧게 하려고 바이트마다 약 2.6 ms를 기다리는 고정 시간 방식을 썼다. 실제 LCD에서의 동작은 보드에서 확인해야 한다.</p></details><details><summary>LCD 코드(163~184줄)는 왜 필요하고, 지워도 되나?</summary><p>LCD는 FPGA가 명령과 글자를 바이트 단위로 보내 줘야 글자가 나온다. 과제 필수가 아니라 잭팟 문구와 모드 표시를 위한 추가 기능이다. 지워도 나머지 기능은 그대로 동작하지만, 우리는 유지하기로 했다.</p></details><details><summary>LCD를 왜 2줄로 설정하나?</summary><p>175줄의 <code>x"38"</code>에서 N 비트가 1이면 2줄 모드다. DE2의 LCD가 16×2라서 2행도 써야 하고, 그래서 문구가 16글자 + 16글자인 32글자다. 1줄 모드(<code>x"30"</code>)면 2행 글자가 안 나온다. (HD44780 일반 규격 기준, 이 보드의 데이터시트와는 대조하지 않았다.)</p></details><details><summary><code>x"38"</code>을 여러 번 보내는 이유는?</summary><p>전원 직후 LCD가 준비될 때까지 시간을 벌기 위해서다. function set은 반복해도 안전하고, <code>step</code> 박자(2.6 ms)를 그대로 대기 시간으로 쓴다. 다만 계산상 약 12.5~15 ms라 규격에 아슬아슬해서, 보드에서 LCD가 비면 이 구간을 늘려야 한다.</p></details><details><summary>EN 신호는 왜 <code>tick(16 downto 15) = "10"</code>인가?</summary><p>2.6 ms 구간을 4등분하면 이 두 비트가 00, 01, 10, 11로 바뀐다. 세 번째 구간에서 EN을 1로 올리면, 데이터가 이미 안정된 뒤에 EN이 내려가며 LCD가 값을 읽는다.</p></details><details><summary>바이트 번호가 왜 41까지인가?</summary><p>LCD에 보내는 바이트가 초기화 명령 8개, 줄 이동 2개, 글자 32개로 총 42개라서 0~41이다. 41 다음은 초기화를 건너뛰고 8번으로 돌아가 글자만 계속 다시 쓴다.</p></details><details><summary>왜 문구를 32글자로 만드나?</summary><p>16×2 LCD는 칸이 32개라서 문구를 칸 수에 맞춘다. 2행을 공백으로 채워 두어야 잭팟이 끝났을 때 이전 축하 문구가 지워진다.</p></details><details><summary><code>integer</code>와 <code>unsigned</code>는 왜 나눠 쓰나?</summary><p><code>integer</code>는 범위만 정하면 되는 숫자라서 계산과 비교(<code>/</code>, <code>mod</code>, <code>&gt;</code>)에 쓴다(<code>cnt</code>, <code>a</code>, <code>b</code>). <code>unsigned</code>는 비트 묶음을 음수 없는 숫자로 보는 타입이라 한 비트만 꺼내 쓰거나(<code>tick(23)</code>) 스위치 비트를 숫자로 바꿀 때 쓴다.</p></details><details><summary><code>mod 10</code>은 무슨 뜻인가?</summary><p>10으로 나눈 나머지, 즉 십진수의 마지막 자리다. <code>cnt mod 10</code>이 일의 자리, <code>(cnt / 10) mod 10</code>이 십의 자리다.</p></details><details><summary><code>MINUS</code>를 놔두고 <code>'-'</code>를 쓰면 안 되나?</summary><p><code>d3</code>는 문자 코드(정수 0~18)를 담는 신호라서 문자 <code>'-'</code>를 넣을 수 없다. <code>MINUS</code>는 코드 17이고, 7세그 표 17번 칸이 '-' 모양이다.</p></details><details><summary>HEX7~4에 7777은 왜 띄우나?</summary><p>카운터 모드에서 쓰지 않는 왼쪽 네 칸을 잭팟 연출에 쓴다. 777일 때만 <code>d7~d4</code>를 7로 덮어쓴다.</p></details></section>
 
-<section id="notes"><h2>알아둘 점</h2><ul><li>시뮬레이션(ModelSim)에서 카운터, 계산기 전 조합, LCD 글자, LED 점멸을 2133개 검사해 통과했다. Quartus 합성과 보드 동작은 확인하지 않았다.</li><li>LCD 핀 번호는 공개 저장소의 DE2용 <code>.qsf</code> 두 곳이 같은 값을 줘서 쓴 것이고, DE2 User Manual 원문과는 대조하지 않았다.</li><li>합성에서 의심되는 곳: 4비트 나눗셈(121줄), 문자열 상수를 번호로 읽는 부분(<code>character'pos</code>, 182~184줄).</li><li>이 문서는 190줄 버전 기준이다. 이전 <code>DE2_Project1_code_explanation.html</code>은 169줄 버전 기준이라 줄 번호가 맞지 않는다.</li></ul></section>
+<section id="notes"><h2>알아둘 점</h2><ul><li>시뮬레이션(ModelSim)에서 카운터, 계산기 전 조합, LCD 글자, LED 점멸을 2133개 검사해 통과했다. Quartus 합성과 보드 동작은 확인하지 않았다.</li><li>LCD 핀 번호는 공개 저장소의 DE2용 <code>.qsf</code> 두 곳이 같은 값을 줘서 쓴 것이고, DE2 User Manual 원문과는 대조하지 않았다.</li><li>Quartus Analysis &amp; Synthesis(<code>quartus_map</code>)는 통과했다(오류 0). 배치·배선, 타이밍, 보드 동작은 확인하지 않았다.</li><li>LCD 초기화(0~7번)는 전원 직후 한 번만 보내고 이후 루프는 8~41번만 반복한다. 대기가 부족하면 LCD가 빈 채로 남을 수 있으니 보드에서 가장 먼저 확인한다.</li><li>이 문서는 188줄 버전 기준이다. 이전 <code>DE2_Project1_code_explanation.html</code>은 169줄 버전 기준이라 줄 번호가 맞지 않는다.</li></ul></section>
 </main>
 </body>
 </html>

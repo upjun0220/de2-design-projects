@@ -56,7 +56,7 @@ architecture behavior of DE2_Project1 is
     constant COUNTER_TXT : string(1 to 32) := "COUNTER         " & "                ";
     constant CALC_TXT    : string(1 to 32) := "CALCULATOR      " & "                ";
     constant JACKPOT_TXT : string(1 to 32) := "* JACKPOT  777 *" & "CONGRATULATIONS!";
-    signal tick : unsigned(25 downto 0) := (others => '0');  -- free running counter (LED flash, LCD timing)
+    signal tick : unsigned(23 downto 0) := (others => '0');  -- free running counter (LED flash, LCD timing)
     signal step : integer range 0 to 41 := 0;                -- which byte the LCD gets now
     signal jp   : std_logic;                                 -- 1 = jackpot (counter mode and value 777)
 begin
@@ -100,7 +100,6 @@ begin
     valid <= '1' when SW(3) = '1' or (a < 10 and b < 10) else '0';
 
     process (SW, a, b)
-        variable q : integer range 0 to 15;
     begin
         result <= 0;
         quot <= 0;
@@ -118,9 +117,8 @@ begin
             when "10" => result <= a * b;
             when others =>
                 if b /= 0 then
-                    q := to_integer(to_unsigned(a, 4) / to_unsigned(b, 4));
-                    quot <= q;
-                    remain <= a - q * b;     -- remainder = a - quotient * b
+                    quot <= a / b;
+                    remain <= a mod b;
                 end if;
         end case;
     end process;
@@ -148,7 +146,7 @@ begin
                 elsif SW(2 downto 1) = "11" then             -- division : "quotient r remainder"
                     d3 <= quot;  d1 <= CH_R;  d0 <= remain;
                 else
-                    if neg = '1' then d3 <= MINUS; end if;
+                    if neg = '1' then d3 <= MINUS; end if;   -- MINUS = code 17 = '-' (d3 is an integer code, not a character)
                     if SW(3) = '1' then                      -- hexadecimal result : 2 digits
                         d1 <= result / 16;
                         d0 <= result mod 16;
@@ -174,7 +172,7 @@ begin
     begin
         i := 1;
         if step > 25 then i := step - 9; elsif step > 8 then i := step - 8; end if;
-        if    step < 6  then LCD_DATA <= x"38";            -- function set : 8 bit bus, 2 lines
+        if    step < 6  then LCD_DATA <= x"38";            -- function set : 8 bit bus, 2 lines (repeated = also the power-up wait)
         elsif step = 6  then LCD_DATA <= x"0C";            -- display on, cursor off
         elsif step = 7  then LCD_DATA <= x"06";            -- cursor moves right after each character
         elsif step = 8  then LCD_DATA <= x"80";            -- go to line 1

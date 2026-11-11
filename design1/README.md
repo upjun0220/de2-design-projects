@@ -1,6 +1,6 @@
 # Design Project #1 — Counter + One Digit Calculator
 
-DE2 보드(Cyclone II EP2C35F672C6), Quartus II 13.0 SP1, **VHDL**. 파일 하나(`src/DE2_Project1.vhd`, 190줄)로 구성한다.
+DE2 보드(Cyclone II EP2C35F672C6), Quartus II 13.0 SP1, **VHDL**. 파일 하나(`src/DE2_Project1.vhd`, 188줄)로 구성한다.
 시연 11/26, 최종 보고서 12/21. 평가: 카운터 정상 동작, 사칙연산과 0으로 나누기 예외 처리, 읽기 쉽고 간결한 코드(줄 수 최소화), 소스코드 발표에서의 이해도.
 
 ## 동작
@@ -60,4 +60,5 @@ sh sim/run_sim.sh
 
 - LCD 핀(`LCD_DATA`, `LCD_RS`, `LCD_RW`, `LCD_EN`, `LCD_ON`, `LCD_BLON`)은 서로 다른 공개 저장소 두 곳의 DE2용 `.qsf`가 같은 값을 줘서 쓴 것이며, DE2 User Manual 원문과는 대조하지 않았다. LCD가 안 나오면 먼저 매뉴얼과 대조한다.
 - LCD 초기화는 busy 플래그를 읽지 않고 고정 대기 시간(바이트당 약 2.6 ms)으로 보낸다. 시뮬레이션에서 글자 내용은 확인했지만 실제 LCD 동작은 보드에서 확인해야 한다.
-- 보너스 포함 최종 버전의 Quartus 컴파일과 보드 동작은 사용자가 확인한다. 컴파일에서 의심되는 곳은 정수 `/`, 상수에 대한 `mod`, `numeric_std`의 `/`(나눗셈)이다.
+- 전원 직후 대기는 function set(`x"38"`)을 반복해서 번다. 계산상 `x"0C"`가 시작 후 약 15 ms 지점이라 규격(약 15 ms)에 여유가 크지 않고, 초기화(0~7번)는 처음 한 번만 보낸다. 보드에서 LCD가 비어 있으면 이 대기 구간을 늘린다.
+- Quartus Analysis & Synthesis(`quartus_map`, Cyclone II EP2C35F672C6)는 통과했다(오류 0, 논리 소자 1,767개). 핀 할당을 포함한 전체 컴파일(Fitter), 타이밍, 보드 동작은 사용자가 확인한다.
