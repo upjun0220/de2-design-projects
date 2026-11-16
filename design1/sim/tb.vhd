@@ -15,8 +15,7 @@ architecture sim of tb is
     signal LCD_DATA : std_logic_vector(7 downto 0);
     signal LCD_RS, LCD_RW, LCD_EN, LCD_ON, LCD_BLON : std_logic;
     signal screen : string(1 to 32) := (others => ' ');   -- what the LCD shows (line 1 then line 2)
-    constant TXT_COUNTER : string(1 to 32) := "COUNTER         " & "                ";
-    constant TXT_CALC    : string(1 to 32) := "CALCULATOR      " & "                ";
+    constant TXT_BLANK   : string(1 to 32) := "                " & "                ";
     constant TXT_JACKPOT : string(1 to 32) := "* JACKPOT  777 *" & "CONGRATULATIONS!";
 
     function ch(s : std_logic_vector(6 downto 0)) return character is
@@ -100,19 +99,16 @@ begin
             end if;
         end procedure;
 
-        -- counter shows v on HEX3~0 and binary on LEDR, jackpot at 777 : 7777, red and green LEDs flash by turns
+        -- counter shows v on HEX3~0 and binary on LEDR, jackpot at 777 : 7777, all green LEDs flash together
         procedure cnt_is(v : integer; name : string) is
             variable pre : string(1 to 4);
         begin
             if v = 777 then pre := "7777"; else pre := "    "; end if;
             compare(pre & hx(v / 1000) & hx((v / 100) mod 10) & hx((v / 10) mod 10) & hx(v mod 10), name);
             checks := checks + 1;
-            if v = 777 then       -- all red on and all green off, or the opposite
-                if LEDR /= (17 downto 0 => LEDR(0)) or LEDG /= (7 downto 0 => not LEDR(0)) then
-                    errors := errors + 1;
-                    report "FAIL " & name & ": jackpot LEDs wrong";
-                end if;
-            elsif LEDR /= std_logic_vector(to_unsigned(v, 18)) or LEDG /= "00000000" then
+            -- red = value in binary always, green = all off, at the jackpot all the same (flashing)
+            if LEDR /= std_logic_vector(to_unsigned(v, 18)) or
+               (v /= 777 and LEDG /= "00000000") or (v = 777 and LEDG /= (7 downto 0 => LEDG(0))) then
                 errors := errors + 1;
                 report "FAIL " & name & ": LEDs wrong";
             end if;
@@ -214,7 +210,7 @@ begin
         wait for 150 ms;                                -- LCD : about 21 ms start-up, then 32 characters in about 90 ms
         compare_lcd(TXT_JACKPOT, "LCD jackpot");
         for i in 1 to 5 loop                            -- LEDs must flash : both states within 200 ms
-            if LEDR(0) = '1' then hi := true; else lo := true; end if;
+            if LEDG(0) = '1' then hi := true; else lo := true; end if;
             cnt_is(777, "777 jackpot flashing");
             wait for 50 ms;
         end loop;
@@ -225,7 +221,7 @@ begin
         end if;
         press(3, 20);    cnt_is(778, "778 jackpot off");
         wait for 100 ms;
-        compare_lcd(TXT_COUNTER, "LCD counter mode");
+        compare_lcd(TXT_BLANK, "LCD blank after jackpot");
         press(1, 20);    cnt_is(777, "777 again jackpot on");
         SW(0) <= '1';  wait for 1 ns;
         checks := checks + 1;
@@ -234,7 +230,7 @@ begin
             report "FAIL LEDs must be off in calculator mode";
         end if;
         wait for 100 ms;                                -- LCD rewrites all characters in about 90 ms
-        compare_lcd(TXT_CALC, "LCD calculator mode");
+        compare_lcd(TXT_BLANK, "LCD blank in calculator mode");
         SW(0) <= '0';  wait for 1 ns;
         cnt_is(777, "back to counter mode, value kept");
         -- simultaneous press
