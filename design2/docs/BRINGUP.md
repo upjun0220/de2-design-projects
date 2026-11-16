@@ -44,7 +44,7 @@ nios2-terminal
 ```
 
 센서 없이 먼저 올려 본다. 기대 동작: 터미널에 스캔 결과 없음, LCD에 `SENSORS OK 0/4`, 이어서 `BASELINE`, `READY`.
-여기서 멈추면 센서 문제가 아니라 보드·SDRAM 문제다. 가장 의심할 곳은 SDRAM 클럭 위상(`de2_top.v`의 -3 ns)이다.
+여기서 멈추면 센서 문제가 아니라 보드·SDRAM 문제다. `nios2-download`에서 `Verify failed between address 0x800000 ...`가 나오면 SDRAM 클럭 위상 문제다. 2026-11-16 실물 확인: -3 ns(Altera 예제 값)와 -4 ns는 실패, **-1 ns에서 성공**. 정식 코드(`quartus/de2_top.v`)는 -1 ns다. 위상만 바꾼 이미지는 `build/q`를 복사해 `de2_top.v`의 `clk0_phase_shift`만 고치고 `quartus_sh --flow compile magic_pen`으로 만들 수 있다.
 
 ## 3. 센서 한 개로 I²C 확인 (센서 도착 당일 필수)
 

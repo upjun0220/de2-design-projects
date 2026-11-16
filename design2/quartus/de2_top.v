@@ -1,8 +1,10 @@
 // de2_top.v - board top level: connects the Qsys system to the DE2 pins.
 //
 // KEY[3] is the reset. KEY[2:0] and SW go to the CPU through one input PIO.
-// SDRAM clock: 50 MHz shifted by -3 ns so data settles before the chip samples it
-// (same as Altera's DE2 SDRAM tutorial).
+// SDRAM clock: 50 MHz shifted earlier so data settles before the chip samples it.
+// Altera's DE2 example uses -3 ns, but there the CPU clock also comes from the PLL.
+// Here the CPU runs straight from CLOCK_50, which arrives later through the clock
+// network, so a smaller shift is needed. Measured on the board: -1 ns works.
 //
 // Sensors (3.3 V only, header pin numbers in brackets):
 //   bus 0: SDA GPIO_0[0]  (1),  SCL GPIO_0[2]  (3)
@@ -90,7 +92,7 @@ module de2_top (
         .inclk0_input_frequency(20000),
         .clk0_multiply_by(1),
         .clk0_divide_by(1),
-        .clk0_phase_shift("-3000"),
+        .clk0_phase_shift("-1000"),   // found on the board: -3 and -4 ns fail, -1 ns works (2026-11-16)
         .clk0_duty_cycle(50),
         .port_clk0("PORT_USED")
     ) u_sdram_pll (
