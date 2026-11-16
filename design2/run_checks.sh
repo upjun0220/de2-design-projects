@@ -21,11 +21,11 @@ echo "--- 2. C code on the PC against Python, bit by bit"
 (cd pc && python gen_golden.py ../build/golden.txt)
 gcc_cyg() { ( PATH="$CYG:$PATH"; cd nios && "$CYG/gcc" -std=gnu99 -O1 -Wall -Wextra "$@" ) > build/gcc.log 2>&1 || { cat build/gcc.log; exit 1; }; grep -E "warning|error" build/gcc.log || true; }
 run_cyg() { ( PATH="$CYG:$PATH"; "$@" ) 2>/dev/null; }
-gcc_cyg -o ../build/test_host.exe test_host.c position.c signature.c dtw.c decide.c display.c ui.c
-gcc_cyg -DTEST_MOUNT -o ../build/test_mount.exe test_host.c position.c signature.c dtw.c decide.c display.c ui.c
+gcc_cyg -o ../build/test_host.exe test_host.c position.c signature.c dtw.c decide.c display.c ui.c relay.c
+gcc_cyg -DTEST_MOUNT -o ../build/test_mount.exe test_host.c position.c signature.c dtw.c decide.c display.c ui.c relay.c
 run_cyg ./build/test_host.exe build/golden.txt build/screen.txt | tee build/c.log
 grep -q "C core OK" build/c.log
-(cd pc && python render_screen.py ../build/screen.txt ../build/screen.png)
+(cd pc && python render_screen.py ../build/screen.txt ../build/screen.png && python screen.py --check ../build/screen.txt)
 run_cyg ./build/test_mount.exe | tee build/c2.log
 grep -q "mount OK" build/c2.log
 

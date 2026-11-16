@@ -143,8 +143,16 @@ static void test_screen(void)
 static uint8_t scr_ch[UI_ROWS][UI_COLS], scr_attr[UI_ROWS][UI_COLS];
 static int scr_bad = 0;
 
+static FILE *relay_file;
+
+void relay_out(const char *s)
+{
+    if (relay_file) fputs(s, relay_file);
+}
+
 void ui_cell(int col, int row, uint8_t ch, uint8_t attr)
 {
+    relay_cell(col, row, ch, attr);
     if (col < 0 || col >= UI_COLS || row < 0 || row >= UI_ROWS || ch == 0 || ch > 127) { scr_bad++; return; }
     scr_ch[row][col] = ch;
     scr_attr[row][col] = attr;
@@ -188,6 +196,22 @@ static void test_ui(void)
     ui_time(138, 310400);
     ui_status("ready");
 
+    if (dump_path) {
+        /* the same screen as relay lines, with lines and a cursor, for pc/screen.py --check */
+        char rp[256];
+        snprintf(rp, sizeof(rp), "%s.relay", dump_path);
+        relay_file = fopen(rp, "w");
+        relay_flush();
+        relay_clear();
+        relay_line(10, 20, 150, 40);
+        relay_line(150, 40, 60, 170);
+        relay_cursor(1, C_GREEN, 60, 170);
+        relay_cursor(1, C_GREEN, 60, 170);      /* unchanged: must not be sent again */
+        relay_refresh_row();                    /* row 0 again, unchanged content */
+        relay_flush();
+        fclose(relay_file);
+        relay_file = NULL;
+    }
     if (dump_path) {
         FILE *f = fopen(dump_path, "w");
         int r, c;
@@ -268,6 +292,7 @@ static void test_mount(void)
 
 int main(int argc, char **argv)
 {
+    relay_init();
     test_mount();
 #ifdef TEST_MOUNT
     if (fails) { printf("FAILED mount\n"); return 1; }

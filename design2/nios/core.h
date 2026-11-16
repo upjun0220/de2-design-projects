@@ -61,6 +61,16 @@ enum { BANNER_INFO, BANNER_OK, BANNER_BAD };
  * attr = background << 4 | text colour. */
 void ui_cell(int col, int row, uint8_t ch, uint8_t attr);
 
+/* ---- relay.c: the same screen, sent to the laptop (pc/screen.py) ---- */
+void relay_out(const char *s);              /* supplied by the platform, like ui_cell */
+void relay_init(void);
+void relay_cell(int col, int row, uint8_t ch, uint8_t attr);
+void relay_flush(void);
+void relay_refresh_row(void);
+void relay_clear(void);
+void relay_line(int x0, int y0, int x1, int y1);
+void relay_cursor(int on, int colour, int x, int y);
+
 void ui_frame(void);
 void ui_title(int mode, int use_hw, int sensors_ok);
 void ui_status(const char *s);

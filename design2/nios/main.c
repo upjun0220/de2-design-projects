@@ -8,7 +8,8 @@
  *   KEY0 re-measure baseline (pen away), KEY1 end signature, KEY2 cancel last enrolled
  *   KEY3 is the hardware reset.
  * Display: LCD result, HEX latency in us, LEDG all = enrolled person, LEDR blink = not.
- * Monitor: the whole state (nios/ui.c, docs/vga-ui-mockup.html).
+ * Monitor: the whole state (nios/ui.c, docs/vga-ui-mockup.html). The same screen also goes
+ * to the laptop over the JTAG UART (nios/relay.c, pc/screen.py) for use without a monitor.
  * SW[7]: LEDR shows the field strength at each sensor (for checking wiring).
  *
  * Bring-up: at power up the LCD shows which of the four sensors answer, and the
@@ -73,6 +74,12 @@ static uint32_t read_inputs(void)
 void ui_cell(int col, int row, uint8_t ch, uint8_t attr)
 {
     IOWR(VGA_0_BASE, VGA_TEXT + row * UI_COLS + col, (attr << 8) | ch);
+    relay_cell(col, row, ch, attr);
+}
+
+void relay_out(const char *s)
+{
+    fputs(s, stdout);
 }
 
 static void vga_xy_line(int x0, int y0, int x1, int y1)
@@ -80,6 +87,7 @@ static void vga_xy_line(int x0, int y0, int x1, int y1)
     while (IORD(VGA_0_BASE, VGA_CTRL) & 1) ;
     IOWR(VGA_0_BASE, VGA_FROM, (y0 << 16) | x0);
     IOWR(VGA_0_BASE, VGA_TO, (y1 << 16) | x1);
+    relay_line(x0, y0, x1, y1);
 }
 
 static void vga_line(const pen_pos *a, const pen_pos *b)
@@ -97,6 +105,7 @@ static void vga_pad_reset(void)
     int i;
     while (IORD(VGA_0_BASE, VGA_CTRL) & 1) ;
     IOWR(VGA_0_BASE, VGA_CTRL, 1);
+    relay_clear();
     for (i = 16; i < 176; i += 6) {
         vga_xy_line(i, 16, i + 2, 16);
         vga_xy_line(i, 176, i + 2, 176);
@@ -113,6 +122,7 @@ static void vga_cursor(const pen_pos *p, int present, int down)
     int x, y;
     screen_xy(p, &x, &y);
     IOWR(VGA_0_BASE, VGA_CURSOR, ((uint32_t)(present != 0) << 31) | ((uint32_t)(down ? C_GREEN : C_DIM) << 24) | (y << 16) | x);
+    relay_cursor(present, down ? C_GREEN : C_DIM, x, y);
 }
 
 /* Small helpers for the text lines built here. sprintf is fine: these run per event, not per frame. */
@@ -209,6 +219,7 @@ static void baseline_measure(uint32_t *last, int32_t base[12])
         for (k = 0; k < 12; k++) sum[k] += lsb[k];
         n++;
         ui_bar(4, 18, 32, n * 256 / BASELINE_FRAMES, C_BLUE);
+        relay_flush();
     }
     for (k = 0; k < 12; k++) base[k] = (int32_t)(sum[k] / BASELINE_FRAMES);
     lcd_show("READY", "SIGN ON PAPER");
@@ -376,6 +387,7 @@ int main(void)
     lcd = fopen("/dev/lcd_0", "w");
     memset(people, 0, sizeof(people));
     sig_reset(&sig);
+    relay_init();
     ui_frame();
     ui_pen(&prev_pos, 0, 0);
 
@@ -395,6 +407,7 @@ int main(void)
     lcd_show(line, "");
     ui_put(3, 12, line, n_ok == 4 ? C_GREEN : C_RED);
     ui_title(0, 0, n_ok);
+    relay_flush();
     usleep(1000000);
     baseline_measure(&last_frame, base);
 
@@ -473,6 +486,11 @@ int main(void)
                 printf(",%d,%d,%d,%d,%d,%d,%lu\n", pos.x, pos.y, pos.z, pos.ux, pos.uy, sig.is_down, (unsigned long)us_mlp);
             }
         }
+        /* Laptop screen: send what changed, and one whole row every 10 frames so a
+         * laptop that connects late is complete within 6 s. */
+        if (last_frame % 10 == 0) relay_refresh_row();
+        relay_flush();
+
         if (pressed & 2) {
             ev = sig_finish(&sig);
             if (mode == 2) {

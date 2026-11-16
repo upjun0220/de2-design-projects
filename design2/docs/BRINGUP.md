@@ -43,6 +43,14 @@ nios2-download -g design2/build/app/magic_pen.elf
 nios2-terminal
 ```
 
+**모니터가 없으면** `nios2-terminal` 대신 노트북 화면 프로그램을 띄운다. 보드의 VGA 화면이 노트북 창에 그대로 나오고, 터미널 출력(I²C 스캔 결과 등)도 같은 창 뒤의 명령 창에 찍힌다.
+
+```bash
+python design2/pc/screen.py
+```
+
+`nios2-terminal`과 `screen.py`는 동시에 쓸 수 없다(보드와의 연결이 하나뿐). 데이터 수집 때는 `python design2/pc/screen.py --log design2/pc/data/파일이름.log`로 화면과 로그 저장을 함께 한다.
+
 센서 없이 먼저 올려 본다. 기대 동작: 터미널에 스캔 결과 없음, LCD에 `SENSORS OK 0/4`, 이어서 `BASELINE`, `READY`.
 여기서 멈추면 센서 문제가 아니라 보드·SDRAM 문제다. `nios2-download`에서 `Verify failed between address 0x800000 ...`가 나오면 SDRAM 클럭 위상 문제다. 2026-11-16 실물 확인: -3 ns(Altera 예제 값)와 -4 ns는 실패, **-1 ns에서 성공**. 정식 코드(`quartus/de2_top.v`)는 -1 ns다. 위상만 바꾼 이미지는 `build/q`를 복사해 `de2_top.v`의 `clk0_phase_shift`만 고치고 `quartus_sh --flow compile magic_pen`으로 만들 수 있다.
 
