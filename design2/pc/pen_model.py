@@ -67,6 +67,48 @@ def mount_correct(lsb, rot=(0, 0, 0, 0), sign=1, zsign=1):
     return out
 
 
+def mount_apply(raw, rot=(0, 0, 0, 0), sign=1, zsign=1):
+    """mount_correct의 실수 배열판. raw (...,12)"""
+    out = np.array(raw, float)
+    out[..., 2::3] *= zsign
+    for k in range(4):
+        for _ in range(rot[k]):
+            x, y = out[..., 3*k].copy(), out[..., 3*k+1].copy()
+            out[..., 3*k], out[..., 3*k+1] = -y, x
+    return out * sign
+
+
+def read_mount():
+    """nios/config.h의 MOUNT_ROT, FIELD_SIGN, Z_SIGN을 읽는다. 보드와 PC가 같은 값을 쓰게 하려고
+    여기에 따로 적지 않는다. 돌려주는 값: (rot, sign, zsign)"""
+    import os
+    import re
+    txt = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "nios", "config.h")).read()
+    txt = txt[txt.index("#else", txt.index("TEST_MOUNT")):]          # 시험용 값 다음의 실제 값
+    rot = tuple(int(v) for v in re.search(r"MOUNT_ROT\s*\{([^}]*)\}", txt).group(1).split(","))
+    sign = int(re.search(r"FIELD_SIGN\s+\(?(-?\d+)", txt).group(1))
+    zsign = int(re.search(r"Z_SIGN\s+\(?(-?\d+)", txt).group(1))
+    return rot, sign, zsign
+
+
+UNIFORM_PCT = 20     # nios/config.h와 같게 둔다
+
+
+def field_is_uniform(lsb):
+    """nios/position.c의 field_is_uniform과 같은 정수 연산. 센서 4개가 거의 같은 벡터를 보면 1.
+    펜(가까운 자석)은 센서마다 값이 크게 다르고, 보드를 돌리거나 먼 물체가 움직인 경우는 같다."""
+    v = [int(x) for x in lsb]
+    for k in range(4):
+        v[3*k+2] = tdiv(v[3*k+2] * 1612, 1000)
+    num = den = 0
+    for c in range(3):
+        total = v[c] + v[3+c] + v[6+c] + v[9+c]
+        for k in range(4):
+            num += abs(4 * v[3*k+c] - total)      # 4 × (값 − 평균)
+            den += abs(v[3*k+c])
+    return 1 if num * 100 < 4 * den * UNIFORM_PCT else 0
+
+
 def input_from_lsb(lsb):
     """기준값을 뺀 12채널 LSB → MLP 입력(Q6). 자기장은 거리의 세제곱에 반비례해 범위가
     수천 배이므로 세제곱근으로 압축한다. Z축은 XY축과 LSB 크기가 달라 먼저 맞춘다."""

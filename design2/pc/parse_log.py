@@ -5,12 +5,17 @@
   SIG,DONE,n / SIG,REJECT                               서명 하나의 끝
   MARK                                                  KEY1 눌림 (gate1.py가 격자점 구분에 쓴다)
 깨진 줄(JTAG 전송 중 잘림)은 건너뛰고 수를 보고한다.
+
+수집 모드는 프레임을 계속 내보내므로 로그에는 서명 앞의 대기 구간과 끝난 뒤 펜을 든 1초도 들어 있다.
+보드는 첫 펜 내림부터 마지막 펜 내림까지만 서명으로 쓴다(nios/signature.c). 여기서도 똑같이 자른다.
+그러지 않으면 PC 평가가 보드와 다른 신호를 비교하게 된다.
 """
 import numpy as np
 
 
 def parse_lines(lines):
-    """돌려주는 값: (서명 목록, 깨진 줄 수). 서명 = {"raw": N×12, "pos": N×5, "pen": N, "t_us": N, "err": N}"""
+    """돌려주는 값: (서명 목록, 깨진 줄 수). 서명 = {"raw": N×12, "pos": N×5, "pen": N, "t_us": N, "err": N}
+    프레임 수가 보드가 알려 준 수(SIG,DONE,n)와 다르면 줄이 빠진 것이므로 깨진 줄 수에 더한다."""
     sigs, cur, bad = [], [], 0
     for line in lines:
         line = line.strip()
@@ -26,10 +31,17 @@ def parse_lines(lines):
             except ValueError:
                 bad += 1
         elif p[0] == "SIG":
-            if p[1] == "DONE" and cur:
-                sigs.append(_to_sig(cur))
+            pen = [r[PEN] for r in cur]
+            if p[1] == "DONE" and 1 in pen:
+                first, last = pen.index(1), len(pen) - 1 - pen[::-1].index(1)
+                sigs.append(_to_sig(cur[first:last + 1]))
+                if len(p) > 2 and p[2].isdigit() and int(p[2]) != last + 1 - first:
+                    bad += 1
             cur = []
     return sigs, bad
+
+
+PEN = 20     # R 줄에서 "R,"을 뺀 뒤의 pen 열 위치: frame, time, err, 센서 12개, x, y, z, ux, uy, pen
 
 
 def _to_sig(rows):
@@ -45,6 +57,20 @@ def _check():
     assert bad == 1 and len(sigs) == 2, (bad, len(sigs))
     assert sigs[0]["raw"].shape == (2, 12) and sigs[0]["pos"][1, 2] == 90 and sigs[0]["frame"][1] == 2
     assert sigs[1]["raw"].shape == (1, 12)     # 거부된 서명의 프레임은 버려진다
+
+    # 보드와 같은 구간을 잘라내는지: 대기 4초 + 서명 + 펜 올림 1초짜리 로그를 만들어 비교한다
+    import preprocess as pp
+    from gen_golden import fake_stream
+    stream = [(0, 0, 300, 0, 0, 0)] * 200 + fake_stream(np.random.default_rng(5), 150)
+    (frames, pen), = pp.segment(stream)
+    log, down = [], False
+    for i, f in enumerate(stream):
+        down = True if f[2] < pp.Z_DOWN else False if f[2] > pp.Z_UP else down
+        log.append("R,%d,%d,0," % (i, i * 20000) + ",".join(["0"] * 12) + ",%d,%d,%d,%d,%d,%d,700" % (*f[:5], down))
+    sigs, bad = parse_lines(log + ["SIG,DONE,%d" % len(frames)])
+    assert bad == 0 and [tuple(r) for r in sigs[0]["pos"].tolist()] == frames and sigs[0]["pen"].tolist() == pen
+    sigs, bad = parse_lines(log[:250] + log[251:] + ["SIG,DONE,%d" % len(frames)])
+    assert bad == 1                              # 서명 중간의 줄 하나가 빠지면 알려 준다
     print("parse_log OK")
 
 

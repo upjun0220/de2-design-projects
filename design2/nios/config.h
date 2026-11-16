@@ -28,8 +28,20 @@
 #define TAU_A_Q8     (2*256)  /* a in tau_k = mu_k + a*sigma_k */
 #define MARGIN_M     500      /* required gap between best and second best */
 
-/* Screen mapping: this many 0.1 mm per pixel. 4 means +-48 mm fits the 240 pixel height */
-#define SCREEN_SCALE 4
+/* Screen mapping: this many 0.1 mm per bitmap pixel. 5 means the 192 pixel pad is 96 mm */
+#define SCREEN_SCALE 5
+
+/* When the four sensors see nearly the same field vector, it is not the pen: the board
+ * was turned in the earth's field, or something far away moved. "Nearly the same" = the
+ * differences between the sensors are below this percentage of the field. Simulated: the
+ * pen gives 24 % or more, a uniform change of 50 uT or more gives 22 % or less. ESTIMATE.
+ * This does not catch a magnet or phone close to the pad: press KEY0 after moving things. */
+#define UNIFORM_PCT 20
+#define Z_AWAY      3000  /* height reported for "no pen", 300 mm */
+
+/* The pen counts as present when some sensor channel is this far from its baseline.
+ * ESTIMATE (40 LSB = 10 uT): set it above the noise seen with the pen away. */
+#define PEN_PRESENT_LSB 40
 
 /* I2C of each sensor: (bus << 8) | address. One bus, four addresses needs A0/A1 wired:
  *   { 0x018, 0x019, 0x01A, 0x01B }

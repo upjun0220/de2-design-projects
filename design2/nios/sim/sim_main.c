@@ -106,6 +106,7 @@ int main(void)
     IOWR(VGA_0_BASE, 1, (20 << 16) | 10);
     IOWR(VGA_0_BASE, 2, (20 << 16) | 12);
     while (IORD(VGA_0_BASE, 0) & 1) ;
+    IOWR(VGA_0_BASE, 4096 + 5*80 + 7, 0x6541);     /* text cell (7, 5): white 'A' on white */
     report(12, 1);
 
     report(99, 1);

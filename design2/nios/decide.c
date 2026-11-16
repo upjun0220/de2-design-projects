@@ -8,7 +8,7 @@
  */
 #include "core.h"
 
-static uint32_t isqrt(uint32_t v)
+uint32_t isqrt(uint32_t v)
 {
     uint32_t r = 0, bit = 1u << 30;
     while (bit > v) bit >>= 2;

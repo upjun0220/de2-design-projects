@@ -45,6 +45,7 @@ static void test_mlp(void)
         mlp_forward(in, &p);
         CHECK("x", p.x, rd()); CHECK("y", p.y, rd()); CHECK("z", p.z, rd());
         CHECK("ux", p.ux, rd()); CHECK("uy", p.uy, rd());
+        CHECK("uniform", field_is_uniform(lsb), rd());
     }
 }
 
@@ -129,13 +130,125 @@ static void test_screen(void)
     pen_pos p = { 0, 0, 0, 0, 0 };
     int x, y;
     screen_xy(&p, &x, &y);
-    CHECK("centre x", x, 160); CHECK("centre y", y, 120);
-    p.x = 4 * 100; p.y = 4 * 50;     /* right and up on the board */
+    CHECK("centre x", x, 96); CHECK("centre y", y, 96);
+    p.x = 5 * 60; p.y = 5 * 30;      /* right and up on the board */
     screen_xy(&p, &x, &y);
-    CHECK("right", x, 260); CHECK("up is smaller y", y, 70);
+    CHECK("right", x, 156); CHECK("up is smaller y", y, 66);
     p.x = 30000; p.y = -30000;
     screen_xy(&p, &x, &y);
-    CHECK("clamp x", x, 319); CHECK("clamp y", y, 239);
+    CHECK("clamp x", x, 191); CHECK("clamp y", y, 191);
+}
+
+/* ---- ui.c: the screen is kept in arrays here ---- */
+static uint8_t scr_ch[UI_ROWS][UI_COLS], scr_attr[UI_ROWS][UI_COLS];
+static int scr_bad = 0;
+
+void ui_cell(int col, int row, uint8_t ch, uint8_t attr)
+{
+    if (col < 0 || col >= UI_COLS || row < 0 || row >= UI_ROWS || ch == 0 || ch > 127) { scr_bad++; return; }
+    scr_ch[row][col] = ch;
+    scr_attr[row][col] = attr;
+}
+
+/* Cells as text: bar pieces become '1'..'8', the vertical line '|', other specials '~' */
+static void check_row(const char *name, int row, int col, const char *want)
+{
+    char got[UI_COLS + 1];
+    int i;
+    for (i = 0; want[i] && col + i < UI_COLS; i++) {
+        uint8_t c = scr_ch[row][col + i];
+        got[i] = c >= 0x20 ? (char)c : c <= 8 ? (char)('0' + c) : c == 0x11 ? '|' : '~';
+    }
+    got[i] = 0;
+    if (strcmp(got, want) != 0 && fails++ < 10) printf("FAIL ui %s\n  got  \"%s\"\n  want \"%s\"\n", name, got, want);
+}
+
+static const char *dump_path;      /* argv[2]: where to write the screen for pc/render_screen.py */
+
+static void test_ui(void)
+{
+    /* Same values as the "match" screen of docs/vga-ui-mockup.html; expected rows are its output. */
+    static const uint32_t d[MAX_SLOTS] = { 9120, 2412, 12740, 0, 0 };
+    person p[MAX_SLOTS];
+    pen_pos pen = { 124, -81, 88, 128, 0 };
+    int32_t lsb[12] = { 400, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    uint32_t big[MAX_SLOTS] = { 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF, 0xFFFFFF };
+    int k;
+    memset(p, 0, sizeof(p));
+    p[0].count = p[1].count = p[2].count = ENROLL_COUNT;
+    p[0].tau = 3466; p[1].tau = 3881; p[2].tau = 4544;
+    p[3].count = 2;
+
+    ui_frame();
+    ui_title(0, 1, 4);
+    ui_pen(&pen, 1, 1);
+    ui_sensors(lsb, 4);
+    ui_match(d, p, 1);
+    ui_banner(BANNER_OK, "IDENTIFIED AS", "PERSON 2", "d 2412 < tau 3881");
+    ui_time(138, 310400);
+    ui_status("ready");
+
+    if (dump_path) {
+        FILE *f = fopen(dump_path, "w");
+        int r, c;
+        for (r = 0; r < UI_ROWS; r++)
+            for (c = 0; c < UI_COLS; c++) fprintf(f, "%d %d\n", scr_ch[r][c], scr_attr[r][c]);
+        fclose(f);
+    }
+    check_row("title", 0, 0, " DE2 MAGIC PEN  signature identification     MODE IDENTIFY  DTW HW  50Hz  S 4/4 ");
+    check_row("frame", 1, 0, "~~ PAD 96 x 96 mm ~");
+    check_row("state", 2, 51, "state  DOWN");
+    check_row("xy", 3, 51, "x +12.4 mm    y  -8.1 mm");
+    check_row("z", 4, 51, "z   8.8 mm  88883 || ");       /* 8.8 mm = 35 steps = 4 cells + 3/8; marks at 12 and 15 mm */
+    check_row("tilt", 5, 51, "tilt 30 deg   toward ~");
+    check_row("sensor 0", 9, 51, "S0 84    100");           /* 400 LSB = 100 uT: 12 steps = 1 cell + 4/8 */
+    check_row("sensor 2", 9, 66, "S2 NO ANSWER");
+    check_row("P1", 12, 51, "P1 888|888881        9120  ");
+    check_row("P2", 13, 51, "P2 883|              2412 <");
+    check_row("P3", 14, 51, "P3 8888|88888886    12740  ");
+    check_row("P4", 15, 51, "P4 enrolling");
+    check_row("P5", 16, 51, "P5 empty slot");
+    check_row("banner 1", 19, 51, "        IDENTIFIED AS        ");
+    check_row("banner 2", 20, 51, "          PERSON 2           ");
+    check_row("banner 3", 21, 51, "      d 2412 < tau 3881      ");
+    check_row("HW", 24, 51, "HW 8882              138 us");
+    check_row("SW", 25, 51, "SW 8888888888885  310400 us");
+    check_row("ratio", 26, 51, "SW / HW = x2249  (log scale)");
+    check_row("status", 29, 0, " ready ");
+    CHECK("banner colour", scr_attr[20][62], C_DGREEN << 4 | C_WHITE);
+    CHECK("bar colour under threshold", scr_attr[13][54], C_TRACK << 4 | C_GREEN);
+    CHECK("bar colour over threshold", scr_attr[12][54], C_TRACK << 4 | C_DIM);
+    CHECK("mark on a filled bar", scr_attr[12][57], C_DIM << 4 | C_AMBER);
+    CHECK("mark past the bar", scr_attr[13][57], C_TRACK << 4 | C_AMBER);
+
+    CHECK("tilt 30", ui_tilt_deg(128, 0), 30);
+    CHECK("tilt 0", ui_tilt_deg(0, 0), 0);
+    CHECK("tilt 90", ui_tilt_deg(256, 0), 90);
+    CHECK("east", ui_octant(128, 0), 0);
+    CHECK("north-east", ui_octant(90, 90), 1);
+    CHECK("north-west", ui_octant(-91, 91), 3);
+    CHECK("south", ui_octant(10, -128), 6);
+
+    /* extreme values must stay inside their fields and inside the screen */
+    pen.x = -32768; pen.y = 32767; pen.z = 32767; pen.ux = 32767; pen.uy = -32768;
+    for (k = 0; k < 12; k++) lsb[k] = k & 1 ? 32767 : -32768;
+    for (k = 0; k < MAX_SLOTS; k++) { p[k].count = ENROLL_COUNT; p[k].tau = 0xFFFFFF; }
+    ui_pen(&pen, 0, 1);
+    ui_pen(&pen, 0, 0);
+    ui_sensors(lsb, 0);
+    ui_match(big, p, 4);
+    ui_match(0, p, -1);
+    ui_enroll(4, 5, 0xFFFFFF);
+    ui_collect(1000, 1000, 1000);
+    ui_time(0xFFFFFFFF, 1);
+    ui_time(0, 0);
+    ui_banner(BANNER_BAD, "a top line that is much longer than the banner", "", "x");
+    ui_status("a status line that is longer than the whole screen is wide, so it has to be cut off at the edge");
+    ui_title(3, 0, 0);
+    CHECK("writes outside the screen", scr_bad, 0);
+    check_row("frame intact", 1, 49, "~ PEN ~");
+    check_row("help intact", 27, 0, " SW1-0 mode");
+    check_row("overflowing number", 13, 69, "999 ");
 }
 
 /* Compiled twice by run_checks.sh; the second time with -DTEST_MOUNT (see config.h) */
@@ -161,6 +274,7 @@ int main(int argc, char **argv)
     printf("mount OK\n");
     return 0;
 #endif
+    dump_path = argc > 2 ? argv[2] : NULL;
     g = argc > 1 ? fopen(argv[1], "r") : NULL;
     if (!g) { printf("cannot open golden file\n"); return 2; }
     test_icbrt();
@@ -169,6 +283,7 @@ int main(int argc, char **argv)
     test_dtw();
     test_decide();
     test_screen();
+    test_ui();
     if (fails) { printf("FAILED %d checks\n", fails); return 1; }
     printf("C core OK\n");
     return 0;

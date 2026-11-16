@@ -10,8 +10,8 @@
 //          copy the shadow registers to the output registers in one clock
 //
 // The CPU can read two frames apart: read FRAME, read the 12 values, read FRAME
-// again; if it changed, read again. 4 sensors take about 1.5 ms of bus time
-// at 350 kHz, so most of the 20 ms frame is idle.
+// again; if it changed, read again. 4 sensors take about 2.6 ms of bus time
+// at 200 kHz, plus 9 ms waiting for the conversion, in a 20 ms frame.
 //
 // Avalon registers (word offset, 32-bit, read latency 1):
 //   0 FRAME    frame counter (read), write anything: restart init sequence
@@ -31,7 +31,10 @@
 // Check: hdl/tb/tb_mlx_reader.v.
 module mlx_reader #(
     parameter CLK_HZ   = 50000000,
-    parameter SCL_HZ   = 350000,  // with 50% duty, 400 kHz would give 1.25 us low; minimum is 1.3 us
+    // 200 kHz, not 400: START and STOP must come 0.6 us after SCL goes high, and one
+    // quarter period is all there is. At 350 kHz that is 0.70 us, which the rise time of
+    // the real bus (pull-ups and cable capacitance, 0.15..0.36 us estimated) eats up.
+    parameter SCL_HZ   = 200000,
     parameter FRAME_HZ = 50,
     parameter CONV_US  = 9000,   // TCONV 7.6 ms (OSR=1, DIG_FILT=4) plus trim and drift margin
     parameter RESET_US = 2000,   // datasheet: wait 1.5 ms after RT

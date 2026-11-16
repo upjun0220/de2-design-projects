@@ -1,7 +1,8 @@
 """위치 복원 기준선: Levenberg-Marquardt 피팅 (PC, 실수 연산). 게이트 1 오차 측정에 쓴다.
 
 쌍극자 모델로 (x, y, z, ux, uy) 5자유도를 푼다. 첫 프레임은 여러 시작점, 이후는 직전 해에서 시작.
-입력은 보드 로그의 raw(기준값을 뺀 LSB). 실제 센서 위치·자석 세기는 --half, --m0로 맞춘다.
+입력은 보드 로그의 raw(기준값을 뺀 LSB, 장착 보정 전). 장착 보정(회전·극성)은 nios/config.h에서 읽어
+보드와 같게 적용한다. 실제 센서 위치·자석 세기는 --half, --m0로 맞춘다.
 
 실행: python pc/position_lm.py 로그파일    로그의 서명마다 궤적 요약 출력
       python pc/position_lm.py --check     시뮬레이션 자체 검증
@@ -26,9 +27,10 @@ def fit_frame(meas, sensors, m0, start):
     return least_squares(resid, start, method="lm", max_nfev=100)
 
 
-def track(raw, sensors=pm.SENSORS, m0=pm.M0):
-    """raw N×12 → N×5 (x,y,z [m], ux, uy)와 프레임별 잔차 RMS [µT]"""
-    meas = raw_to_tesla(np.asarray(raw, float))
+def track(raw, sensors=pm.SENSORS, m0=pm.M0, mount=None):
+    """raw N×12 → N×5 (x,y,z [m], ux, uy)와 프레임별 잔차 RMS [µT].
+    mount = (rot, sign, zsign). 주지 않으면 nios/config.h의 값을 쓴다."""
+    meas = raw_to_tesla(pm.mount_apply(raw, *(mount or pm.read_mount())))
     out, res, q = [], [], None
     for b in meas:
         if q is None:
@@ -55,6 +57,14 @@ def check():
     tilt = np.sqrt(((est[:, 3] - ux)**2 + (est[:, 4] - uy)**2).mean())
     print("position_lm 시뮬레이션: xy %.2f mm, 기울기벡터 %.3f, 잔차 %.1f µT" % (xy, tilt, res.mean()))
     assert xy < 3.0 and tilt < 0.05, (xy, tilt)
+    # 센서가 돌아가 붙고 자석이 뒤집힌 경우: 보정을 주면 같은 답이 나와야 한다
+    assert pm.read_mount() == ((0, 0, 0, 0), 1, 1)
+    rot, sign, zsign = (1, 0, 3, 2), -1, -1
+    as_seen = pm.mount_apply(raw, [(4 - r) % 4 for r in rot], sign, zsign)      # 역변환: 센서가 실제로 내놓을 값
+    est2, _ = track(as_seen[:40], mount=(rot, sign, zsign))
+    assert np.abs(est2 - est[:40]).max() < 1e-6
+    wrong, _ = track(as_seen[:40], mount=((0, 0, 0, 0), 1, 1))
+    assert np.abs(wrong[:, :2] - p[:40, :2]).max() > 0.005                       # 보정 없이는 틀린다
     print("position_lm OK")
 
 

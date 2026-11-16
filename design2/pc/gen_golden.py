@@ -58,12 +58,20 @@ def main(path):
     layers = load_weights()
     n = 300
     out.append(n)
+    flags = []
     for _ in range(n):
-        lsb = [int(v) for v in np.round(rng.normal(0, 800, 12) * rng.uniform(0, 1))]
+        if _ % 3 == 0:      # 센서 4개가 거의 같은 값: 균일 외란. 크기와 섞인 잡음을 바꿔 경계 근처도 넣는다
+            lsb = [int(v) for v in np.round(np.tile(rng.normal(0, 400, 3), 4) + rng.normal(0, rng.uniform(1, 150), 12))]
+        elif _ % 3 == 1:    # 최댓값 근처: 32비트 넘침이 없는지
+            lsb = [int(v) for v in rng.choice([-32768, 32767], 12)]
+        else:
+            lsb = [int(v) for v in np.round(rng.normal(0, 800, 12) * rng.uniform(0, 1))]
         x = pm.input_from_lsb(lsb)
         o, peak = pm.mlp_forward_int(layers, x)
         assert peak < 2**31
-        out += lsb + x + pm.output_to_units(o)
+        out += lsb + x + pm.output_to_units(o) + [pm.field_is_uniform(lsb)]
+        flags.append(pm.field_is_uniform(lsb))
+    assert 30 < sum(flags) < 200, sum(flags)        # 두 경우가 모두 시험에 들어 있어야 한다
 
     # 3. 서명 분할·전처리 (프레임 수가 짧은 것부터 최대 길이까지, 거부되는 짧은 서명 포함)
     cases = [10, 20, 40, 77, 128, 129, 200, 299, 400] + [r.randrange(30, 299) for _ in range(40)]

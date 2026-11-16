@@ -1,19 +1,21 @@
-# Qsys component: VGA pen trace display. See vga_trace.v.
+# Qsys component: monitor screen (text, pad bitmap, cursor). See vga_ui.v.
 package require -exact qsys 13.0
 
-set_module_property NAME vga_trace
-set_module_property DISPLAY_NAME "VGA pen trace"
+set_module_property NAME vga_ui
+set_module_property DISPLAY_NAME "VGA screen"
 set_module_property VERSION 1.0
 set_module_property GROUP "Magic Pen"
 set_module_property EDITABLE true
 
 add_fileset QUARTUS_SYNTH QUARTUS_SYNTH "" ""
-set_fileset_property QUARTUS_SYNTH TOP_LEVEL vga_trace
-add_fileset_file vga_trace.v VERILOG PATH vga_trace.v TOP_LEVEL_FILE
+set_fileset_property QUARTUS_SYNTH TOP_LEVEL vga_ui
+add_fileset_file font8x16.v VERILOG PATH font8x16.v
+add_fileset_file vga_ui.v VERILOG PATH vga_ui.v TOP_LEVEL_FILE
 
 add_fileset SIM_VERILOG SIM_VERILOG "" ""
-set_fileset_property SIM_VERILOG TOP_LEVEL vga_trace
-add_fileset_file vga_trace.v VERILOG PATH vga_trace.v
+set_fileset_property SIM_VERILOG TOP_LEVEL vga_ui
+add_fileset_file font8x16.v VERILOG PATH font8x16.v
+add_fileset_file vga_ui.v VERILOG PATH vga_ui.v
 
 add_interface clock clock end
 set_interface_property clock clockRate 0
@@ -31,7 +33,7 @@ set_interface_property s0 associatedReset reset
 set_interface_property s0 readLatency 1
 set_interface_property s0 readWaitTime 0
 set_interface_property s0 writeWaitTime 0
-add_interface_port s0 avs_address address Input 2
+add_interface_port s0 avs_address address Input 13
 add_interface_port s0 avs_read read Input 1
 add_interface_port s0 avs_write write Input 1
 add_interface_port s0 avs_writedata writedata Input 32

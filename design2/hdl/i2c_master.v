@@ -19,7 +19,7 @@
 // Check: hdl/tb/tb_mlx_reader.v runs this against a behavioural MLX90393.
 module i2c_master #(
     parameter CLK_HZ = 50000000,
-    parameter SCL_HZ = 350000,
+    parameter SCL_HZ = 200000,
     parameter STUCK_LIMIT = 50000     // 1 ms at 50 MHz
 )(
     input             clk,

@@ -45,6 +45,11 @@ module mlx90393_model #(
         t_scl_rise = $time;
         if (CHECK_TIMING && t_scl_fall != 0 && $time - t_scl_fall < 1300) timing_errors = timing_errors + 1;
     end
+    // START and STOP: SDA may move 0.6 us after SCL has gone high. This test bench has no
+    // rise time, so 0.3 us is added for the real bus.
+    // (Not in the first microsecond: both lines go from unknown to high together at power-up.)
+    always @(sda) if (CHECK_TIMING && $time > 1000 && scl === 1'b1 && $time - t_scl_rise < 900)
+        timing_errors = timing_errors + 1;
     // Datasheet: wait 1 ms after EX before RT
     time t_ex = 0;
 

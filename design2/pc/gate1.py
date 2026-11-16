@@ -37,15 +37,7 @@ def read_points(lines):
     return np.array(points)
 
 
-def correct(raw, rot, sign, zsign=1):
-    """pm.mount_correct와 같은 변환의 실수 배열판"""
-    out = np.array(raw, float)
-    out[..., 2::3] *= zsign
-    for k in range(4):
-        for _ in range(rot[k]):
-            x, y = out[..., 3*k].copy(), out[..., 3*k+1].copy()
-            out[..., 3*k], out[..., 3*k+1] = -y, x
-    return out * sign
+correct = pm.mount_apply
 
 
 def fit_point(raw, sensors, m0):

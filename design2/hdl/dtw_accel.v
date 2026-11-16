@@ -41,7 +41,10 @@ module dtw_accel #(
 
     // ---- on-chip memories (one M4K set per 32-bit half) ----
     reg [31:0] q_lo [0:N-1], q_hi [0:N-1];
-    reg [31:0] t_lo [0:MAX_TEMPL*N-1], t_hi [0:MAX_TEMPL*N-1];
+    // max_depth: without it Quartus built t_lo from 32 blocks of 4096x1 (3200 words fill
+    // only 78 % of each). 512-deep blocks need 25.
+    (* max_depth = 512 *) reg [31:0] t_lo [0:MAX_TEMPL*N-1];
+    (* max_depth = 512 *) reg [31:0] t_hi [0:MAX_TEMPL*N-1];
     reg [DW-1:0] res [0:31];
 
     wire is_q = avs_address[14:12] == 3'b001;

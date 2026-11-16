@@ -47,6 +47,25 @@ void mount_correct(int32_t lsb[12])
     }
 }
 
+/* 1 when the four sensors see nearly the same vector (see UNIFORM_PCT in config.h).
+ * Compares each value with the average of the four; 4*(v - mean) avoids a division. */
+int field_is_uniform(const int32_t lsb[12])
+{
+    int32_t v[12], num = 0, den = 0;
+    int k, c;
+    for (k = 0; k < 12; k++) v[k] = k % 3 == 2 ? lsb[k] * 1612 / 1000 : lsb[k];
+    for (c = 0; c < 3; c++) {
+        int32_t total = v[c] + v[3 + c] + v[6 + c] + v[9 + c];
+        for (k = 0; k < 4; k++) {
+            int32_t d = 4 * v[3*k + c] - total, a = v[3*k + c];
+            num += d < 0 ? -d : d;
+            den += a < 0 ? -a : a;
+        }
+    }
+    /* num is at most about 5e6 for any 16-bit sensor values, so num * 100 fits in 32 bits */
+    return num * 100 < 4 * den * UNIFORM_PCT;
+}
+
 void field_to_input(const int32_t lsb[12], int32_t in[12])
 {
     int k;

@@ -71,14 +71,14 @@
 <header class="hero">
   <div class="wrap">
     <h1>DE2 마법 펜 — 자석 펜 서명으로 사람 식별하기</h1>
-    <p>펜 끝 영구자석의 자기장을 책상 아래 3축 홀 센서 배열로 읽어 펜의 3차원 궤적을 복원하고, 그 궤적(모양·속도·리듬·공중 동작)으로 누가 서명했는지 판별한다. 등록된 사람이면 DE2 보드의 LCD와 VGA 화면에 이름이 뜨고, 등록되지 않은 사람이면 "미등록"이 뜬다.</p>
+    <p>펜 끝 영구자석의 자기장을 책상 아래 3축 홀 센서 배열로 읽어 펜의 3차원 궤적을 복원하고, 그 궤적(모양·속도·리듬·펜 기울기)으로 누가 서명했는지 판별한다. 등록된 사람이면 DE2 보드의 LCD와 VGA 화면에 이름이 뜨고, 등록되지 않은 사람이면 "미등록"이 뜬다.</p>
     <div class="chips">
       <span class="chip">마이크로프로세서 자유주제 프로젝트</span>
       <span class="chip">Altera DE2 (Cyclone II EP2C35)</span>
       <span class="chip">Quartus II 13.0 SP1 · Qsys · Nios II</span>
-      <span class="chip">AI: 위치 복원 MLP + 서명 임베딩 1D CNN</span>
+      <span class="chip">AI: 위치 복원 MLP (+ 선택: 서명 임베딩 1D CNN)</span>
       <span class="chip">팀: 임창현 · 윤재국</span>
-      <span class="chip">2026-11-04 수정 (구매 목록 반영)</span>
+      <span class="chip">2026-11-12 수정 (DTW 가속·범위 계층·화면 반영)</span>
     </div>
   </div>
 </header>
@@ -92,23 +92,37 @@
 <!-- 1 -->
 <section id="overview">
   <h2><span class="n">1</span>프로젝트 개요</h2>
+  <div class="callout info"><b>2026-11-12 개정에서 바뀐 점:</b> 11/4 이후의 결정과 구현 결과를 반영했다.
+  <div class="tablewrap"><table>
+    <tr><th>항목</th><th>11/4 기획</th><th>지금</th><th>이유</th></tr>
+    <tr><td>식별 방법</td><td>임베딩 CNN이 주, DTW는 기준선</td><td><b>DTW가 필수 경로</b>, CNN은 선택</td><td>사람 수가 적어 CNN이 쓸 만할지 불확실하다. DTW는 학습이 필요 없다</td></tr>
+    <tr><td>SW/HW 비교 대상</td><td>CNN 병렬 MAC 엔진</td><td><b>DTW 병렬 PE 배열</b></td><td>필수 경로라 반드시 쓰이고, 덧셈·비교만이라 원리를 설명하기 쉽다 (11/8 결정)</td></tr>
+    <tr><td>현장 등록</td><td>임베딩이 될 때만 (가산점)</td><td><b>필수 시연</b></td><td>DTW는 서명 5개를 템플릿으로 저장하면 등록이 끝난다</td></tr>
+    <tr><td>내세우는 차별점</td><td>펜을 든 공중 동작</td><td><b>펜 기울기와 속도</b></td><td>종이 위 필기라 공중 동작은 몇 mm뿐이고 z 오차와 비슷하다</td></tr>
+    <tr><td>입력 채널</td><td>θ, φ</td><td>ux, uy (펜 축의 수평 성분)</td><td>φ는 ±180°에서 값이 튀어 DTW가 큰 거리로 본다</td></tr>
+    <tr><td>등록 인원</td><td>슬롯 0~7 (8명)</td><td>슬롯 0~4 (5명)</td><td>템플릿 25개가 가속기 메모리의 한계다</td></tr>
+    <tr><td>VGA</td><td>320×240, 한글 이름, 3D 궤적</td><td>640×480 문자 층 + 서명 칸 + 게이지</td><td>FPGA 메모리에 맞춘 구조. 한글·3D는 선택으로 보류</td></tr>
+    <tr><td>범위</td><td>모두 한 일정에</td><td>Tier 0 / 1 / 2로 나눔 (12장)</td><td>끝까지 도는 작은 데모를 먼저</td></tr>
+  </table></div>
+  구현 상태는 <code>docs/IMPLEMENTATION.md</code>에 있다. 코드는 시뮬레이션과 합성까지 확인했고 <b>보드에서는 아직 돌려 보지 않았다.</b></div>
   <p>기존 기획(자석 펜 위치 추적 + 숫자 인식)의 하드웨어와 위치 복원 파이프라인은 그대로 쓰고, 마지막 단계의 <b>숫자 인식 CNN을 서명 식별로 바꾼다.</b></p>
   <div class="grid2">
     <div class="kpi"><b>① 자기장 계측 (기존 유지)</b>MLX90393 3축 센서 4개를 종이 둘레 네 모서리(14×14 cm)에 두고 I²C 버스 1개로 읽는다. Verilog I²C 마스터가 샘플을 모은다. 게이트 1 실측 결과에 따라 9개로 확장할 수 있다.</div>
     <div class="kpi"><b>② 위치·기울기 복원 (기존 유지)</b>쌍극자 모델 LM 피팅을 기준선으로, 소형 MLP가 (x, y, z, θ, φ)를 한 번의 순전파로 구한다.</div>
-    <div class="kpi"><b>③ 서명 식별 <span class="tag new">신규</span></b>서명 한 번의 시계열을 1D CNN으로 32차원 특징 벡터(임베딩)로 바꾸고, 등록자별 기준 벡터와 비교해 가장 가까운 사람을 고른다. 기준선은 DTW(동적 시간 정렬) 템플릿 비교.</div>
+    <div class="kpi"><b>③ 서명 식별 <span class="tag new">신규</span></b>서명 한 번의 시계열(128점 × 8채널)을 등록 템플릿과 <b>DTW(동적 시간 정렬)</b>로 비교해 가장 가까운 사람을 고른다. 이것이 필수 경로다. 1D CNN 임베딩(32차원)은 데이터가 모인 뒤 비교해 보는 선택 항목이다.</div>
     <div class="kpi"><b>④ 미등록 거부 <span class="tag new">신규</span></b>가장 가까운 사람과의 거리가 문턱값을 넘거나 1·2순위 차이가 작으면 "미등록"으로 판정한다.</div>
-    <div class="kpi"><b>⑤ 출력 <span class="tag new">신규</span></b>보드 16×2 LCD에 영문 이름, VGA에 한글 이름과 2D 서명·3D 궤적, LED로 승인/거부, 7세그먼트로 추론 지연을 표시한다.</div>
-    <div class="kpi"><b>⑥ HW/SW 가속 비교 (기존 유지)</b>같은 int8 임베딩 CNN을 Nios II 소프트웨어와 병렬 MAC 엔진으로 각각 돌려 지연·LE·곱셈기 사용량을 비교한다.</div>
+    <div class="kpi"><b>⑤ 출력 <span class="tag new">신규</span></b>보드 16×2 LCD에 결과, VGA 모니터에 서명 획·펜 높이·기울기·속도 게이지·등록자별 거리, LED로 등록자/미등록, 7세그먼트로 DTW 지연을 표시한다(6장).</div>
+    <div class="kpi"><b>⑥ HW/SW 가속 비교 <span class="tag new">대상 변경</span></b>같은 DTW 계산을 Nios II 소프트웨어와 FPGA 병렬 PE 배열(곱셈기 0개)로 각각 돌려 지연·LE·메모리 사용량을 비교한다(5장).</div>
   </div>
 
   <div class="callout"><b>범위를 분명히 한다:</b> 이 시스템은 <b>등록된 사람 중 누가 썼는지 식별</b>하고, 등록 안 된 사람을 거부하는 장치다. 서명 모양을 베낀 <b>위조가 얼마나 통과하는지는 측정해서 보고</b>한다(무작위·정적(이미지만 보고)·동적(영상 보고 연습) 세 종류, 모양만 쓸 때와 속도·기울기를 더할 때 비교). 막는다고 보장하지는 않으며, 이 평가 결과가 나오기 전에는 보고서·발표에서 "서명 인증", "보안"이라는 표현을 쓰지 않는다.</div>
 
   <h3>왜 이 장치로 서명을 구별할 수 있다고 보는가</h3>
   <ul>
-    <li>사람마다 서명의 <b>모양, 쓰는 속도·리듬, 획 순서, 펜을 드는 타이밍</b>이 다르다. 이런 시간 정보를 쓰는 "온라인 서명" 식별은 태블릿 입력에서 오래 연구된 분야다.</li>
+    <li>사람마다 서명의 <b>모양, 쓰는 속도·리듬, 획 순서, 펜을 드는 타이밍</b>이 다르다. 이런 시간 정보를 쓰는 "온라인 서명" 식별은 펜 태블릿(전자 펜의 좌표·필압·기울기를 읽는 입력 판, 서명 패드가 이 종류다) 입력에서 오래 연구된 분야다.</li>
     <li>이 장치는 펜 좌표를 시간 순서로 받으므로 속도와 리듬을 그대로 쓸 수 있다. 위치 오차로 세밀한 모양이 뭉개져도 동적 특징이 이를 보완할 것이라고 본다.</li>
-    <li>태블릿과 달리 <b>펜을 든 동안의 공중 동작(z, 기울기)</b>까지 잡힌다. 종이에 남지 않는 정보라 보고 따라 쓰기 어렵다. 이것이 식별에 실제로 도움이 되는지는 10장의 비교 실험(공중 궤적 포함/제외)으로 확인하는 <b>가설</b>이다.</li>
+    <li>모양과 속도에 더해 <b>펜 기울기</b>를 쓴다. 기울기는 보통 전용 펜 태블릿과 전자 펜이 있어야 얻는 정보인데, 이 장치는 종이와 자석 붙인 볼펜만으로 얻는다. 기울기 습관은 서명 이미지에 남지 않는다. 이것이 식별에 실제로 도움이 되는지는 10장의 채널 비교 실험으로 확인하는 <b>가설</b>이다.</li>
+    <li>펜을 든 동안의 공중 동작(z)은 핵심 근거에서 뺐다. 종이 위에서 쓰는 구조라 획 사이에 펜을 드는 높이가 몇 mm이고, 시뮬레이션의 z 오차(1~2 mm)와 비슷해서 잘 잡힐지 불확실하다. 채널 비교 실험의 한 항목으로만 확인한다.</li>
   </ul>
 </section>
 
@@ -150,7 +164,7 @@
         <rect x="480" y="64" width="140" height="54" rx="8" fill="#fff" stroke="#93b4e3"/>
         <text x="550" y="87" text-anchor="middle">기준값 차감</text><text x="550" y="105" text-anchor="middle" font-size="11.5" fill="#5b6675">지자기·오프셋 제거</text>
         <rect x="635" y="64" width="150" height="54" rx="8" fill="#fff" stroke="#5b2a86"/>
-        <text x="710" y="87" text-anchor="middle" font-weight="700">위치 MLP</text><text x="710" y="105" text-anchor="middle" font-size="11.5" fill="#5b6675">→ x, y, z, θ, φ</text>
+        <text x="710" y="87" text-anchor="middle" font-weight="700">위치 MLP</text><text x="710" y="105" text-anchor="middle" font-size="11.5" fill="#5b6675">→ x, y, z, 기울기(ux, uy)</text>
 
         <rect x="320" y="140" width="465" height="58" rx="8" fill="#fff" stroke="#93b4e3"/>
         <text x="552" y="163" text-anchor="middle" font-weight="700">서명 버퍼 · 시작/끝 판정</text>
@@ -162,29 +176,29 @@
         <rect x="320" y="284" width="465" height="120" rx="10" fill="#f8f5fc" stroke="#5b2a86" stroke-dasharray="6 4"/>
         <text x="552" y="306" text-anchor="middle" font-weight="700" fill="#5b2a86">서명 식별</text>
         <rect x="335" y="318" width="210" height="74" rx="8" fill="#fff" stroke="#5b2a86"/>
-        <text x="440" y="340" text-anchor="middle" font-size="12.5" font-weight="700">AI: 임베딩 1D CNN</text>
+        <text x="440" y="340" text-anchor="middle" font-size="12.5" font-weight="700">선택: 임베딩 1D CNN</text>
         <text x="440" y="359" text-anchor="middle" font-size="11.5" fill="#5b6675">128×8 → 32차원 벡터</text>
-        <text x="440" y="377" text-anchor="middle" font-size="11.5" fill="#5b6675">SW(Nios II) / HW(병렬 MAC)</text>
+        <text x="440" y="377" text-anchor="middle" font-size="11.5" fill="#5b6675">Nios II 소프트웨어 (Tier 2)</text>
         <rect x="560" y="318" width="210" height="74" rx="8" fill="#fff" stroke="#5b2a86"/>
-        <text x="665" y="340" text-anchor="middle" font-size="12.5" font-weight="700">기준선: DTW</text>
+        <text x="665" y="340" text-anchor="middle" font-size="12.5" font-weight="700">필수: DTW</text>
         <text x="665" y="359" text-anchor="middle" font-size="11.5" fill="#5b6675">등록 템플릿과 정렬 거리</text>
-        <text x="665" y="377" text-anchor="middle" font-size="11.5" fill="#5b6675">학습 불필요 · Nios II C</text>
+        <text x="665" y="377" text-anchor="middle" font-size="11.5" fill="#5b6675">SW(Nios II) / HW(PE 배열)</text>
 
         <rect x="320" y="424" width="465" height="50" rx="8" fill="#fff" stroke="#15803d" stroke-width="1.5"/>
         <text x="552" y="446" text-anchor="middle" font-weight="700" fill="#15803d">판정: 등록자 ID 또는 "미등록"</text>
-        <text x="552" y="464" text-anchor="middle" font-size="11.5" fill="#5b6675">거리 문턱 + 1·2순위 차이 + (선택) DTW 동의</text>
+        <text x="552" y="464" text-anchor="middle" font-size="11.5" fill="#5b6675">사람별 거리 문턱 + 1·2순위 차이</text>
 
         <rect x="320" y="488" width="465" height="44" rx="8" fill="#fff" stroke="#93b4e3"/>
-        <text x="552" y="508" text-anchor="middle" font-size="12.5">VGA 픽셀 버퍼 IP · Character LCD IP · PIO(LED, 7세그, SW, KEY)</text>
-        <text x="552" y="524" text-anchor="middle" font-size="11.5" fill="#5b6675">University Program IP · 타임스탬프 타이머로 지연 측정</text>
+        <text x="552" y="508" text-anchor="middle" font-size="12.5">VGA 화면(문자 층 + 서명 칸) · Character LCD · PIO(LED, 7세그, SW, KEY)</text>
+        <text x="552" y="524" text-anchor="middle" font-size="11.5" fill="#5b6675">직접 만든 VGA 회로 · 마이크로초 카운터로 지연 측정</text>
 
         <!-- outputs -->
         <rect x="840" y="210" width="140" height="80" rx="10" fill="#f1f5f9" stroke="#94a3b8"/>
-        <text x="910" y="238" text-anchor="middle" font-weight="700">VGA 모니터</text><text x="910" y="258" text-anchor="middle" font-size="12">한글 이름</text><text x="910" y="276" text-anchor="middle" font-size="12">2D 서명 · 3D 궤적</text>
+        <text x="910" y="238" text-anchor="middle" font-weight="700">VGA 모니터</text><text x="910" y="258" text-anchor="middle" font-size="12">서명 획 · 게이지</text><text x="910" y="276" text-anchor="middle" font-size="12">결과 · 거리 막대</text>
         <rect x="840" y="310" width="140" height="70" rx="10" fill="#eef7d9" stroke="#3b4a12"/>
         <text x="910" y="338" text-anchor="middle" font-weight="700">보드 LCD 16×2</text><text x="910" y="358" text-anchor="middle" font-size="12">영문 이름 / 미등록</text>
         <rect x="840" y="400" width="140" height="70" rx="10" fill="#f1f5f9" stroke="#94a3b8"/>
-        <text x="910" y="428" text-anchor="middle" font-weight="700">LED · 7세그</text><text x="910" y="448" text-anchor="middle" font-size="12">승인/거부 · 지연(µs)</text>
+        <text x="910" y="428" text-anchor="middle" font-weight="700">LED · 7세그</text><text x="910" y="448" text-anchor="middle" font-size="12">등록자/미등록 · 지연(µs)</text>
 
         <!-- arrows -->
         <line x1="250" y1="360" x2="318" y2="95" stroke="#c2410c" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#ar)"/>
@@ -209,11 +223,11 @@
 
   <h3>한 번의 서명 처리 흐름</h3>
   <ol>
-    <li>매 프레임(목표 50 Hz) 위치 MLP가 (x, y, z, θ, φ)를 내고, z 문턱 + 히스테리시스로 펜 올림/내림을 판정한다.</li>
+    <li>매 프레임(목표 50 Hz) 위치 MLP가 (x, y, z, ux, uy)를 내고, z 문턱 + 히스테리시스로 펜 올림/내림을 판정한다.</li>
     <li>펜이 처음 내려가면 서명 버퍼 기록을 시작한다. 펜 올림 상태가 <b>1.0초</b> 이어지거나 KEY1을 누르면 끝으로 본다. 최대 6초까지 기록한다.</li>
     <li>펜 내림 구간이 0.5초 미만이거나 추적이 끊긴 프레임이 20% 넘으면 "다시 서명해 주세요"를 띄우고 버린다.</li>
-    <li>전처리 후 임베딩 CNN으로 32차원 벡터를 얻고, 등록자별 기준 벡터와 거리를 계산한다.</li>
-    <li>5장의 판정 규칙으로 등록자 ID 또는 "미등록"을 정하고, LCD·VGA·LED·7세그에 결과를 표시한다. VGA에서는 3D 궤적을 시간 순서대로 재생한다.</li>
+    <li>전처리 후 등록자별 템플릿과 DTW 거리를 계산한다(사람마다 템플릿 5개 중 가장 가까운 것).</li>
+    <li>5장의 판정 규칙으로 등록자 ID 또는 "미등록"을 정하고, LCD·VGA·LED·7세그에 결과를 표시한다. VGA에는 서명하는 동안 획과 게이지가, 끝나면 결과와 거리 막대가 나온다.</li>
   </ol>
 </section>
 
@@ -223,15 +237,16 @@
   <div class="tablewrap"><table>
     <tr><th>입력</th><th>기능</th></tr>
     <tr><td><code>SW[1:0]</code> = 00</td><td><b>식별 모드</b> (기본). 서명하면 이름 또는 미등록 표시</td></tr>
-    <tr><td><code>SW[1:0]</code> = 01</td><td><b>등록 모드</b>. <code>SW[4:2]</code>로 등록 슬롯(0~7) 선택, 같은 사람이 5번 서명하면 기준 벡터와 DTW 템플릿 저장</td></tr>
+    <tr><td><code>SW[1:0]</code> = 01</td><td><b>등록 모드</b>. <code>SW[4:2]</code>로 등록 슬롯(0~4, 5명) 선택, 같은 사람이 5번 서명하면 DTW 템플릿 5개와 문턱값 저장</td></tr>
     <tr><td><code>SW[1:0]</code> = 10</td><td><b>데이터 수집 모드</b>. 서명 원시 시계열을 JTAG UART로 PC에 전송 (학습용)</td></tr>
-    <tr><td><code>SW[5]</code></td><td>추론 방식 선택: 0 = Nios II 소프트웨어, 1 = 하드웨어 MAC 엔진 (속도 비교 시연용)</td></tr>
-    <tr><td><code>SW[6]</code></td><td>3D 화면 자동 회전 켜기/끄기</td></tr>
+    <tr><td><code>SW[5]</code></td><td>DTW 계산 방식: 0 = Nios II 소프트웨어, 1 = 하드웨어 PE 배열 (속도 비교 시연용)</td></tr>
+    <tr><td><code>SW[6]</code></td><td>미사용 (3D 표시는 Tier 2로 보류)</td></tr>
+    <tr><td><code>SW[7]</code></td><td>LEDR에 센서별 자기장 세기 막대 표시 (배선 점검용)</td></tr>
     <tr><td><code>KEY0</code></td><td>기준 재측정 (펜을 판에서 치운 상태에서 지자기·오프셋 측정)</td></tr>
     <tr><td><code>KEY1</code></td><td>서명 끝 (타임아웃을 기다리지 않고 바로 판정)</td></tr>
     <tr><td><code>KEY2</code></td><td>등록 모드에서 마지막 서명 취소</td></tr>
   </table></div>
-  <p>등록자 이름표(슬롯 번호 → 영문 이름, 한글 이름 비트맵)는 PC에서 미리 만들어 온칩 ROM에 넣는다. 현장 등록용 빈 슬롯은 "GUEST 1", "GUEST 2"처럼 표시한다.</p>
+  <p>화면에는 슬롯 번호로 <code>PERSON 1</code>~<code>PERSON 5</code>를 표시한다. 실명을 쓰지 않으므로 이름표를 미리 만들 필요가 없고, 현장 등록한 사람도 같은 방식으로 나온다. 영문·한글 이름표는 Tier 2다.</p>
 </section>
 
 <!-- 4 -->
@@ -239,13 +254,14 @@
   <h2><span class="n">4</span>서명 데이터와 전처리</h2>
   <div class="tablewrap"><table>
     <tr><th>단계</th><th>내용</th><th>이유</th></tr>
-    <tr><td>원시 기록</td><td>프레임마다 (t, x, y, z, θ, φ, pen) 저장. 50 Hz × 최대 6 s = 300프레임</td><td>공중 동작까지 포함</td></tr>
+    <tr><td>원시 기록</td><td>프레임마다 (t, x, y, z, ux, uy, pen)와 센서 12채널 원시값 저장. 50 Hz × 최대 6 s = 300프레임</td><td>추적기를 고쳐도 다시 계산할 수 있게 원시값을 함께 둔다</td></tr>
     <tr><td>정규화</td><td>펜 내림 점들의 무게중심을 원점으로, 가로 폭을 1로 맞춤. z는 판 기준 높이 그대로</td><td>서명 위치·크기 차이를 지우고 모양·리듬만 남김</td></tr>
-    <tr><td>리샘플</td><td>시간축 기준으로 128점에 선형 보간 (전체 걸린 시간은 별도 숫자로 보관)</td><td>CNN 입력 길이 고정. 시간 기준이라 속도 정보가 보존됨</td></tr>
-    <tr><td>입력 채널 (8)</td><td>x, y, z, vx, vy, θ, φ, pen</td><td>모양 + 속도 + 높이·기울기 + 획 구분</td></tr>
-    <tr><td>양자화</td><td>채널별 스케일로 int8 변환</td><td>FPGA 추론과 비트 일치 검증</td></tr>
+    <tr><td>리샘플</td><td>시간축 기준으로 128점에 선형 보간 (전체 걸린 시간은 별도 숫자로 보관)</td><td>DTW·CNN 입력 길이 고정. 시간 기준이라 속도 정보가 보존됨</td></tr>
+    <tr><td>입력 채널 (8)</td><td>x, y, z, vx, vy, ux, uy, pen (ux, uy = 펜 축 방향의 수평 성분)</td><td>모양 + 속도 + 높이·기울기 + 획 구분</td></tr>
+    <tr><td>양자화</td><td>채널별 스케일로 int8 변환</td><td>소프트웨어·하드웨어 계산의 비트 일치 검증</td></tr>
   </table></div>
-  <p><span class="tag est">비교 실험</span>입력 채널을 ① x, y, pen만 ② + vx, vy ③ + z, θ, φ(공중 동작)로 늘려 가며 정확도를 비교한다. ③이 ②보다 나아야 "공중 동작이 식별에 도움이 된다"는 가설이 맞는 것이다.</p>
+  <p><span class="tag est">비교 실험</span>입력 채널을 ① x, y, pen만 ② + vx, vy ③ + 기울기(ux, uy) ④ + z로 늘려 가며 정확도를 비교한다. ③이 ②보다 나아야 "기울기가 식별에 도움이 된다"는 가설이 맞는 것이다. <code>pen</code> 채널을 빼고 z만 쓰는 경우도 비교한다(13장 펜 올림/내림).</p>
+  <p>θ, φ 대신 ux, uy를 쓰는 이유: φ(기우는 방향의 각도)는 ±180°에서 값이 튀고, 펜이 거의 수직이면 불안정하다. DTW는 이 튐을 큰 거리로 본다. ux, uy는 연속이다.</p>
 </section>
 
 <!-- 5 -->
@@ -253,12 +269,14 @@
   <h2><span class="n">5</span>AI 구조와 판정 규칙</h2>
   <div class="tablewrap"><table>
     <tr><th>#</th><th>모델</th><th>입력 → 출력</th><th>크기 <span class="tag est">추정</span></th><th>학습</th></tr>
-    <tr><td>①</td><td><b>위치 복원 MLP</b> (기존)</td><td>센서 4개 × 3축 = 12 → (x, y, z, θ, φ)</td><td>약 5k MAC 이하 <span class="tag est">추정</span> (입력이 27→12로 줄어듦)</td><td>쌍극자 합성 데이터 사전학습 → 실측 미세조정</td></tr>
-    <tr><td>②</td><td><b>서명 임베딩 1D CNN</b> (신규)</td><td>128×8 시계열 → 32차원 벡터 (길이 1로 정규화)</td><td>약 35만 MAC, 가중치 약 7.3k개 (int8 약 7 KB)</td><td>PC에서 여러 사람 서명으로 "같은 사람은 가깝게, 다른 사람은 멀게" 학습 (triplet 또는 prototypical 손실)</td></tr>
-    <tr><td>③</td><td><b>DTW</b> (기준선, AI 아님)</td><td>새 서명 vs 등록 템플릿 → 정렬 거리</td><td>대역폭 16 제한 시 템플릿당 약 4k 셀</td><td>학습 없음</td></tr>
+    <tr><td>①</td><td><b>위치 복원 MLP</b> (기존)</td><td>센서 4개 × 3축 = 12 → (x, y, z, ux, uy)</td><td>12→64→64→5, 곱셈 5,184회. Nios II/f에서 약 2.1 ms (시뮬레이션)</td><td>쌍극자 합성 데이터 사전학습 → 실측 미세조정</td></tr>
+    <tr><td>②</td><td><b>서명 임베딩 1D CNN</b> (선택, Tier 2)</td><td>128×8 시계열 → 32차원 벡터 (길이 1로 정규화)</td><td>약 35만 MAC, 가중치 약 7.3k개 (int8 약 7 KB)</td><td>PC에서 여러 사람 서명으로 "같은 사람은 가깝게, 다른 사람은 멀게" 학습 (triplet 또는 prototypical 손실)</td></tr>
+    <tr><td>③</td><td><b>DTW</b> (필수 식별 방법, AI 아님)</td><td>새 서명 vs 등록 템플릿 → 정렬 거리</td><td>대역폭 16 제한 시 템플릿당 약 4k 셀</td><td>학습 없음</td></tr>
   </table></div>
 
-  <h3>임베딩 CNN 구조 (초안)</h3>
+  <p>위치 MLP는 구현했다. 쌍극자 시뮬레이션에서 xy 약 2.2 mm(교정 오차 포함 2.6 mm), z 약 1.7 mm다. 이상 조건의 LM 피팅(약 0.7 mm)보다 크고, 특히 z 오차는 펜 올림/내림 판정에 영향을 준다. 실측 데이터로 다시 학습한 뒤 LM과 정확도·시간을 비교해 보고한다.</p>
+
+  <h3>임베딩 CNN 구조 (초안, 선택 항목)</h3>
 <pre><code>입력 128 × 8
 Conv1D  8→16, k=5, ReLU, MaxPool 2   → 64 × 16    (약 82k MAC)
 Conv1D 16→32, k=5, ReLU, MaxPool 2   → 32 × 32    (약 164k MAC)
@@ -267,9 +285,10 @@ Global Average Pool                   → 32
 Dense  32→32                          → 32차원 임베딩 (L2 정규화)</code></pre>
   <p>MAC 수와 가중치 크기는 위 구조로 계산한 추정치다. 온칩 메모리와 임베디드 곱셈기 사용량은 합성 리포트로 확인한다.</p>
 
-  <div class="callout info"><b>왜 "분류기"가 아니라 "임베딩"인가:</b> 사람 수만큼 출력이 있는 분류기는 등록자가 바뀔 때마다 PC에서 다시 학습해야 한다. 임베딩 방식은 등록할 때 서명 5개의 벡터 평균만 저장하면 되므로 <b>보드에서 바로 새 사람을 등록</b>할 수 있다. 시연에서 심사위원을 현장 등록하는 장면이 가능해진다. 다만 학습에 쓴 사람 수가 적으면 처음 보는 사람에게 일반화가 약할 수 있으므로, 안 되면 13장의 대안(등록자 고정 분류기 + 문턱)으로 바꾼다.</div>
+  <div class="callout info"><b>왜 "분류기"가 아니라 "임베딩"인가:</b> 사람 수만큼 출력이 있는 분류기는 등록자가 바뀔 때마다 PC에서 다시 학습해야 한다. 임베딩 방식은 등록할 때 서명 5개의 벡터 평균만 저장하면 되므로 <b>보드에서 바로 새 사람을 등록</b>할 수 있다. 시연에서 심사위원을 현장 등록하는 장면이 가능해진다. 다만 학습에 쓴 사람 수가 적으면 처음 보는 사람에게 일반화가 약할 수 있으므로, 안 되면 13장의 대안(등록자 고정 분류기 + 문턱)으로 바꾼다. <b>2026-11-12 추가:</b> 현장 등록은 DTW로도 된다. 서명 5개를 템플릿으로 저장하고 서로의 거리로 문턱을 정하면 되므로 학습이 필요 없다. 그래서 현장 등록은 임베딩의 성패와 무관하게 필수 시연에 넣는다(9장).</div>
 
   <h3>판정 규칙 (등록자 vs 미등록)</h3>
+  <p>필수 경로에서는 아래의 d_k를 <b>DTW 거리</b>로 둔다: d_k = 등록자 k의 템플릿 5개와의 DTW 거리 중 가장 작은 값. ①과 ② 조건은 그대로 쓰고, ③은 CNN을 함께 쓸 때만 해당한다.</p>
 <pre><code>e      = CNN(서명)                       // 32차원 임베딩
 d_k    = 1 − cos(e, 기준벡터_k)            // 등록자 k와의 거리, k = 1..N
 k1, k2 = 거리가 가장 작은 두 등록자
@@ -282,15 +301,17 @@ else
     → "미등록"</code></pre>
   <ul>
     <li><b>τ_k (사람별 문턱):</b> 등록할 때 그 사람 서명 5개끼리의 거리 평균 μ_k와 표준편차 σ_k를 저장하고 τ_k = μ_k + a·σ_k로 둔다. 서명이 들쭉날쭉한 사람과 일정한 사람을 공평하게 다루기 위해서다.</li>
-    <li><b>a, m, τ_dtw:</b> 11장에서 모은 검증 데이터(등록자의 다른 날 서명 + 미등록 역할의 서명)로 정한다. 시연에서는 <b>미등록자를 등록자로 잘못 받는 오류를 줄이는 쪽</b>으로 문턱을 잡는다(대신 등록자가 가끔 "다시 서명" 요청을 받을 수 있음).</li>
+    <li><b>a, m, τ_dtw:</b> 11장에서 모은 검증 데이터(등록자의 다른 날 서명 + 미등록 역할의 서명)로 정한다. 시연에서는 <b>미등록자를 등록자로 잘못 받는 오류를 줄이는 쪽</b>으로 문턱을 잡는다(대신 등록자가 가끔 "다시 서명" 요청을 받을 수 있음). 데이터가 적으므로 한 사람씩 빼고 시험하는 방식으로 정하고, 문턱을 정한 사람과 시험하는 사람을 나눈다.</li>
     <li>③ DTW 동의 조건은 CNN 단독, DTW 단독, 둘 다 쓰는 결합 방식의 결과를 비교한 뒤 넣을지 정한다.</li>
   </ul>
 
   <h3>하드웨어 가속 계획</h3>
   <ul>
-    <li>구현 순서: ① Nios II C로 CNN·DTW 소프트웨어 구현(기준) → ② 기존 기획의 <b>병렬 MAC 엔진</b>으로 CNN Conv 층 가속 → ③ (선택) DTW 대역 계산 가속.</li>
+    <li><b>대상을 CNN MAC 엔진에서 DTW 병렬 PE 배열로 바꿨다(11/8 결정).</b> DTW는 필수 경로라 반드시 쓰이고, 곱셈 없이 덧셈·비교만이라 원리를 설명하기 쉽다.</li>
+    <li>구조: DTW 표에서 같은 안티대각선 위의 칸은 서로 의존하지 않으므로 PE 33개가 동시에 계산한다. 비교 1회에 276클럭, 곱셈기 0개.</li>
     <li>PC(Python) · Nios II SW · HW 세 출력이 테스트 벡터 100개에서 비트 단위로 일치해야 한다.</li>
-    <li>DTW는 곱셈 없이 덧셈·비교만 반복해서, 곱셈기 없는 Nios II/e에서도 돌지만 느리다. 등록자 5명 × 템플릿 5개면 템플릿 25개를 비교해야 하므로 SW/HW 비교의 좋은 대상이다(측정 후 결정).</li>
+    <li>지연(시뮬레이션, Nios II/f, 보드 실측 아님): 소프트웨어 약 12.4 ms, 하드웨어 약 56 µs(질의 복사 포함). 템플릿 25개면 약 310 ms 대 0.2 ms.</li>
+    <li>한계: 노트북에서는 DTW 수십 회가 1 ms 안에 끝난다. 이 가속기는 "DE2 없이는 불가능"이 아니라, 보드가 독립으로 동작할 때의 HW/SW 분할을 설계하고 정량 비교하는 것이 목적이다. 발표에서도 "노트북보다 빠르다"고 하지 않는다.</li>
   </ul>
 </section>
 
@@ -299,18 +320,21 @@ else
   <h2><span class="n">6</span>출력 화면 설계</h2>
 
   <h3>보드 LCD (16×2 문자, 영문만 가능)</h3>
-  <p>DE2에 붙어 있는 16×2 문자 LCD는 Qsys의 University Program "Character LCD" IP로 Nios II에서 문자열을 쓴다. 한글 글꼴이 없으므로 영문 이름을 쓴다.</p>
+  <p>DE2에 붙어 있는 16×2 문자 LCD는 Qsys의 표준 LCD IP(altera_avalon_lcd_16207)로 Nios II에서 문자열을 쓴다. 한글 글꼴이 없으므로 영문 이름을 쓴다.</p>
   <div class="grid3">
-    <div><b style="color:var(--ok)">등록자</b><br><span class="lcd">ID02 YOON JAEGUK
-MATCH  d=0.18  OK</span></div>
-    <div><b style="color:var(--bad)">미등록</b><br><span class="lcd">NOT REGISTERED
-d=0.61   DENIED</span></div>
+    <div><b style="color:var(--ok)">등록자</b><br><span class="lcd">PERSON 2
+d=2412</span></div>
+    <div><b style="color:var(--bad)">미등록</b><br><span class="lcd">NOT ENROLLED
+ </span></div>
     <div><b style="color:var(--warn)">서명 불량</b><br><span class="lcd">SIGN AGAIN
-TOO SHORT</span></div>
+ </span></div>
   </div>
-  <p style="margin-top:12px">LED: 등록자면 <code>LEDG</code> 전체 점등, 미등록이면 <code>LEDR</code> 전체 3회 깜빡임. 7세그먼트: 임베딩 추론 지연(µs).</p>
+  <p style="margin-top:12px">LED: 등록자면 <code>LEDG</code> 전체 점등, 미등록이면 <code>LEDR</code> 전체 3회 깜빡임. 7세그먼트: DTW 지연(µs). LCD 문구는 16칸 이하로 맞췄고(이전 예시 <code>MATCH  d=0.18  OK</code>는 17자였다) 실명 대신 <code>PERSON n</code>을 쓴다.</p>
 
-  <h3>VGA 화면 (320×240, 좌우 분할)</h3>
+  <h3>VGA 화면 (현재 설계)</h3>
+  <div class="callout info">현재 화면 설계는 <a href="vga-ui-mockup.html">vga-ui-mockup.html</a>에 있다(브라우저로 연다). 640×480이고, 문자 80×30칸 + 서명 칸 192×192픽셀 + 펜 커서로 그린다. 왼쪽에 서명 획, 오른쪽에 상태(2배 크기 글자)가 나온다. 서명 중에는 펜 높이·기울기·속도 게이지, 결과가 나오면 등록자별 DTW 거리 막대와 문턱 눈금, 하드웨어·소프트웨어 DTW 시간을 보여 준다. 1판은 FPGA와 펌웨어로 구현해 시뮬레이션했고, 간소화한 2판은 아직 목업이다. 실제 모니터에서는 확인하지 않았다. 아래의 좌우 분할 화면, 3D 궤적, 한글 이름은 초기 구상이며 Tier 2로 보류한다.</div>
+
+  <h3>VGA 화면 (초기 구상: 320×240, 좌우 분할)</h3>
   <figure>
     <svg viewBox="0 0 960 330" role="img" aria-label="VGA 화면 예시 두 개. 왼쪽은 등록자로 판정되어 이름이 표시된 화면, 오른쪽은 미등록으로 판정된 화면">
       <g font-family="Noto Sans KR, sans-serif">
@@ -364,7 +388,7 @@ TOO SHORT</span></div>
     <figcaption>화면 예시. 숫자(거리, 지연)는 설명용 가상값이며 실측값으로 바뀐다. 흰 실선은 펜이 닿은 획, 주황 점선은 펜을 든 공중 동작.</figcaption>
   </figure>
 
-  <h3>3D 표시 구현</h3>
+  <h3>3D 표시 구현 (Tier 2, 보류)</h3>
   <ul>
     <li>DE2에는 GPU가 없으므로 Nios II가 3D 좌표를 회전·투영해 2D 화면 좌표로 바꾸고, 점 사이를 선(Bresenham)으로 그린다. 한 서명이 128~300점이라 계산량이 작다.</li>
     <li>sin/cos 값은 표로 미리 만들어 두고 고정소수점으로 계산한다. 몇 프레임마다 각도를 바꿔 다시 그리면 천천히 회전한다.</li>
@@ -467,15 +491,15 @@ TOO SHORT</span></div>
 <section id="demo">
   <h2><span class="n">9</span>시연 시나리오 (약 4분)</h2>
   <ol>
-    <li><b>사전 등록:</b> 팀원 2명과 지원자 1명(3명)을 미리 등록해 둔다. 등록 화면에 이름 목록을 보여준다.</li>
-    <li><b>등록자 식별:</b> 윤재국이 서명 → LCD에 <code>YOON JAEGUK</code>, VGA에 "윤재국", 초록 LED. 임창현도 같은 방식으로.</li>
-    <li><b>미등록 거부:</b> 심사위원(또는 관객)에게 서명을 부탁 → LCD <code>NOT REGISTERED</code>, VGA "미등록", 빨간 LED.</li>
-    <li><b>현장 등록 (임베딩 방식이 동작할 때만):</b> 같은 심사위원을 등록 모드로 5번 서명시켜 GUEST 슬롯에 등록 → 다시 서명하면 이름(GUEST 1)이 뜬다.</li>
-    <li><b>3D 재생:</b> 방금 서명의 3D 궤적을 시간 순서대로 재생하고 회전시켜, 종이에 안 남는 공중 동작(주황 점선)을 보여준다.</li>
-    <li><b>SW/HW 속도 비교:</b> <code>SW[5]</code>를 바꿔 같은 서명을 소프트웨어/하드웨어로 추론, 7세그 지연 차이와 자원 사용량 표를 보여준다.</li>
+    <li><b>사전 등록:</b> 팀원 2명과 지원자 1명(3명)을 미리 등록해 둔다. VGA 대기 화면에 등록된 슬롯(P1 P2 P3)이 보인다.</li>
+    <li><b>등록자 식별:</b> 팀원이 서명 → 서명하는 동안 VGA에 획과 높이·기울기·속도 게이지, 끝나면 큰 글자로 <code>PERSON 2</code>와 등록자별 거리 막대, 초록 LED.</li>
+    <li><b>미등록 거부:</b> 심사위원(또는 관객)에게 서명을 부탁 → <code>NOT ENROLLED</code>, 빨간 LED. 어느 막대도 문턱 눈금 안쪽에서 끝나지 않은 것을 보여준다.</li>
+    <li><b>현장 등록:</b> 같은 사람을 등록 모드로 5번 서명시켜 빈 슬롯에 등록 → 다시 서명하면 <code>PERSON 4</code>가 뜬다. DTW 방식이라 학습 없이 된다.</li>
+    <li><b>기울기 시연 (가산점):</b> 같은 글자를 펜을 세워서 한 번, 눕혀서 한 번 쓰며 TILT 게이지와 방향 화살표가 바뀌는 것을 보여준다. 종이와 볼펜으로 기울기를 읽는다는 점을 눈으로 확인시킨다.</li>
+    <li><b>SW/HW 속도 비교:</b> <code>SW[5]</code>를 바꿔 같은 사람이 다시 서명, 소프트웨어 DTW와 하드웨어 DTW의 시간과 배수(VGA·7세그), 자원 사용량 표를 보여준다.</li>
   </ol>
-  <div class="callout info"><b>발표 포인트:</b> "같은 펜으로 쓴 서명을 FPGA 안에서 AI로 바로 판별하고, 종이에 안 남는 공중 동작까지 쓴다. 같은 모델을 소프트웨어와 하드웨어로 구현해 몇 배 빨라졌는지 숫자로 보여준다." 정확도와 배율은 실측값만 쓰고 미리 약속하지 않는다.</div>
-  <div class="callout"><b>시연 위험 대비:</b> 현장 조명·노트북 위치에 따라 자기 간섭이 바뀌므로 시연 직전 <code>KEY0</code>으로 기준 재측정. 등록자가 긴장해서 평소와 다르게 쓰면 거부될 수 있으니 "평소처럼 한 번에 쓰기"를 미리 연습한다.</div>
+  <div class="callout info"><b>발표 포인트:</b> "종이와 자석 붙인 볼펜만으로 서명의 모양·속도·펜 기울기를 읽어, FPGA 보드 안에서 누가 썼는지 식별한다. 같은 DTW 계산을 소프트웨어와 병렬 하드웨어로 구현해 보드 안에서 몇 배 빨라졌는지 숫자로 보여준다." 정확도와 배율은 실측값만 쓰고 미리 약속하지 않는다.</div>
+  <div class="callout"><b>시연 위험 대비:</b> 현장 조명·노트북 위치에 따라 자기 간섭이 바뀌므로 시연 직전 <code>KEY0</code>으로 기준 재측정. 등록자가 긴장해서 평소와 다르게 쓰면 거부될 수 있으니 "평소처럼 한 번에 쓰기"를 미리 연습한다. 센서나 간섭 문제에 대비해, 잘 동작한 날의 시연 영상을 미리 찍어 둔다.</div>
 </section>
 
 <!-- 10 -->
@@ -483,14 +507,15 @@ TOO SHORT</span></div>
   <h2><span class="n">10</span>평가 지표</h2>
   <div class="tablewrap"><table>
     <tr><th>#</th><th>지표</th><th>방법</th><th>내부 목표 <span class="tag est">잠정</span></th></tr>
+    <tr><td>0</td><td><b>예비 실험</b> (수집 전)</td><td>팀원 2명이 각자 10회 서명하고, DTW로 본인끼리의 거리와 다른 사람과의 거리를 비교</td><td>본인끼리가 뚜렷이 작을 것. 아니면 사람을 모으기 전에 13장 대안을 검토</td></tr>
     <tr><td>1</td><td>위치 오차 (기존)</td><td>템플릿 따라 그리기 100점 이상</td><td>xy ≤5 mm (게이트 2)</td></tr>
-    <tr><td>2</td><td><b>등록자 식별 정확도</b></td><td>등록에 안 쓴 <b>다른 날</b> 서명으로 테스트, 사람별 혼동행렬</td><td>≥90%</td></tr>
+    <tr><td>2</td><td><b>등록자 식별 정확도</b></td><td>등록에 안 쓴 <b>다른 날</b> 서명으로 테스트, 사람별 혼동행렬</td><td>≥90%. 등록자 수와 함께 보고한다(3명이면 찍어도 33%)</td></tr>
     <tr><td>3</td><td><b>미등록 오수락률 (FAR)</b></td><td>미등록 역할 5~10명 서명 중 누군가로 잘못 받은 비율</td><td>≤10%</td></tr>
     <tr><td>4</td><td><b>등록자 오거부율 (FRR)</b></td><td>등록자 서명이 "미등록"으로 나온 비율</td><td>≤15%</td></tr>
-    <tr><td>5</td><td><b>위조 통과율</b> (정적·동적)</td><td>등록자 서명을 ① 이미지만 보고 베낀 경우(정적) ② 서명하는 영상을 보고 연습한 경우(동적)로 따라 쓴 서명 중 등록자로 받아들여진 비율. 입력 채널을 모양만(x, y, pen) / + 속도(vx, vy) / + 기울기(θ, φ)·z로 늘려 가며 비교</td><td>결과 그대로 보고(목표값 없음). 보고 시 시도 횟수(n)와 95% 상한 3/n을 함께</td></tr>
-    <tr><td>6</td><td>방법 비교</td><td>DTW 단독 / CNN 단독 / 결합의 2~4번 지표</td><td>결과 그대로 보고</td></tr>
-    <tr><td>6</td><td>입력 채널 비교</td><td>x·y·pen / +속도 / +공중 동작(z, θ, φ)</td><td>공중 동작 효과 유무 보고</td></tr>
-    <tr><td>7</td><td>SW 대 HW 추론</td><td>지연(µs), LE·곱셈기·온칩 메모리 사용량</td><td>합성 리포트 + 타임스탬프 실측</td></tr>
+    <tr><td>5</td><td><b>위조 통과율</b> (정적·동적)</td><td>등록자 서명을 ① 이미지만 보고 베낀 경우(정적) ② 서명하는 영상을 보고 연습한 경우(동적)로 따라 쓴 서명 중 등록자로 받아들여진 비율. 입력 채널을 모양만(x, y, pen) / + 속도(vx, vy) / + 기울기(ux, uy)·z로 늘려 가며 비교</td><td>결과 그대로 보고(목표값 없음). 보고 시 시도 횟수(n)와 95% 상한 3/n을 함께. 계획한 횟수(종류별 10~15회)로는 0회 통과해도 상한이 20~30%라 사례 수준으로 적는다</td></tr>
+    <tr><td>6</td><td>방법 비교</td><td>DTW 단독(필수). CNN을 만들면 CNN 단독·결합도 2~4번 지표로 비교</td><td>결과 그대로 보고</td></tr>
+    <tr><td>6</td><td>입력 채널 비교</td><td>x·y·pen / +속도 / +기울기(ux, uy) / +z, 그리고 pen 대신 z만 쓰는 경우</td><td>기울기 효과 유무 보고</td></tr>
+    <tr><td>7</td><td>SW 대 HW DTW</td><td>템플릿 1개·25개일 때의 지연(µs, 질의 복사 포함), LE·곱셈기·온칩 메모리 사용량</td><td>합성 리포트 + 보드 실측. 시뮬레이션 값은 12.4 ms 대 56 µs</td></tr>
     <tr><td>8</td><td>비트 일치</td><td>Python / Nios II SW / HW 출력 비교</td><td>테스트 벡터 100개 전부 일치</td></tr>
     <tr><td>9</td><td>서명 1회 판정 시간</td><td>서명 끝 → 이름 표시까지</td><td>≤1 s (타임아웃 1 s 제외)</td></tr>
   </table></div>
@@ -500,15 +525,18 @@ TOO SHORT</span></div>
 <!-- 11 -->
 <section id="collect">
   <h2><span class="n">11</span>데이터 수집 계획</h2>
+  <div class="callout info"><b>수집 전에 2인 예비 실험을 한다(10장 0번).</b> 위치 오차가 기준을 넘는 것과 서명이 구별되는 것은 별개다. 센서가 동작하는 날 팀원 2명이 각자 10회씩 서명해 DTW 거리를 비교한다. 30분이면 되고, 구별이 안 되면 사람을 모으기 전에 대안으로 넘어간다.</div>
   <div class="tablewrap"><table>
     <tr><th>그룹</th><th>인원</th><th>수집량</th><th>용도</th></tr>
-    <tr><td>등록자</td><td>3~5명 (팀원 2 + 지원자)</td><td>1인당 30회, <b>서로 다른 2일 이상</b>에 나눠서 (예: 11/13, 11/15)</td><td>임베딩 학습, 등록 기준 벡터, 테스트</td></tr>
-    <tr><td>미등록 역할</td><td>5~10명 (학과 친구)</td><td>1인당 10회</td><td>임베딩 학습(사람 수 늘리기), 미등록 문턱 결정</td></tr>
+    <tr><td>등록자</td><td>3~5명 (팀원 2 + 지원자)</td><td>1인당 30회, <b>서로 다른 2일 이상</b>에 나눠서 (예: 11/13, 11/15)</td><td>DTW 템플릿·문턱, 테스트 (CNN을 만들면 학습에도)</td></tr>
+    <tr><td>미등록 역할</td><td>5~10명 (학과 친구)</td><td>1인당 10회</td><td>미등록 문턱 결정과 시험. 문턱용 사람과 시험용 사람을 나눈다</td></tr>
     <tr><td>위조 시도 (정적)</td><td>2~3명</td><td>등록자 서명 이미지만 보고 따라 쓰기, 등록자 1명당 위조자 1인이 5회</td><td>5번 지표(정적 위조 통과율)</td></tr>
     <tr><td>위조 시도 (동적)</td><td>2~3명</td><td>등록자 서명하는 영상을 보고 연습한 뒤 따라 쓰기, 1인 5회</td><td>5번 지표(동적 위조 통과율). 가장 어려운 경우</td></tr>
   </table></div>
   <ul>
     <li>임베딩 CNN은 학습에 쓴 사람 수가 많을수록 처음 보는 사람에게 잘 일반화된다. 등록자 외 인원을 최대한 모은다.</li>
+    <li><b>수집 방법을 고정한다:</b> 종이 위치를 폼보드에 표시해 매번 같은 자리에 둔다. 세션마다 KEY0으로 기준값을 다시 잰다. 시계·팔찌를 풀고 휴대폰은 30~50 cm 밖에 둔다. 한 번에 5회씩 쓰고 쉰다. 센서 12채널 원시값을 함께 저장한다.</li>
+    <li>위조 시도는 종류별 10~15회라 통계로는 약하다. 시간이 되면 종류별 30회 이상으로 늘리고, 아니면 사례 수준이라고 보고서에 적는다.</li>
     <li>학습·검증·테스트는 <b>날짜로 나눈다</b> (같은 날 쓴 서명끼리만 비교하면 정확도가 부풀려진다).</li>
     <li><b>개인정보:</b> 서명은 개인정보다. 수집 전에 용도(수업 프로젝트)와 보관 기간(학기 종료 후 삭제)을 알리고 동의를 받는다. 파일명은 이름 대신 번호로 저장한다.</li>
   </ul>
@@ -517,6 +545,13 @@ TOO SHORT</span></div>
 <!-- 12 -->
 <section id="plan">
   <h2><span class="n">12</span>일정과 게이트 (11/3 ~ 11/22)</h2>
+  <div class="callout"><b>2026-11-12 기준:</b> 게이트 1(11/8)은 날짜가 지났고 결과 기록이 없다. 센서 도착일에 맞춰 게이트 날짜를 다시 잡는다. 부품을 기다리는 동안 HDL·펌웨어·PC 도구를 미리 만들어 시뮬레이션과 합성으로 확인했다(I²C 리더, 위치 MLP, 서명 처리, DTW 소프트웨어·하드웨어, 판정, VGA 화면, 수집·평가 도구). 보드에서는 아직 돌려 보지 않았다.
+  <br><b>범위 계층:</b> 윗단이 보드에서 안정적으로 돌기 전에 아랫단을 시작하지 않는다.
+  <ul>
+    <li><b>Tier 0 (필수):</b> 센서 4개 → 위치 복원 → 서명 버퍼 → 소프트웨어 DTW 식별 → LCD·LED·VGA 표시</li>
+    <li><b>Tier 1 (DE2의 역할):</b> DTW 하드웨어 가속과 SW/HW 비교표, 현장 등록</li>
+    <li><b>Tier 2 (선택):</b> 임베딩 CNN, 3D 표시, 한글 이름, 허공 서명</li>
+  </ul></div>
   <div class="week">
     <h3>1주 차 (~11/8) — 주문 · 위치 추적</h3>
     <ul>
@@ -540,19 +575,19 @@ TOO SHORT</span></div>
   <div class="week">
     <h3>3주 차 (11/16 ~ 11/22) — AI · 가속 · 마무리</h3>
     <ul>
-      <li>임베딩 CNN 학습·양자화·비트 일치 검증, Nios II SW 추론 → 병렬 MAC 가속.</li>
-      <li>미등록 판정 문턱 결정, 등록 모드(현장 등록), VGA 한글 이름·3D 재생.</li>
+      <li>DTW 하드웨어 가속의 보드 동작 확인과 SW/HW 측정표. (선택) 임베딩 CNN 학습·양자화.</li>
+      <li>미등록 판정 문턱 결정, 등록 모드(현장 등록) 리허설. (선택) VGA 한글 이름·3D 재생.</li>
       <li>평가 실험 (10장 2~7번).</li>
       <li><b>11/20(금):</b> 시연 리허설 3회. 이후 기능 추가 금지, 결과 표·발표자료·보고서 정리.</li>
     </ul>
-    <span class="ms">완료 기준: 9장 시연 1~3, 5, 6을 끊김 없이 3회 연속 성공 (4번 현장 등록은 가산점)</span>
+    <span class="ms">완료 기준: 9장 시연 1~4, 6(Tier 0 + Tier 1)을 끊김 없이 3회 연속 성공 (5번 기울기 시연은 가산점)</span>
   </div>
 
   <h3>역할 분담 (제안, 팀 합의 필요)</h3>
   <div class="tablewrap"><table>
     <tr><th>담당</th><th>업무</th></tr>
-    <tr><td>임창현</td><td>(제안) 위치 MLP·임베딩 CNN 학습과 양자화, DTW·문턱 결정, 평가 실험 분석, 발표자료</td></tr>
-    <tr><td>윤재국</td><td>(제안) 센서 판 제작·배선(폼보드·센서 고정 포함), Verilog I²C 마스터·병렬 MAC, Qsys(LCD·VGA·PIO) 통합, 자원/지연 측정</td></tr>
+    <tr><td>임창현</td><td>(제안) 위치 MLP 학습과 양자화, (선택) 임베딩 CNN, DTW·문턱 결정, 평가 실험 분석, 발표자료</td></tr>
+    <tr><td>윤재국</td><td>(제안) 센서 판 제작·배선(폼보드·센서 고정 포함), Verilog I²C 마스터·DTW PE 배열·VGA 회로, Qsys 통합, 자원/지연 측정</td></tr>
     <tr><td>공동</td><td>Nios II C (서명 버퍼, 판정, 화면), 데이터 수집, 시연 리허설, 보고서</td></tr>
   </table></div>
 </section>
@@ -563,7 +598,7 @@ TOO SHORT</span></div>
   <div class="tablewrap"><table>
     <tr><th>위험</th><th>내용</th><th>대응</th></tr>
     <tr><td>위치 오차</td><td>실측 오차가 시뮬레이션보다 몇 배 클 수 있음 (문헌: 센서 16개 실측 약 4 mm)</td><td>모양보다 속도·리듬 채널 비중을 높임. 오차가 크면 등록 인원을 3명으로 줄임</td></tr>
-    <tr><td>펜 올림/내림 오판</td><td>서명은 펜을 짧게 자주 들어서 획이 붙거나 끊김</td><td>z 히스테리시스 조정, pen 채널 대신 z를 그대로 입력해 모델이 학습하게 하는 방안 비교</td></tr>
+    <tr><td>펜 올림/내림 오판</td><td>서명은 펜을 짧게 자주 들어서 획이 붙거나 끊김</td><td>z 히스테리시스 조정, pen 채널 대신 z를 그대로 쓰는 방안 비교. 시뮬레이션의 z 오차가 1~2 mm라 실측에서 계속 문제면, 종이 받침 밑에 스위치를 두어 눌림을 3.3 V 디지털 신호로 직접 읽는 방안을 검토한다(미검증, 구조가 복잡해짐)</td></tr>
     <tr><td>데이터 부족</td><td>사람 수가 적으면 임베딩이 처음 보는 사람에게 일반화 안 됨 → 현장 등록·미등록 판정 불안정</td><td>공개 온라인 서명 데이터셋(x, y, 시간)으로 사전학습 후 우리 데이터로 미세조정. 안 되면 아래 대안 1</td></tr>
     <tr><td>날마다 다른 서명</td><td>같은 사람도 날·컨디션에 따라 서명이 달라짐</td><td>2일 이상 나눠 수집, 등록 시 5회 평균, 사람별 문턱</td></tr>
     <tr><td>미등록 오수락</td><td>등록자가 적으면 낯선 서명도 누군가와 가까울 수 있음</td><td>거리 문턱 + 1·2순위 차이 + DTW 동의, 문턱은 오수락을 줄이는 쪽으로</td></tr>
@@ -575,6 +610,7 @@ TOO SHORT</span></div>
   </table></div>
 
   <h3>대안 (위에서부터 순서대로 축소)</h3>
+  <p>2026-11-12: 아래 2번(DTW 단독)은 이제 대안이 아니라 필수 경로다. 임베딩 CNN이 안 되어도 시연과 평가는 그대로 진행하고, AI 요소는 위치 MLP로 유지한다.</p>
   <ol>
     <li><b>등록자 고정 분류기:</b> 임베딩 대신 "등록자 N명 + 미등록" 분류 CNN을 PC에서 학습. 현장 등록은 포기하고 미등록 판정은 최대 확률 문턱으로.</li>
     <li><b>DTW 단독:</b> AI 모델 없이 DTW로 식별 + 미등록 거부. AI 요소는 위치 MLP와 SW/HW 가속 비교로 유지.</li>
@@ -587,6 +623,11 @@ TOO SHORT</span></div>
 <section id="open">
   <h2><span class="n">14</span>미결 사항</h2>
   <ul class="check">
+    <li>센서 도착일 확인 후 게이트 1·2 날짜 다시 잡기 (게이트 1은 11/8이 지났고 결과 기록 없음)</li>
+    <li>2인 예비 실험 날짜 (10장 0번, 데이터 수집 전에)</li>
+    <li>VGA 화면 2판(간소화) 확정 후 보드 코드에 반영할지</li>
+    <li>위조 시도 횟수를 종류별 30회 이상으로 늘릴지, 사례 수준으로 보고할지</li>
+    <li>이 개정의 변경점(1장 표)에 대한 팀원 합의</li>
     <li>팀원과 주제 변경(숫자 → 서명 식별) 및 역할 합의</li>
     <li>교수님 확인: 외부 부품 사용, Nios II 사용, 서명 데이터 수집(개인정보) 괜찮은지</li>
     <li>11/2 센서 주문 여부 확인 → 부족분 주문 (8장)</li>

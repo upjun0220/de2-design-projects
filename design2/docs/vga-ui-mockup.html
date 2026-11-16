@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DE2 마법 펜 — VGA 화면 설계안</title>
+<style>
+  :root { --bg:#f4f5f7; --fg:#1c2330; --dim:#5d6878; --line:#d5dae2; --card:#ffffff; --accent:#1e5aa8; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#12151b; --fg:#e4e8ef; --dim:#98a2b3; --line:#2b323d; --card:#1a1f27; --accent:#7db4ff; }
+  }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 "Malgun Gothic", system-ui, sans-serif; }
+  main { max-width:1000px; margin:0 auto; padding:20px 16px 48px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  h2 { font-size:17px; margin:28px 0 8px; }
+  p, li { color:var(--fg); }
+  .dim { color:var(--dim); }
+  .tabs { display:flex; flex-wrap:wrap; gap:6px; margin:14px 0 10px; }
+  .tabs button { font:inherit; padding:5px 11px; border:1px solid var(--line); background:var(--card); color:var(--fg); border-radius:6px; cursor:pointer; }
+  .tabs button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:700; }
+  canvas { display:block; width:100%; max-width:960px; height:auto; background:#000; border:1px solid var(--line); border-radius:4px; }
+  table { border-collapse:collapse; width:100%; background:var(--card); }
+  th, td { border:1px solid var(--line); padding:6px 9px; text-align:left; vertical-align:top; }
+  th { font-weight:700; }
+  .wrap { overflow-x:auto; }
+  code { font-family:Consolas, monospace; font-size:13px; }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+<main>
+<h1>DE2 마법 펜 — VGA 화면 설계안 (2판: 간소화)</h1>
+<p class="dim">작성 2026-11-11 · 1판이 난잡하다는 의견에 따라 다시 설계했다. <b>보드 코드(<code>hdl/vga_ui.v</code>, <code>nios/ui.c</code>)는 아직 1판 구성이다.</b> 이 2판이 확정되면 옮긴다. 화면의 숫자는 모두 예시 값이다(DTW 시간은 시뮬레이션 값).</p>
+
+<div class="tabs" id="tabs"></div>
+<canvas id="vga" width="1280" height="960" aria-label="VGA 640x480 화면 목업"></canvas>
+<p class="dim" id="caption"></p>
+
+<h2>1판에서 바꾼 것</h2>
+<div class="wrap"><table>
+<tr><th>문제</th><th>2판</th></tr>
+<tr><td>패널 5개(PEN, SENSORS, MATCH, 결과, DTW)가 항상 같이 떠 있었다</td><td>식별·등록 화면에는 <b>상태, 근거, 펜, DTW 시간</b>만 둔다. 높이·기울기·속도는 <b>서명하는 동안에만</b> 상태 아래에 <b>게이지(막대)</b>로 나온다. 기울기 방향은 2배 크기 화살표다. 센서 값은 데이터 수집 모드(SW1-0 = 10)에만 나온다</td></tr>
+<tr><td>결과가 다른 정보와 같은 크기였다</td><td>상태를 <b>2배 크기 글자</b>로 쓴다. 한 화면에 큰 글자는 이것 하나다</td></tr>
+<tr><td>색이 7가지였다</td><td>회색 글자가 기본이고, 색은 뜻이 있을 때만 쓴다: 초록 = 등록자·펜 내림, 빨강 = 미등록·오류, 노랑 = 문턱 눈금</td></tr>
+<tr><td>제목 줄에 항목 5개, 아래에 안내 2줄과 상태 줄</td><td>제목 줄은 이름과 모드만. 안내는 지금 모드에서 쓰는 키만 한 줄</td></tr>
+<tr><td>등록 안 된 슬롯, 빈 막대까지 모두 그렸다</td><td>거리 막대는 결과가 나왔을 때 등록된 사람만 그린다</td></tr>
+<tr><td>서명 칸에 종이 점선, 치수 글자</td><td>서명 기준선과 x 표시만 남겼다</td></tr>
+<tr><td>DTW 시간을 로그 막대 2개로</td><td>숫자 두 개와 배수 한 줄. 지금 쓰는 쪽(SW5)을 밝게 표시한다</td></tr>
+</table></div>
+
+<h2>하드웨어 제약 (그대로 옮길 수 있는 것만 쓴다)</h2>
+<ul>
+  <li><b>문자 층:</b> 80×30칸(칸 하나가 8×16픽셀), 칸마다 글자 + 글자색 + 배경색. 막대는 1/8칸 단위의 조각 글자로 그린다.</li>
+  <li><b>2배 글자(새로 필요):</b> 글자 바이트의 남는 비트 하나를 "2배" 표시로 쓴다. 같은 글자를 2×2칸에 쓰면 각 칸이 글자의 1/4씩을 그린다. 어느 1/4인지는 칸 위치의 짝·홀로 정하므로 메모리가 늘지 않고 선택 회로만 조금 늘어난다(구현 전, 추정).</li>
+  <li><b>비트맵 층:</b> 서명 칸 192×192픽셀 1비트(화면에서 2배). 1픽셀 = 0.5 mm, 칸 전체 = 96×96 mm.</li>
+  <li><b>펜 커서:</b> 십자 하나. 펜을 내리면 초록, 들면 회색.</li>
+  <li>화면 글자는 영문만 쓴다. 결과는 <code>PERSON n</code> 또는 <code>NOT ENROLLED</code>이고, 인증·보안·위조 판별을 뜻하는 말은 쓰지 않는다.</li>
+</ul>
+
+<h2>참고한 화면</h2>
+<ul>
+  <li><b>서명 패드(Wacom STU 계열):</b> 테두리가 분명한 서명 영역, 쓰는 동안 획 표시. <a href="https://developer-support.wacom.com/hc/en-us/articles/9354498153239-STU-540-Signature-Capture-Mode-Configuration-and-Operation">Wacom STU-540 서명 캡처 모드</a></li>
+  <li><b>지문 등록 화면:</b> 필요한 횟수를 먼저 알리고 표본마다 바로 알려 준다. <a href="https://learn.microsoft.com/en-us/previous-versions/windows/hardware/design/dn613916(v=vs.85)">Microsoft 지문 등록 지침</a></li>
+</ul>
+</main>
+
+<script>
+// ---- emulated hardware: 80x30 text cells + 192x192 1-bit bitmap + one cursor sprite ----
+const COLS = 80, ROWS = 30, CW = 8, CH = 16;
+const PAD_COL = 1, PAD_ROW = 2, BM = 192;          // bitmap window: cols 1..48, rows 2..25
+const P = {                                         // palette; only these are used in this version
+  bg:'#0b1220', rule:'#2a3a57', dim:'#6b7a94', text:'#c9d4e8', white:'#ffffff',
+  green:'#3ddc84', red:'#ff5d5d', amber:'#ffc857', title:'#141d30', track:'#1b2740'
+};
+const BLOCKS = '▏▎▍▌▋▊▉█';
+
+let cells, bitmap, cursor;
+function clearScreen() {
+  cells = Array.from({length: ROWS}, () => Array.from({length: COLS}, () => ({ch:' ', fg:P.text, bg:P.bg, big:false})));
+  bitmap = new Uint8Array(BM * BM);
+  cursor = null;
+}
+function put(col, row, s, fg = P.text, bg = null) {
+  for (let i = 0; i < s.length && col + i < COLS; i++) {
+    const c = cells[row][col + i];
+    c.ch = s[i]; c.fg = fg; c.big = false; if (bg) c.bg = bg;
+  }
+}
+// Double-size text: the same character in a 2x2 block of cells. col and row must be even.
+function put2(col, row, s, fg) {
+  for (let i = 0; i < s.length; i++) for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) {
+    const c = cells[row + dy][col + 2 * i + dx];
+    c.ch = s[i]; c.fg = fg; c.big = true;
+  }
+}
+function fillBg(col, row, w, h, bg) {
+  for (let r = row; r < row + h; r++) for (let c = col; c < col + w; c++) { cells[r][c].bg = bg; }
+}
+// Horizontal bar: len cells, frac 0..1, 1/8-cell steps (partial block glyphs).
+function bar(col, row, len, frac, fg, track = P.track) {
+  const eighths = Math.round(Math.max(0, Math.min(1, frac)) * len * 8);
+  for (let i = 0; i < len; i++) {
+    const e = Math.max(0, Math.min(8, eighths - i * 8));
+    const c = cells[row][col + i];
+    c.bg = track; c.fg = fg; c.big = false; c.ch = e ? BLOCKS[e - 1] : ' ';
+  }
+}
+function tick(col, row, len, frac, barFrac, fg, barFg) {
+  const i = Math.min(len - 1, Math.floor(frac * len));
+  const c = cells[row][col + i];
+  c.bg = barFrac * len >= i + 1 ? barFg : P.track; c.fg = fg; c.ch = '│';
+}
+function box(c0, r0, c1, r1, fg) {
+  for (let c = c0 + 1; c < c1; c++) { put(c, r0, '─', fg); put(c, r1, '─', fg); }
+  for (let r = r0 + 1; r < r1; r++) { put(c0, r, '│', fg); put(c1, r, '│', fg); }
+  put(c0, r0, '┌', fg); put(c1, r0, '┐', fg); put(c0, r1, '└', fg); put(c1, r1, '┘', fg);
+}
+// Same algorithm as hdl/vga_ui.v
+function line(x0, y0, x1, y1, dash = 0) {
+  let dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1, err = dx + dy, n = 0;
+  for (;;) {
+    if (x0 >= 0 && x0 < BM && y0 >= 0 && y0 < BM && (!dash || (n++ % (2 * dash)) < dash)) bitmap[y0 * BM + x0] = 1;
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = 2 * err;
+    if (e2 >= dy) { err += dy; x0 += sx; }
+    if (e2 <= dx) { err += dx; y0 += sy; }
+  }
+}
+
+function render(ctx) {
+  ctx.setTransform(2, 0, 0, 2, 0, 0);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    ctx.fillStyle = cells[r][c].bg; ctx.fillRect(c * CW, r * CH, CW, CH);
+  }
+  ctx.fillStyle = P.white;
+  for (let y = 0; y < BM; y++) for (let x = 0; x < BM; x++)
+    if (bitmap[y * BM + x]) ctx.fillRect(PAD_COL * CW + x * 2, PAD_ROW * CH + y * 2, 2, 2);
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const cell = cells[r][c], x = c * CW, y = r * CH, ch = cell.ch;
+    if (ch === ' ') continue;
+    ctx.fillStyle = cell.fg;
+    if (cell.big) {       // drawn once for the 2x2 block
+      if (c % 2 === 0 && r % 2 === 0) { ctx.font = '26px Consolas, "Courier New", monospace'; ctx.fillText(ch, x + 8, y + 17); }
+      continue;
+    }
+    const bi = BLOCKS.indexOf(ch);
+    if (bi >= 0) { ctx.fillRect(x, y + 3, bi + 1, CH - 6); continue; }
+    const mx = x + 4, my = y + 8;
+    const seg = {'─':[1,1,0,0], '│':[0,0,1,1], '┌':[0,1,0,1], '┐':[1,0,0,1], '└':[0,1,1,0], '┘':[1,0,1,0]}[ch];
+    if (seg) {
+      if (seg[0]) ctx.fillRect(x, my, 4, 1);
+      if (seg[1]) ctx.fillRect(mx, my, 4, 1);
+      if (seg[2]) ctx.fillRect(mx, y, 1, 8);
+      if (seg[3]) ctx.fillRect(mx, my, 1, 8);
+      ctx.fillRect(mx, my, 1, 1);
+      continue;
+    }
+    if (ch === '■') { ctx.fillRect(x + 1, y + 4, 6, 8); continue; }
+    if (ch === '□') { ctx.fillRect(x + 1, y + 4, 6, 1); ctx.fillRect(x + 1, y + 11, 6, 1); ctx.fillRect(x + 1, y + 4, 1, 8); ctx.fillRect(x + 6, y + 4, 1, 8); continue; }
+    ctx.font = '13px Consolas, "Courier New", monospace';
+    ctx.fillText(ch, mx, my + 0.5);
+  }
+  if (cursor) {
+    const x = PAD_COL * CW + cursor.x * 2, y = PAD_ROW * CH + cursor.y * 2;
+    ctx.fillStyle = cursor.color;
+    ctx.fillRect(x - 8, y, 7, 2); ctx.fillRect(x + 3, y, 7, 2); ctx.fillRect(x, y - 8, 2, 7); ctx.fillRect(x, y + 3, 2, 7);
+  }
+}
+
+// ---- example data ----
+const SENS = [[-700, -700], [-700, 700], [700, -700], [700, 700]];   // 0.1 mm, order as pc/pen_model.py
+function signature() {
+  const out = [], N = 160;
+  for (let i = 0; i < N; i++) {
+    const u = i / (N - 1);
+    const lift = (u > 0.40 && u < 0.45) || (u > 0.74 && u < 0.78);
+    out.push({
+      x: Math.round(-290 + 560 * u + 70 * Math.sin(2 * Math.PI * 4.6 * u)),
+      y: Math.round(90 * Math.sin(2 * Math.PI * 3.3 * u + 0.6) + 45 * Math.sin(2 * Math.PI * 7.1 * u) - 20),
+      z: lift ? 190 : 88 + Math.round(4 * Math.sin(20 * u)),
+      ux: 0.42 + 0.08 * Math.sin(6 * u), uy: 0.27 + 0.06 * Math.cos(5 * u), down: !lift
+    });
+  }
+  return out;
+}
+const SIG = signature();
+const sx = v => Math.round(96 + v / 5), sy = v => Math.round(96 - v / 5);    // 0.5 mm per pixel
+
+function drawGuides() {                                    // signing line and x mark only
+  line(30, 140, 162, 140, 1);
+  line(24, 130, 30, 136); line(30, 130, 24, 136);
+}
+function drawTrace(nFrames) {
+  for (let i = 1; i < nFrames && i < SIG.length; i++)
+    if (SIG[i].down && SIG[i - 1].down) line(sx(SIG[i - 1].x), sy(SIG[i - 1].y), sx(SIG[i].x), sy(SIG[i].y));
+}
+function fieldUt(k, p) {
+  const r = Math.hypot((p.x - SENS[k][0]) / 1e4, (p.y - SENS[k][1]) / 1e4, p.z / 1e4);
+  return 0.9e-7 * 1.5 / r ** 3 * 1e6;
+}
+
+// ---- screen pieces. Right panel: columns 52..78. ----
+const RX = 52;
+const HELP = {
+  identify: 'KEY1 end signature    KEY0 baseline    SW5 hardware / software    SW1-0 mode',
+  enroll:   'KEY1 end signature    KEY2 cancel last    SW4-2 person    SW1-0 mode',
+  collect:  'KEY1 end / mark    KEY0 baseline    SW1-0 mode'
+};
+function frame(mode) {
+  clearScreen();
+  fillBg(0, 0, COLS, 1, P.title);
+  put(1, 0, 'DE2 MAGIC PEN', P.text);
+  const name = {identify:'IDENTIFY', enroll:'ENROLL', collect:'COLLECT'}[mode];
+  put(COLS - 1 - name.length, 0, name, P.white);
+  box(0, 1, 49, 26, P.rule);
+  put(1, 28, HELP[mode], P.dim);
+}
+// The one big line and the sentence under it.
+function headline(big, fg, sub, subFg = P.text) {
+  put2(RX, 4, big, fg);
+  put(RX, 7, sub, subFg);
+}
+function label(row, s) { put(RX, row, s, P.dim); }
+function penLine(p) {
+  label(18, 'PEN');
+  if (!p) { put(RX, 19, 'away', P.dim); return; }
+  const tilt = Math.asin(Math.min(1, Math.hypot(p.ux, p.uy))) * 180 / Math.PI;
+  const dir = '→↗↑↖←↙↓↘'[Math.round(Math.atan2(p.uy, p.ux) / (Math.PI / 4) + 8) % 8];
+  put(RX, 19, p.down ? 'down' : 'up  ', p.down ? P.green : P.text);
+  put(RX + 7, 19, 'z ' + (p.z / 10).toFixed(1).padStart(4) + ' mm', P.text);
+  put(RX + 19, 19, 'tilt ' + tilt.toFixed(0).padStart(2), P.text); put(RX + 26, 19, dir, P.text);
+}
+// While signing: gauges for height, tilt and speed. The pad cursor already shows x, y.
+// Each gauge: name on the left, number on the right, bar underneath.
+function gauge(row, name, value, len, frac, color) {
+  label(row, name);
+  put(RX + len - value.length, row, value, P.text);
+  bar(RX, row + 1, len, frac, color);
+}
+function liveValues(p, prev) {
+  // height 0..32 mm; the mark is the pen-down height (12 mm)
+  gauge(10, 'HEIGHT', (p.z / 10).toFixed(1) + ' mm', 27, p.z / 320, p.down ? P.green : P.dim);
+  tick(RX, 11, 27, 120 / 320, p.z / 320, P.amber, p.down ? P.green : P.dim);
+  // tilt 0..60 degrees, with a double-size arrow for the direction
+  const tilt = Math.asin(Math.min(1, Math.hypot(p.ux, p.uy))) * 180 / Math.PI;
+  const dir = '→↗↑↖←↙↓↘'[Math.round(Math.atan2(p.uy, p.ux) / (Math.PI / 4) + 8) % 8];
+  gauge(13, 'TILT', tilt.toFixed(0) + ' deg', 22, tilt / 60, P.text);
+  put2(RX + 24, 14, dir, P.white);
+  // speed 0..300 mm/s: 0.1 mm per frame at 50 Hz
+  const speed = Math.hypot(p.x - prev.x, p.y - prev.y) / 10 * 50;
+  gauge(17, 'SPEED', Math.round(speed) + ' mm/s', 27, speed / 300, P.text);
+  const f = v => ((v < 0 ? '-' : '+') + (Math.abs(v) / 10).toFixed(1)).padStart(6);
+  put(RX, 20, 'x' + f(p.x) + '   y' + f(p.y) + ' mm', P.dim);
+}
+function dtwLines(hwUs, swUs, hwActive) {
+  label(22, 'DTW TIME');
+  const row = (r, name, us, active) => {
+    put(RX, r, name, active ? P.white : P.dim);
+    put(RX + 11, r, us == null ? '       --' : String(us).padStart(7) + ' us', active ? P.white : P.dim);
+  };
+  row(23, 'hardware', hwUs, hwActive); row(24, 'software', swUs, !hwActive);
+  if (hwUs && swUs) put(RX, 25, 'hardware is ' + Math.round(swUs / hwUs) + ' x faster', P.dim);
+}
+// Distance bars, only for enrolled people and only when there is a result.
+function matchBars(d, tau, best) {
+  label(10, 'DISTANCE');
+  let row = 11;
+  for (let k = 0; k < 5; k++) {
+    if (!tau[k]) continue;
+    const col = d[k] < tau[k] ? P.green : P.dim;
+    put(RX, row, 'P' + (k + 1), k === best ? P.white : P.dim);
+    bar(RX + 3, row, 16, d[k] / 16000, col);
+    tick(RX + 3, row, 16, tau[k] / 16000, d[k] / 16000, P.amber, col);
+    put(RX + 20, row, String(d[k]).padStart(5), k === best ? P.white : P.dim);
+    row++;
+  }
+  put(RX + 3, row + 1, '│', P.amber); put(RX + 5, row + 1, 'threshold', P.dim);
+}
+
+const TAU = [3466, 3881, 4544, 0, 0];
+const STATES = {
+  boot: { label:'부팅·센서 점검', note:'전원을 켠 직후. I²C 주소 탐지 결과와 기준값 측정 진행을 보여 준다. 터미널 없이도 센서 상태를 본다.', draw(t) {
+    frame('identify');
+    put(3, 4, 'I2C SCAN', P.dim);
+    ['bus 0   0x18   ACK', 'bus 0   0x19   ACK', 'bus 0   0x1A   ACK', 'bus 0   0x1B   ACK'].forEach((s, i) => put(3, 6 + i, s, P.text));
+    put(3, 11, 'sensors 4 of 4', P.green);
+    put(3, 14, 'BASELINE', P.dim);
+    const f = (t % 3) / 3; bar(3, 16, 32, f, P.text);
+    headline('STARTING', P.white, 'keep the pen away', P.text);
+  }},
+  ready: { label:'식별 대기', note:'SW1-0 = 00. 서명을 기다린다. 오른쪽에는 상태 한 줄과 등록된 사람 수만 있다.', draw() {
+    frame('identify'); drawGuides();
+    headline('READY', P.white, 'sign on the paper', P.text);
+    label(10, 'ENROLLED'); put(RX, 11, 'P1  P2  P3', P.text);
+    penLine(null); dtwLines(138, 310400, true);
+  }},
+  signing: { label:'서명 중', note:'펜이 내려가면 획이 실시간으로 그려진다. 오른쪽 게이지가 펜 높이, 기울기(화살표는 기우는 방향), 속도를 보여 준다. 높이 막대의 노란 눈금은 펜 내림 판정 높이다. 펜을 든 구간은 커서만 움직인다. 펜을 1초 들고 있으면 끝난다.', draw(t) {
+    frame('identify'); drawGuides();
+    const i = Math.floor((t * 50) % (SIG.length + 60)), n = Math.min(i, SIG.length - 1), p = SIG[n];
+    drawTrace(n + 1);
+    cursor = {x: sx(p.x), y: sy(p.y), color: p.down ? P.green : P.dim};
+    headline('SIGNING', P.white, (n / 50).toFixed(1) + ' s', P.text);
+    put(RX + 9, 7, p.down ? 'pen down' : 'pen up', p.down ? P.green : P.dim);
+    liveValues(p, SIG[Math.max(0, n - 1)]);
+    dtwLines(138, 310400, true);
+  }},
+  match: { label:'결과: 등록자', note:'가장 가까운 등록자의 거리가 그 사람의 문턱보다 작으면 그 사람으로 판정한다. 막대가 노란 눈금 왼쪽에서 끝난 사람이 답이다.', draw() {
+    frame('identify'); drawGuides(); drawTrace(SIG.length);
+    headline('PERSON 2', P.green, 'distance 2412 < 3881', P.text);
+    matchBars([9120, 2412, 12740, 0, 0], TAU, 1);
+    penLine(null); dtwLines(138, 310400, true);
+  }},
+  nomatch: { label:'결과: 미등록', note:'가장 가까운 사람도 문턱을 넘으면 미등록이다. 어느 막대도 눈금 안쪽에서 끝나지 않는다. 이 예는 소프트웨어 DTW로 실행했다(SW5).', draw() {
+    frame('identify'); drawGuides(); drawTrace(SIG.length);
+    headline('NOT ENROLLED', P.red, 'closest P2: 6105 > 3881', P.text);
+    matchBars([8310, 6105, 11980, 0, 0], TAU, 1);
+    penLine(null); dtwLines(138, 310400, false);
+  }},
+  enroll: { label:'등록', note:'SW1-0 = 01, SW4-2로 사람 선택. 서명 5개를 받는다. 채워진 칸이 받은 개수다.', draw() {
+    frame('enroll'); drawGuides(); drawTrace(SIG.length);
+    headline('PERSON 2', P.white, 'saved 3 of 5, sign again', P.text);
+    label(10, 'SIGNATURES');
+    for (let i = 0; i < 5; i++) put2(RX + 4 * i, 12, i < 3 ? '■' : '□', i < 3 ? P.green : P.dim);
+    penLine(null);
+  }},
+  collect: { label:'데이터 수집 (점검 겸용)', note:'SW1-0 = 10. PC로 원시 데이터를 보낸다. 좌표 숫자와 센서 값은 이 화면에만 나온다. 브링업과 게이트 1 측정 때 이 화면을 쓴다.', draw(t) {
+    frame('collect'); drawGuides();
+    const n = Math.min(Math.floor((t * 50) % (SIG.length + 60)), SIG.length - 1), p = SIG[n];
+    drawTrace(n + 1); cursor = {x: sx(p.x), y: sy(p.y), color: p.down ? P.green : P.dim};
+    headline('RECORDING', P.white, 'saved 7   rejected 1', P.text);
+    const f = v => ((v < 0 ? '-' : '+') + (Math.abs(v) / 10).toFixed(1)).padStart(6);
+    label(10, 'POSITION mm');
+    put(RX, 11, 'x' + f(p.x), P.text); put(RX + 10, 11, 'y' + f(p.y), P.text); put(RX + 20, 11, 'z' + (p.z / 10).toFixed(1).padStart(5), P.text);
+    label(14, 'SENSORS uT');
+    const s = k => 'S' + k + String(Math.round(fieldUt(k, p))).padStart(5);
+    put(RX, 15, s(1), P.text); put(RX + 12, 15, s(3), P.text);
+    put(RX, 16, s(0), P.text); put(RX + 12, 16, s(2), P.text);
+    penLine(p);
+  }},
+  fault: { label:'센서 오류', note:'센서 하나가 응답하지 않을 때. 평소에는 센서 정보가 화면에 없고, 문제가 있을 때만 크게 나온다.', draw() {
+    frame('identify'); drawGuides();
+    headline('SENSOR 2', P.red, 'no answer: check the wiring', P.text);
+    penLine(null); dtwLines(138, 310400, true);
+  }}
+};
+
+const ctx = document.getElementById('vga').getContext('2d');
+let current = 'signing', t0 = performance.now();
+const tabs = document.getElementById('tabs');
+for (const [key, st] of Object.entries(STATES)) {
+  const b = document.createElement('button');
+  b.textContent = st.label; b.dataset.key = key;
+  b.onclick = () => { current = key; t0 = performance.now(); sync(); };
+  tabs.appendChild(b);
+}
+function sync() {
+  for (const b of tabs.children) b.setAttribute('aria-pressed', b.dataset.key === current);
+  document.getElementById('caption').textContent = STATES[current].note;
+}
+function loop(now) {
+  STATES[current].draw((now - t0) / 1000);
+  render(ctx);
+  requestAnimationFrame(loop);
+}
+sync(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>

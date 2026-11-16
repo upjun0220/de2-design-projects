@@ -95,7 +95,9 @@ def input_batch(lsb):
 
 def track_mlp(layers, lsb):
     o = mlp_batch(layers, input_batch(lsb))
-    return np.stack([(o[:, 0]*500) >> 12, (o[:, 1]*500) >> 12, (o[:, 2]*500) >> 12, o[:, 3] >> 4, o[:, 4] >> 4], 1)
+    z = (o[:, 2]*500) >> 12
+    z[[bool(pm.field_is_uniform(row)) for row in lsb.tolist()]] = 3000      # nios/main.c와 같다: 펜이 아님
+    return np.stack([(o[:, 0]*500) >> 12, (o[:, 1]*500) >> 12, z, o[:, 3] >> 4, o[:, 4] >> 4], 1)
 
 
 class Bench:

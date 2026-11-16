@@ -66,7 +66,7 @@ set_interface_property i2c EXPORT_OF mlx_reader_0.i2c
 
 add_instance dtw_accel_0 dtw_accel
 
-add_instance vga_0 vga_trace
+add_instance vga_0 vga_ui
 set_interface_property vga EXPORT_OF vga_0.vga
 
 add_connection clk_0.clk cpu.clk
@@ -101,7 +101,7 @@ data_slave pio_in.s1 0x01001030
 data_slave pio_led.s1 0x01001040
 data_slave pio_hex.s1 0x01001050
 data_slave sys_timer.s1 0x01001060
-data_slave vga_0.s0 0x01001080
+data_slave vga_0.s0 0x01008000
 data_slave mlx_reader_0.s0 0x01002000
 data_slave dtw_accel_0.s0 0x01100000
 

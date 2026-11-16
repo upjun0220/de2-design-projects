@@ -15,16 +15,17 @@ mkdir -p build/ms
 echo "--- 1. Python reference models"
 python hw/dtw_ref.py
 python hw/dtw_ref.py --vectors
-(cd pc && python parse_log.py && python position_lm.py --check && python evaluate.py --check && python gate1.py --check && python sim_e2e.py --check && python plot_log.py --check)
+(cd pc && python gen_font.py --check && python parse_log.py && python position_lm.py --check && python evaluate.py --check && python gate1.py --check && python sim_e2e.py --check && python plot_log.py --check)
 
 echo "--- 2. C code on the PC against Python, bit by bit"
 (cd pc && python gen_golden.py ../build/golden.txt)
 gcc_cyg() { ( PATH="$CYG:$PATH"; cd nios && "$CYG/gcc" -std=gnu99 -O1 -Wall -Wextra "$@" ) > build/gcc.log 2>&1 || { cat build/gcc.log; exit 1; }; grep -E "warning|error" build/gcc.log || true; }
 run_cyg() { ( PATH="$CYG:$PATH"; "$@" ) 2>/dev/null; }
-gcc_cyg -o ../build/test_host.exe test_host.c position.c signature.c dtw.c decide.c display.c
-gcc_cyg -DTEST_MOUNT -o ../build/test_mount.exe test_host.c position.c signature.c dtw.c decide.c display.c
-run_cyg ./build/test_host.exe build/golden.txt | tee build/c.log
+gcc_cyg -o ../build/test_host.exe test_host.c position.c signature.c dtw.c decide.c display.c ui.c
+gcc_cyg -DTEST_MOUNT -o ../build/test_mount.exe test_host.c position.c signature.c dtw.c decide.c display.c ui.c
+run_cyg ./build/test_host.exe build/golden.txt build/screen.txt | tee build/c.log
 grep -q "C core OK" build/c.log
+(cd pc && python render_screen.py ../build/screen.txt ../build/screen.png)
 run_cyg ./build/test_mount.exe | tee build/c2.log
 grep -q "mount OK" build/c2.log
 
@@ -33,8 +34,8 @@ cd build/ms
 "$VSIM_DIR/vlib" work > /dev/null 2>&1 || true
 H="$ROOT/hdl"
 "$VSIM_DIR/vlog" -quiet "$(win "$H/i2c_master.v")" "$(win "$H/mlx_reader.v")" "$(win "$H/dtw_array.v")" "$(win "$H/dtw_accel.v")" \
-    "$(win "$H/vga_trace.v")" "$(win "$H/tb/mlx90393_model.v")" "$(win "$H/tb/tb_mlx_reader.v")"
-"$VSIM_DIR/vlog" -quiet -sv "$(win "$H/tb/tb_dtw_accel.v")" "$(win "$H/tb/tb_vga_trace.v")"
+    "$(win "$H/font8x16.v")" "$(win "$H/vga_ui.v")" "$(win "$H/tb/mlx90393_model.v")" "$(win "$H/tb/tb_mlx_reader.v")"
+"$VSIM_DIR/vlog" -quiet -sv "$(win "$H/tb/tb_dtw_accel.v")" "$(win "$H/tb/tb_vga_ui.v")"
 "$VSIM_DIR/vsim" -c -quiet tb_mlx_reader -do "run -all; quit -f" > mlx.log 2>&1 || true
 grep -E "PASS|FAIL" mlx.log
 grep -q "# PASS" mlx.log
@@ -42,7 +43,7 @@ grep -q "# PASS" mlx.log
 grep -E "PASS|FAIL|clocks" dtw.log
 grep -q "# PASS 100/100" dtw.log
 
-"$VSIM_DIR/vsim" -c -quiet tb_vga_trace -do "run -all; quit -f" > vga.log 2>&1 || true
+"$VSIM_DIR/vsim" -c -quiet tb_vga_ui -do "run -all; quit -f" > vga.log 2>&1 || true
 grep -E "PASS|FAIL" vga.log
 grep -q "# PASS" vga.log
 
