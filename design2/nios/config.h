@@ -12,6 +12,23 @@
 #define Z_DOWN      120   /* below this height the pen is down */
 #define Z_UP        150   /* above this height the pen is up (hysteresis) */
 
+/* Pen switch (2026-11-18): the estimated height was not reliable enough to tell pen down
+ * from pen up, so a board switch marks the signature instead. SW[17] on = signing,
+ * off = signature ends. PEN_SWITCH_ONLY 1: the height is never used for pen up/down;
+ * 0: with the switch off, the height-based detection below still works. */
+#define PEN_SWITCH_BIT  17
+#define PEN_SWITCH_ONLY 1
+
+/* With the switch on, pen up = lifted more than LIFT_UP above the lowest height of this
+ * signature, pen down again = back below LIFT_DOWN (0.1 mm). ESTIMATE: tune while signing.
+ * Too small: strokes break while writing. Too large: lifts are drawn. LIFT_UP 0 = always down. */
+#define LIFT_UP     80
+#define LIFT_DOWN   50
+
+/* Position smoothing: new frame weight 1/2^SMOOTH_SHIFT. 2 = 1/4: about 0.1 s lag at 50 Hz.
+ * 0 = off. Larger is smoother and slower. */
+#define SMOOTH_SHIFT 2
+
 #define END_UP_FRAMES   50    /* pen up for 1.0 s ends the signature */
 #define MIN_DOWN_FRAMES 25    /* less than 0.5 s of pen-down: discard */
 #define MAX_LOST_PCT    20    /* more than 20 % of frames with sensor errors: discard */
@@ -48,7 +65,9 @@
  * Four buses need no soldering; all sensors may keep the same address:
  *   { 0x018, 0x118, 0x218, 0x318 }
  * The default address depends on the module: check the scan printed at power up. */
-#define SENSOR_CFG { 0x018, 0x019, 0x01A, 0x01B }
+/* Order = board corner: S0 (-x,-y), S1 (-x,+y), S2 (+x,-y), S3 (+x,+y).
+ * 2026-11-18: modules swapped on the pad, S0<->S3 and S1<->S2. */
+#define SENSOR_CFG { 0x01B, 0x01A, 0x019, 0x018 }
 
 /* How the sensors and the magnet are mounted. pc/gate1.py --find-mount finds these
  * from a measurement. ESTIMATE until then.
@@ -61,7 +80,9 @@
 #define FIELD_SIGN (-1)
 #define Z_SIGN     (-1)
 #else
-#define MOUNT_ROT  { 0, 0, 0, 0 }
+/* 2026-11-18: best of pc/gate1.py --find-mount on the 140 mm layout with the side magnet.
+ * NOT a pass: xy error was still about 72 mm. Recheck after the next 9-point measurement. */
+#define MOUNT_ROT  { 0, 2, 2, 0 }
 #define FIELD_SIGN 1
 #define Z_SIGN     1
 #endif

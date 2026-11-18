@@ -11,6 +11,7 @@
  * Monitor: the whole state (nios/ui.c, docs/vga-ui-mockup.html). The same screen also goes
  * to the laptop over the JTAG UART (nios/relay.c, pc/screen.py) for use without a monitor.
  * SW[7]: LEDR shows the field strength at each sensor (for checking wiring).
+ * SW[17]: pen switch. On = signing, off = the signature ends (config.h PEN_SWITCH_*).
  *
  * Bring-up: at power up the LCD shows which of the four sensors answer, and the
  * I2C addresses found are printed to the JTAG UART. Run this before anything else.
@@ -378,6 +379,9 @@ int main(void)
     pen_pos pos;
     pen_pos prev_pos;
     int prev_down = 0;
+    int pen_sw = 0, pen_sw_prev = 0, pen_sw_hold = 0;   /* SW[17] pen switch, see the main loop */
+    int pen_down = 0, sm_valid = 0;
+    int32_t sm_x = 0, sm_y = 0, sm_z = 0;               /* smoothed position, Q4 */
     uint32_t us_mlp = 0, shown_inputs = 0xFFFFFFFF, shown_err = 0xFFFFFFFF;
     int k, n_ok, saved = 0, rejected = 0, marks = 0;
     char line[80];
@@ -419,6 +423,12 @@ int main(void)
         pressed = prev_keys & ~keys;      /* falling edges, keys are active low */
         prev_keys = keys;
         mode = inputs & 3;
+        /* SW[17] pen switch: on = signing (pen down), off = signature ends at once.
+         * The estimated height is then not used for pen up/down. If a signature ends
+         * while the switch is still on (6 s full), wait for the switch to go off first. */
+        pen_sw_prev = pen_sw;
+        pen_sw = (inputs >> PEN_SWITCH_BIT) & 1;
+        if (!pen_sw) pen_sw_hold = 0;
 
         if (pressed & 1) { baseline_measure(&last_frame, base); sig_reset(&sig); shown_inputs = 0xFFFFFFFF; }
         if ((pressed & 4) && mode == 1) {
@@ -453,12 +463,6 @@ int main(void)
             uniform = field_is_uniform(corrected);
             if (uniform) pos.z = Z_AWAY;      /* not the pen: do not start or continue a signature */
             us_mlp = MLX(MLX_NOW) - t0;
-            lost = err != 0;
-            ev = sig_feed(&sig, &pos, lost);
-            if (ev == SIG_STARTED) vga_pad_reset();
-            if (sig.is_down && prev_down) vga_line(&prev_pos, &pos);
-            prev_pos = pos;
-            prev_down = sig.is_down;
             {
                 /* The pen is "present" when a sensor sees it. Without this the position of
                  * an absent pen (noise through the network) would move the cursor around. */
@@ -468,9 +472,36 @@ int main(void)
                     if (a > peak) peak = a;
                 }
                 present = peak >= PEN_PRESENT_LSB && !uniform;
-                vga_cursor(&pos, present, sig.is_down);
+            }
+            /* Smoothing: exponential moving average of x, y, z (weight 1/2^SMOOTH_SHIFT for the
+             * new frame) to calm the frame-to-frame jumps of the position estimate. Restarts when
+             * the pen comes back, so it does not drag a line from the old position. */
+            if (SMOOTH_SHIFT > 0 && present) {
+                if (!sm_valid) { sm_x = pos.x << 4; sm_y = pos.y << 4; sm_z = pos.z << 4; sm_valid = 1; }
+                sm_x += ((pos.x << 4) - sm_x) >> SMOOTH_SHIFT;
+                sm_y += ((pos.y << 4) - sm_y) >> SMOOTH_SHIFT;
+                sm_z += ((pos.z << 4) - sm_z) >> SMOOTH_SHIFT;
+                pos.x = (int16_t)(sm_x >> 4); pos.y = (int16_t)(sm_y >> 4); pos.z = (int16_t)(sm_z >> 4);
+            } else {
+                sm_valid = 0;
+            }
+            lost = err != 0;
+            if (pen_sw && !pen_sw_hold)
+                ev = sig_feed_switch(&sig, &pos, lost);            /* switch on: signing */
+            else if (pen_sw || pen_sw_prev || PEN_SWITCH_ONLY)
+                ev = sig_finish(&sig);                             /* switch off (or held): end now */
+            else
+                ev = sig_feed(&sig, &pos, lost);                   /* height-based, PEN_SWITCH_ONLY 0 */
+            if (pen_sw && (ev == SIG_DONE || ev == SIG_REJECT)) pen_sw_hold = 1;
+            if (ev == SIG_STARTED) vga_pad_reset();
+            pen_down = sig.active && sig.is_down;                  /* drawing: only inside a signature */
+            if (pen_down && prev_down) vga_line(&prev_pos, &pos);
+            prev_pos = pos;
+            prev_down = pen_down;
+            {
+                vga_cursor(&pos, present, pen_down);
                 if (last_frame % 5 == 0) {          /* numbers at 10 Hz: readable, and cheap */
-                    ui_pen(&pos, sig.is_down, present);
+                    ui_pen(&pos, pen_down, present);
                     ui_sensors(lsb, err);
                     if (sig.active) {
                         snprintf(line, sizeof(line), "%d.%d s   %d frames", sig.n / 50, sig.n % 50 / 5, sig.n);
@@ -483,7 +514,7 @@ int main(void)
                  * the mount settings can be changed and everything re-computed later. */
                 printf("R,%lu,%lu,%lu", (unsigned long)last_frame, (unsigned long)MLX(MLX_TIME), (unsigned long)err);
                 for (k = 0; k < 12; k++) printf(",%ld", (long)lsb[k]);
-                printf(",%d,%d,%d,%d,%d,%d,%lu\n", pos.x, pos.y, pos.z, pos.ux, pos.uy, sig.is_down, (unsigned long)us_mlp);
+                printf(",%d,%d,%d,%d,%d,%d,%lu\n", pos.x, pos.y, pos.z, pos.ux, pos.uy, pen_down, (unsigned long)us_mlp);
             }
         }
         /* Laptop screen: send what changed, and one whole row every 10 frames so a

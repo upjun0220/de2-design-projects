@@ -2,6 +2,8 @@
  * fixed 128 x 8 int8 form used by DTW.
  *
  * Start: first frame with the pen down. End: pen up for 1 s, KEY1, or 6 s full.
+ * Pen down: estimated height below Z_DOWN (sig_feed), or with the pen switch SW[17] on,
+ * the height relative to the lowest point of this signature (sig_feed_switch).
  * Discard: less than 0.5 s pen-down, or more than 20 % frames with sensor errors.
  *
  * Preprocessing (all integer, same as pc/preprocess.py):
@@ -27,6 +29,7 @@ void sig_reset(sig_buf *s)
     s->up_run = 0;
     s->down_total = 0;
     s->lost = 0;
+    s->z_ref = 0;
 }
 
 /* Common end handling: cut the trailing pen-up frames, then check quality. */
@@ -39,16 +42,16 @@ static int sig_close(sig_buf *s)
     return SIG_DONE;
 }
 
-int sig_feed(sig_buf *s, const pen_pos *p, int lost)
+/* Store one frame with the pen state already decided (s->is_down).
+ * up_ends: 1 = END_UP_FRAMES of pen-up end the signature (height mode),
+ *          0 = only the switch, KEY1 or a full buffer end it (pen switch mode). */
+static int sig_store(sig_buf *s, const pen_pos *p, int lost, int up_ends)
 {
-    /* Hysteresis: between Z_DOWN and Z_UP the state stays what it was. */
-    if (p->z < Z_DOWN) s->is_down = 1;
-    else if (p->z > Z_UP) s->is_down = 0;
-
     if (!s->active) {
         if (!s->is_down) return SIG_NONE;
         s->active = 1;
         s->n = 0; s->up_run = 0; s->down_total = 0; s->lost = 0;
+        s->z_ref = p->z;
     }
     s->p[s->n] = *p;
     s->pen[s->n] = (uint8_t)s->is_down;
@@ -57,8 +60,35 @@ int sig_feed(sig_buf *s, const pen_pos *p, int lost)
     if (s->is_down) { s->down_total++; s->up_run = 0; }
     else s->up_run++;
 
-    if (s->up_run >= END_UP_FRAMES || s->n >= MAX_FRAMES) return sig_close(s);
+    if ((up_ends && s->up_run >= END_UP_FRAMES) || s->n >= MAX_FRAMES) return sig_close(s);
     return s->n == 1 ? SIG_STARTED : SIG_NONE;
+}
+
+int sig_feed(sig_buf *s, const pen_pos *p, int lost)
+{
+    /* Hysteresis: between Z_DOWN and Z_UP the state stays what it was. */
+    if (p->z < Z_DOWN) s->is_down = 1;
+    else if (p->z > Z_UP) s->is_down = 0;
+    return sig_store(s, p, lost, 1);
+}
+
+/* Pen switch mode (SW[17] on, nios/main.c). The switch marks the whole signature; inside it,
+ * pen up/down comes from the height RELATIVE to the lowest height seen in this signature
+ * (z_ref), because the absolute height estimate is offset by several mm. The first frame
+ * is always pen down and sets z_ref. Lifting more than LIFT_UP above z_ref = pen up (no line),
+ * coming back below LIFT_DOWN = pen down. LIFT_UP 0 turns this off: always pen down.
+ * The switch going off ends the signature (sig_finish in main.c). */
+int sig_feed_switch(sig_buf *s, const pen_pos *p, int lost)
+{
+    if (!s->active) {
+        s->is_down = 1;
+    } else {
+        if (p->z < s->z_ref) s->z_ref = p->z;
+        if (LIFT_UP <= 0) s->is_down = 1;
+        else if (p->z > s->z_ref + LIFT_UP) s->is_down = 0;
+        else if (p->z < s->z_ref + LIFT_DOWN) s->is_down = 1;
+    }
+    return sig_store(s, p, lost, 0);
 }
 
 int sig_finish(sig_buf *s)

@@ -21,12 +21,14 @@ typedef struct {
     uint8_t pen[MAX_FRAMES];
     int     n;
     int     active, is_down, up_run, down_total, lost;
+    int     z_ref;                      /* lowest height in this signature (pen switch mode) */
 } sig_buf;
 
 enum { SIG_NONE = 0, SIG_STARTED, SIG_DONE, SIG_REJECT };
 
 void sig_reset(sig_buf *s);
 int  sig_feed(sig_buf *s, const pen_pos *p, int lost);  /* returns SIG_* */
+int  sig_feed_switch(sig_buf *s, const pen_pos *p, int lost);  /* SW[17] on: relative-height pen up/down */
 int  sig_finish(sig_buf *s);                            /* KEY1: end now */
 void sig_preprocess(const sig_buf *s, int8_t out[SIG_N][SIG_CH]);
 

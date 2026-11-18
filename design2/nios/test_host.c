@@ -281,10 +281,21 @@ static void test_mount(void)
 #ifdef TEST_MOUNT
     static const int32_t want[12] = { 2, -1, 3, 4, 5, 6, -8, 7, 9, -10, -11, 12 };
 #else
-    static const int32_t want[12] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+    /* The real mount values in config.h: expected result from the rule in pc/pen_model.py
+     * (quarter turn = (x, y) -> (-y, x), then FIELD_SIGN on all, Z_SIGN on z). */
+    static const int rot[4] = MOUNT_ROT;
+    int32_t want[12];
+    int r;
 #endif
     int32_t v[12];
     int k;
+#ifndef TEST_MOUNT
+    for (k = 0; k < 4; k++) {
+        int32_t x = 3*k + 1, y = 3*k + 2, t;
+        for (r = 0; r < rot[k]; r++) { t = x; x = -y; y = t; }
+        want[3*k] = FIELD_SIGN * x; want[3*k + 1] = FIELD_SIGN * y; want[3*k + 2] = FIELD_SIGN * Z_SIGN * (3*k + 3);
+    }
+#endif
     for (k = 0; k < 12; k++) v[k] = k + 1;
     mount_correct(v);
     for (k = 0; k < 12; k++) CHECK("mount", v[k], want[k]);
