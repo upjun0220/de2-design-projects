@@ -1,6 +1,7 @@
 """위치 복원 기준선: Levenberg-Marquardt 피팅 (PC, 실수 연산). 게이트 1 오차 측정에 쓴다.
 
-쌍극자 모델로 (x, y, z, ux, uy) 5자유도를 푼다. 첫 프레임은 여러 시작점, 이후는 직전 해에서 시작.
+쌍극자 모델로 위치 3 + 자석 방향 2 = 5자유도를 푼다(방향은 3성분 벡터를 정규화해 반구 제한 없이 푼다:
+옆 부착 자석은 극이 수평이나 아래를 향할 수 있다). 첫 프레임은 여러 시작점, 이후는 직전 해에서 시작.
 입력은 보드 로그의 raw(기준값을 뺀 LSB, 장착 보정 전). 장착 보정(회전·극성)은 nios/config.h에서 읽어
 보드와 같게 적용한다. 실제 센서 위치·자석 세기는 --half, --m0로 맞춘다.
 
@@ -14,6 +15,8 @@ import pen_model as pm
 from parse_log import parse_lines
 
 STARTS = [(0, 0, 0.01), (-0.03, -0.03, 0.01), (0.03, 0.03, 0.01), (0.03, -0.03, 0.01), (-0.03, 0.03, 0.01), (0, 0, 0.05)]
+# 자석 방향 시작값. 옆 부착 자석은 극이 수평 근처라, 위쪽만이 아니라 여섯 방향에서 시작한다.
+DIRS = [(0.2, 0.2, 1), (1, 0, 0.2), (-1, 0, 0.2), (0, 1, 0.2), (0, -1, 0.2), (0.2, 0.2, -1)]
 
 
 def raw_to_tesla(raw):
@@ -22,9 +25,26 @@ def raw_to_tesla(raw):
 
 
 def fit_frame(meas, sensors, m0, start):
+    """q = (x, y, z, mx, my, mz). 자석 방향은 (mx,my,mz)를 정규화해 쓴다(반구 제한 없음, 옆 부착 자석용).
+    start가 5개 값(x,y,z,ux,uy)이면 위쪽 방향으로 보고 6개로 늘린다."""
+    start = np.asarray(start, float)
+    if len(start) == 5:
+        start = np.r_[start[:3], pm.tilt_vec(start[3], start[4])]
     def resid(q):
-        return (pm.field(q[:3], pm.tilt_vec(q[3], q[4]), m0, sensors).ravel() - meas) * 1e6
-    return least_squares(resid, start, method="lm", max_nfev=100)
+        return (pm.field(q[:3], pm.unit(q[3:6]), m0, sensors).ravel() - meas) * 1e6
+    return least_squares(resid, start, method="lm", max_nfev=200)
+
+
+def fit_best(meas, sensors, m0, positions=STARTS, dirs=DIRS):
+    """여러 시작점(위치 × 방향) 중 잔차가 가장 작은 해"""
+    sols = [fit_frame(meas, sensors, m0, np.r_[p, d]) for p in positions for d in dirs]
+    return min(sols, key=lambda r: r.cost)
+
+
+def to_pose(q):
+    """피팅 해 q(6개) → (x, y, z, ux, uy). ux, uy는 자석 극 방향 단위벡터의 수평 성분(보드 출력과 같은 뜻)"""
+    u = pm.unit(q[3:6])
+    return np.r_[q[:3], u[:2]]
 
 
 def track(raw, sensors=pm.SENSORS, m0=pm.M0, mount=None):
@@ -33,13 +53,9 @@ def track(raw, sensors=pm.SENSORS, m0=pm.M0, mount=None):
     meas = raw_to_tesla(pm.mount_apply(raw, *(mount or pm.read_mount())))
     out, res, q = [], [], None
     for b in meas:
-        if q is None:
-            sols = [fit_frame(b, sensors, m0, np.array([*s, 0.2, 0.2])) for s in STARTS]
-            sol = min(sols, key=lambda r: r.cost)
-        else:
-            sol = fit_frame(b, sensors, m0, q)
+        sol = fit_best(b, sensors, m0) if q is None else fit_frame(b, sensors, m0, q)
         q = sol.x
-        out.append(q.copy())
+        out.append(to_pose(q))
         res.append(np.sqrt(2 * sol.cost / 12))
     return np.array(out), np.array(res)
 
@@ -52,13 +68,12 @@ def check():
     ux, uy = 0.5 + 0.1*np.sin(4*t), 0.3*np.cos(2*t)
     b = pm.field(p, pm.tilt_vec(ux, uy)).reshape(len(t), 12) + rng.normal(0, 3e-6, (len(t), 12))
     raw = np.round(b * 1e6 / np.array([pm.UT_PER_LSB_XY, pm.UT_PER_LSB_XY, pm.UT_PER_LSB_Z] * 4))
-    est, res = track(raw)
+    est, res = track(raw, mount=((0, 0, 0, 0), 1, 1))    # 합성 값은 보드 축 그대로다(config.h의 실측 장착값과 무관)
     xy = np.sqrt(((est[:, :2] - p[:, :2])**2).sum(1).mean()) * 1e3
     tilt = np.sqrt(((est[:, 3] - ux)**2 + (est[:, 4] - uy)**2).mean())
     print("position_lm 시뮬레이션: xy %.2f mm, 기울기벡터 %.3f, 잔차 %.1f µT" % (xy, tilt, res.mean()))
     assert xy < 3.0 and tilt < 0.05, (xy, tilt)
     # 센서가 돌아가 붙고 자석이 뒤집힌 경우: 보정을 주면 같은 답이 나와야 한다
-    assert pm.read_mount() == ((0, 0, 0, 0), 1, 1)
     rot, sign, zsign = (1, 0, 3, 2), -1, -1
     as_seen = pm.mount_apply(raw, [(4 - r) % 4 for r in rot], sign, zsign)      # 역변환: 센서가 실제로 내놓을 값
     est2, _ = track(as_seen[:40], mount=(rot, sign, zsign))

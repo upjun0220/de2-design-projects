@@ -16,7 +16,7 @@ import argparse
 import itertools
 import numpy as np
 import pen_model as pm
-from position_lm import raw_to_tesla, fit_frame, STARTS
+from position_lm import raw_to_tesla, fit_best, STARTS
 
 DWELL = 25   # MARK 직전 프레임 수(0.5 s)를 평균한다
 
@@ -40,23 +40,35 @@ def read_points(lines):
 correct = pm.mount_apply
 
 
-def fit_point(raw, sensors, m0):
+def fit_point(raw, sensors, m0, xy=None):
+    """격자점 하나를 피팅. xy(그 점의 실제 위치)를 알면 거기서 시작한다(엉뚱한 해에 빠지는 것을 막는다)."""
     b = raw_to_tesla(raw)
-    sols = [fit_frame(b, sensors, m0, np.array([*s, 0.05, 0.05])) for s in STARTS[:3]]
-    return min(sols, key=lambda r: r.cost)
+    starts = [(xy[0], xy[1], 0.01), (xy[0], xy[1], 0.03)] if xy is not None else STARTS[:3]
+    return fit_best(b, sensors, m0, starts)
 
 
-def find_mount(points, sensors, m0):
-    """회전 4^4 × 극성 2 × Z 방향 2를 전부 시험해 잔차가 가장 작은 조합을 찾는다.
-    센서별로 독립이 아니라 조합을 봐야 해서 전수조사다. 격자점 3개만 쓴다."""
-    use = points[np.linspace(0, len(points) - 1, min(3, len(points))).astype(int)]
+def find_mount(points, sensors, m0, truth=None):
+    """회전 4^4 × Z 방향 2를 전부 시험해 잔차가 가장 작은 조합을 찾는다. 격자점 3개(첫·가운데·끝)를 쓴다.
+    자석 방향을 반구 제한 없이 피팅하므로 FIELD_SIGN(전체 부호)은 방향에 흡수되어 구별되지 않는다 → 1로 고정.
+    같은 이유로 (회전 r, Z_SIGN z)와 (네 센서 모두 r+2, -z)는 같은 결과를 낸다. 둘 중 아무거나 써도 된다."""
+    idx = np.linspace(0, len(points) - 1, min(3, len(points))).astype(int)
     results = []
     for rot in itertools.product(range(4), repeat=4):
-        for sign, zsign in itertools.product((1, -1), repeat=2):
-            c = sum(fit_point(correct(p, rot, sign, zsign), sensors, m0).cost for p in use)
-            results.append((c, rot, sign, zsign))
+        for zsign in (1, -1):
+            c = sum(fit_point(correct(points[i], rot, 1, zsign), sensors, m0,
+                              None if truth is None else truth[i]).cost for i in idx)
+            results.append((c, rot, 1, zsign))
     results.sort(key=lambda r: r[0])
     return results[:3]
+
+
+def same_mount(a, b):
+    """(rot, sign, zsign) 두 개가 피팅 결과상 같은 장착인지(위 find_mount 설명)"""
+    # mount_apply: X,Y는 sign·회전, Z는 sign·zsign. 전체 부호를 뒤집는 것(sign)은 자석 방향에 흡수되고,
+    # 네 센서 모두 회전 +2(X,Y 부호 반전)에 zsign 반전을 더해도 전체 부호 반전이다.
+    (ra, _, za), (rb, _, zb) = a, b
+    flip = tuple((r + 2) % 4 for r in rb)
+    return (tuple(ra) == tuple(rb) and za == zb) or (tuple(ra) == flip and za == -zb)
 
 
 def grid(half, step):
@@ -67,8 +79,8 @@ def grid(half, step):
 def errors(points, truth, rot, sign, zsign, sensors, m0):
     est = []
     res = []
-    for p in points:
-        s = fit_point(correct(p, rot, sign, zsign), sensors, m0)
+    for p, t in zip(points, truth):
+        s = fit_point(correct(p, rot, sign, zsign), sensors, m0, t)
         est.append(s.x)
         res.append(np.sqrt(2 * s.cost / 12))
     est = np.array(est)
@@ -96,8 +108,9 @@ def check():
         lines.append("MARK")
     pts = read_points(lines)
     assert len(pts) == 9
-    best = find_mount(pts, pm.SENSORS, pm.M0)
-    assert best[0][1:] == (true_rot, true_sign, true_z), best[0]
+    best = find_mount(pts, pm.SENSORS, pm.M0, truth)
+    assert same_mount(best[0][1:], (true_rot, true_sign, true_z)), best[0]
+    assert same_mount(((3, 2, 1, 0), 1, 1), ((1, 0, 3, 2), -1, -1))
     _, rms, rms0, _, _ = errors(pts, truth, true_rot, true_sign, true_z, pm.SENSORS, pm.M0)
     assert rms < 1.0e-3, rms
     # 파이썬 정수판과 일치하는지
@@ -119,18 +132,23 @@ def main():
     ap.add_argument("--m0", type=float, default=pm.M0)
     ap.add_argument("--grid-half", type=float, default=0.03)
     ap.add_argument("--grid-step", type=float, default=0.03)
+    ap.add_argument("--from-top", action="store_true", help="위 줄 왼쪽부터 찍은 로그(위 줄 → 가운데 줄 → 아래 줄)")
     a = ap.parse_args()
     if a.check or not a.log:
         return check()
     sensors = np.array([(x, y, 0.0) for x in (-a.half, a.half) for y in (-a.half, a.half)])
     pts = read_points(open(a.log, errors="replace"))
     print("MARK 지점 %d개" % len(pts))
-    if a.find_mount:
-        for cost, rot, sign, zsign in find_mount(pts, sensors, a.m0):
-            print("  MOUNT_ROT {%d, %d, %d, %d}  FIELD_SIGN %d  Z_SIGN %d  비용 %.1f" % (*rot, sign, zsign, cost))
-        print("첫 줄이 둘째 줄보다 뚜렷이 작아야 믿을 수 있다.")
-        return
     truth = grid(a.grid_half, a.grid_step)
+    if a.from_top:      # 줄 순서만 뒤집어 아래 줄부터인 격자 순서에 맞춘다
+        n = int(round(np.sqrt(len(truth))))
+        order = [r * n + c for r in reversed(range(n)) for c in range(n)]
+        pts = pts[order[:len(pts)]] if len(pts) == len(truth) else pts
+    if a.find_mount:
+        for cost, rot, sign, zsign in find_mount(pts, sensors, a.m0, truth):
+            print("  MOUNT_ROT {%d, %d, %d, %d}  FIELD_SIGN %d  Z_SIGN %d  비용 %.1f" % (*rot, sign, zsign, cost))
+        print("첫 줄이 둘째 줄보다 뚜렷이 작아야 믿을 수 있다. (회전 r, Z_SIGN z)와 (모두 r+2, -z)는 같은 결과다.")
+        return
     est, rms, rms0, bias, res = errors(pts, truth, a.rot, a.sign, a.zsign, sensors, a.m0)
     print("실측 xy RMS %.2f mm, 평행이동(%.2f, %.2f mm) 제거 후 %.2f mm, 평균 잔차 %.1f µT" % (
         rms * 1e3, bias[0] * 1e3, bias[1] * 1e3, rms0 * 1e3, res))

@@ -19,17 +19,18 @@ SIGMA_T = 3e-6     # 축당 노이즈 (시뮬레이션 가정, 실측으로 교�
 
 
 def sample(n, rng, sensors, m0, zmin, calib=True):
-    """서명 영역 ±5 cm. 높이의 70%는 펜이 닿은 근처(zmin~15 mm), 30%는 펜을 든 구간(~8 cm). 기울기 0~60°"""
+    """서명 영역 ±5 cm. 높이의 70%는 펜이 닿은 근처(zmin~15 mm), 30%는 펜을 든 구간(~8 cm).
+    펜 기울기 0~60°, 자석 방향은 pen_model.sample_magnet(옆 부착이면 롤 전체)."""
     z = np.where(rng.uniform(0, 1, n) < 0.7, rng.uniform(zmin, 0.015, n), rng.uniform(zmin, 0.08, n))
     p = np.stack([rng.uniform(-0.05, 0.05, n), rng.uniform(-0.05, 0.05, n), z], 1)
-    th, ph = np.deg2rad(rng.uniform(0, 60, n)), rng.uniform(0, 2*np.pi, n)
-    ux, uy = np.sin(th)*np.cos(ph), np.sin(th)*np.sin(ph)
+    m = pm.sample_magnet(n, rng)            # 자석 극 방향(pen_model.MAGNET: 펜 축 방향 또는 펜 축과 직각)
+    ux, uy = m[:, 0], m[:, 1]
     s = sensors
     gain = 1.0
     if calib:   # 센서 위치 1 mm, 이득 2% 오차에 둔감하도록 학습한다
         s = sensors + rng.normal(0, 1e-3, (n, 4, 3))
         gain = 1 + rng.normal(0, 0.02, (n, 4, 1))
-    b = pm.field(p, pm.tilt_vec(ux, uy), m0, s) * gain + rng.normal(0, SIGMA_T, (n, 4, 3))
+    b = pm.field(p, m, m0, s) * gain + rng.normal(0, SIGMA_T, (n, 4, 3))
     X = pm.input_float(b.reshape(n, 12))
     Y = np.stack([p[:, 0]/NORM, p[:, 1]/NORM, p[:, 2]/NORM, ux, uy], 1)
     return X, Y
@@ -101,13 +102,13 @@ def int_input(b_tesla_12):
 def eval_int(layers, rng, sensors, args, n=3000, calib=False):
     """정수 모델을 서명 영역(±4 cm, 펜 닿은 높이 근처)에서 평가. 32비트 넘침도 검사."""
     p = np.stack([rng.uniform(-0.04, 0.04, n), rng.uniform(-0.04, 0.04, n), rng.uniform(args.zmin, 0.012, n)], 1)
-    th, ph = np.deg2rad(rng.uniform(20, 50, n)), rng.uniform(0, 2*np.pi, n)
-    ux, uy = np.sin(th)*np.cos(ph), np.sin(th)*np.sin(ph)
+    m = pm.sample_magnet(n, rng, (20, 50))
+    ux, uy = m[:, 0], m[:, 1]
     s, gain = sensors, 1.0
     if calib:
         s = sensors + rng.normal(0, 1e-3, (n, 4, 3))
         gain = 1 + rng.normal(0, 0.02, (n, 4, 1))
-    b = pm.field(p, pm.tilt_vec(ux, uy), args.m0, s) * gain + rng.normal(0, SIGMA_T, (n, 4, 3))
+    b = pm.field(p, m, args.m0, s) * gain + rng.normal(0, SIGMA_T, (n, 4, 3))
     err, peak = [], 0
     for k in range(n):
         o, pk = pm.mlp_forward_int(layers, int_input(b[k]))

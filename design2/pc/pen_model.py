@@ -15,10 +15,49 @@ UT_PER_LSB_XY = 0.250
 UT_PER_LSB_Z = 0.403
 
 
+# 자석을 펜에 붙인 방식.
+#   "axial": 원통 축(극 방향)이 펜 축과 같다. README 4장의 원래 설계.
+#   "side":  펜촉 옆에 붙어 극 방향이 펜 축과 직각이다. 2026-11-18 실물이 이렇다.
+#            펜을 손에서 돌려 잡는 각도(롤)에 따라 극 방향이 펜 축 둘레로 돈다. 롤은 관측되지 않으므로
+#            MLP는 롤을 모든 값으로 학습하고, 출력 ux, uy는 "펜 기울기"가 아니라 "자석 극 방향의 수평 성분"이 된다.
+MAGNET = "side"
+
+
 def tilt_vec(ux, uy):
     """펜 축 단위벡터. ux, uy가 xy 성분(φ 대신 씀: φ는 ±180°에서 끊겨 거리 계산을 망친다)."""
     uz = np.sqrt(np.clip(1 - ux**2 - uy**2, 0, None))
     return np.stack([ux, uy, uz], -1)
+
+
+def magnet_axis(pen_axis, roll=0.0, kind=None):
+    """자석 극 방향 단위벡터 (...,3). kind 생략 시 MAGNET.
+    side: 펜 축 a에 수직인 기준 e1(a를 품은 수직면 안의 위쪽; 펜이 수직이면 +x)을 a 둘레로 roll[rad] 돌린 방향."""
+    a = np.asarray(pen_axis, float)
+    if (kind or MAGNET) == "axial":
+        return a
+    z = np.array([0.0, 0.0, 1.0])
+    e1 = z - (a @ z)[..., None] * a
+    n1 = np.linalg.norm(e1, axis=-1, keepdims=True)
+    x = np.array([1.0, 0.0, 0.0])
+    alt = x - (a @ x)[..., None] * a
+    e1 = np.where(n1 > 1e-6, e1 / np.maximum(n1, 1e-12), alt / np.linalg.norm(alt, axis=-1, keepdims=True))
+    e2 = np.cross(a, e1)
+    roll = np.asarray(roll, float)[..., None]
+    return np.cos(roll) * e1 + np.sin(roll) * e2
+
+
+def sample_magnet(n, rng, tilt_deg=(0, 60)):
+    """학습·평가용 자석 극 방향 n개. 펜 기울기 tilt_deg, 방위·롤은 균일."""
+    th = np.deg2rad(rng.uniform(*tilt_deg, n))
+    ph = rng.uniform(0, 2*np.pi, n)
+    a = tilt_vec(np.sin(th)*np.cos(ph), np.sin(th)*np.sin(ph))
+    return magnet_axis(a, rng.uniform(0, 2*np.pi, n))
+
+
+def unit(v):
+    """방향 벡터 정규화. 피팅은 자석 방향을 반구 제한 없이 3성분으로 풀고 이것으로 단위벡터를 만든다."""
+    v = np.asarray(v, float)
+    return v / np.maximum(np.linalg.norm(v, axis=-1, keepdims=True), 1e-12)
 
 
 def field(pos, axis, m0=M0, sensors=SENSORS):

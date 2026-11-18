@@ -85,7 +85,9 @@ def signature(person, rng, shape_jitter, time_jitter, habit=None):
 
 
 def to_lsb(pos, ux, uy, rng, sigma, sensors, gain):
-    b = pm.field(pos, pm.tilt_vec(ux, uy), pm.M0, sensors) * gain + rng.normal(0, sigma, (len(pos), 4, 3))
+    """ux, uy는 펜 축. 자석 극 방향은 pen_model.MAGNET에 따른다(옆 부착이면 서명마다 펜을 잡은 롤이 다르다)."""
+    m = pm.magnet_axis(pm.tilt_vec(ux, uy), rng.uniform(0, 2*np.pi))
+    b = pm.field(pos, m, pm.M0, sensors) * gain + rng.normal(0, sigma, (len(pos), 4, 3))
     return np.round(pm.lsb_from_tesla(b).reshape(len(pos), 12)).astype(np.int64)
 
 
