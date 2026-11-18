@@ -74,17 +74,23 @@
  * MOUNT_ROT: quarter turns (counter-clockwise, seen from above) of each sensor
  * module relative to the board axes. FIELD_SIGN: -1 if the magnet is upside down.
  * Z_SIGN: -1 if the sensor's Z axis points the other way from the model's. The datasheet
- * text does not state the axis polarity, so this has to come from a measurement. */
+ * text does not state the axis polarity, so this has to come from a measurement.
+ * MIRROR_XY: 1 swaps each sensor's X and Y before the rotation. Rotations and Z_SIGN
+ * cannot express a mirror image (X<->Y swapped, or a module mounted face down), so
+ * without this flag such a mount can never be matched (2026-11-18: swapping X and Y
+ * by hand lowered the error from 72 to 44 mm). Applies to all four sensors. */
 #ifdef TEST_MOUNT             /* only for nios/test_host.c */
 #define MOUNT_ROT  { 1, 2, 3, 0 }
 #define FIELD_SIGN (-1)
 #define Z_SIGN     (-1)
+#define MIRROR_XY  1
 #else
 /* 2026-11-18: best of pc/gate1.py --find-mount on the 140 mm layout with the side magnet.
  * NOT a pass: xy error was still about 72 mm. Recheck after the next 9-point measurement. */
 #define MOUNT_ROT  { 0, 2, 2, 0 }
 #define FIELD_SIGN 1
 #define Z_SIGN     1
+#define MIRROR_XY  0
 #endif
 
 #endif

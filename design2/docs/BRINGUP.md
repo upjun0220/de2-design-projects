@@ -93,14 +93,16 @@ python design2/pc/screen.py
 3. 종이에 ±3 cm, 3 cm 간격의 격자 9점을 그린다.
 4. `python design2/pc/collect.py --participant 0 --role genuine --target 0`
 5. 왼쪽 아래 점부터 x가 커지는 쪽으로, 펜을 수직으로 약 1초 대고 KEY1을 누른다. 9점 반복. Ctrl+C.
-6. 장착 설정 찾기: `python design2/pc/gate1.py 로그파일 --find-mount`. 첫 줄 값을 `nios/config.h`의 `MOUNT_ROT`, `FIELD_SIGN`, `Z_SIGN`에 넣는다(몇 분 걸린다).
-7. 위치 오차: `python design2/pc/gate1.py 로그파일 --rot a b c d --sign s --zsign z --half 0.07`. **게이트 1 기준 ≤10 mm.**
+6. 장착 설정 찾기: `python design2/pc/gate1.py 로그파일 --find-mount`. 첫 줄 값을 `nios/config.h`의 `MOUNT_ROT`, `FIELD_SIGN`, `Z_SIGN`, `MIRROR_XY`에 넣는다(몇 분 걸린다). `MIRROR_XY`는 센서 X·Y가 모델과 거울상일 때(X↔Y 교환, 모듈을 뒤집어 붙임) 1이다. 회전만으로는 거울상을 맞출 수 없다.
+7. 위치 오차: `python design2/pc/gate1.py 로그파일 --rot a b c d --sign s --zsign z --mirror m --half 0.07`. **게이트 1 기준 ≤10 mm.**
 
-잔차(µT)가 크게 나오면(수십 µT 이상) 모델이 안 맞는 것이다. 자석 세기 `--m0`, 센서 간격 `--half`를 의심한다.
+`gate1.py`는 자석 세기도 함께 풀고 "추정 자석 세기"를 출력한다(`--fix-m0`이면 예전처럼 `--m0`에 고정). 실제 세기를 모르고 0.9로 고정하면 위치가 크게 틀린다(합성 시험: 실제 0.5일 때 xy 53~79 mm, 함께 풀면 0.1~0.2 mm, 시뮬레이션). 점별 추정 세기가 서로 크게 다르면 세기가 아니라 장착·기준값·간격이 틀린 것이다.
+
+잔차(µT)가 크게 나오면(수십 µT 이상) 모델이 안 맞는 것이다. 센서 간격 `--half`, 장착 설정, 기준값(펜을 치우고 쟀는지)을 의심한다.
 
 ## 6. 보드용 값 맞추기
 
-실측 자석 세기·간격으로 MLP를 다시 학습한다(약 10~20분).
+실측 자석 세기(`gate1.py`가 출력한 추정 자석 세기)·간격으로 MLP를 다시 학습한다(약 10~20분). 보드의 MLP는 학습 때 세기를 고정값으로 가정하므로 이 단계를 건너뛰면 보드 위치가 틀린다.
 
 ```bash
 cd design2/pc && python train_mlp.py --m0 측정값 --half 측정값 --zmin 측정높이
@@ -145,6 +147,6 @@ role: `genuine` 본인 / `random` 무작위 / `static` 이미지 보고 따라 �
 | 부팅 후 LCD 무반응 | 터미널 출력 확인. SDRAM 클럭 위상. `LCD_ON`, 백라이트는 보드마다 다름 |
 | `SENSORS OK` 수가 부족 | 주소·배선, 3장의 스캔 결과 |
 | 값이 변하지 않음 | ERR 레지스터, SDA/SCL 파형, `reg2` 설정 |
-| 펜을 대도 `SIGNING` 안 뜸 | `Z_DOWN` 값, 기준값 재측정, `MOUNT_ROT`, `FIELD_SIGN`, `Z_SIGN` |
+| 펜을 대도 `SIGNING` 안 뜸 | `Z_DOWN` 값, 기준값 재측정, `MOUNT_ROT`, `FIELD_SIGN`, `Z_SIGN`, `MIRROR_XY` |
 | 서명이 조각남 | `Z_UP`, `END_UP_FRAMES` |
 | 로그에 프레임 번호가 건너뜀 | JTAG 전송이 밀림. 터미널 외 다른 JTAG 프로그램 종료 |

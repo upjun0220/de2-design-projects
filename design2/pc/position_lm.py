@@ -24,20 +24,23 @@ def raw_to_tesla(raw):
     return raw * s * 1e-6
 
 
-def fit_frame(meas, sensors, m0, start):
+def fit_frame(meas, sensors, m0, start, free_m=False):
     """q = (x, y, z, mx, my, mz). 자석 방향은 (mx,my,mz)를 정규화해 쓴다(반구 제한 없음, 옆 부착 자석용).
+    free_m: 정규화하지 않고 (mx,my,mz)의 크기까지 푼다 → 자석 세기 = m0 × |(mx,my,mz)|.
+    자석 세기를 모를 때 쓴다. 미지수 6개 < 측정 12개라 풀린다(Taylor 외 MIT, Biancalana 외 2020도 세기를 함께 푼다).
+    합성 시험(실제 0.5, 가정 0.9 A·m²): 고정이면 xy 53~79 mm, 함께 풀면 0.1~0.2 mm.
     start가 5개 값(x,y,z,ux,uy)이면 위쪽 방향으로 보고 6개로 늘린다."""
     start = np.asarray(start, float)
     if len(start) == 5:
         start = np.r_[start[:3], pm.tilt_vec(start[3], start[4])]
     def resid(q):
-        return (pm.field(q[:3], pm.unit(q[3:6]), m0, sensors).ravel() - meas) * 1e6
-    return least_squares(resid, start, method="lm", max_nfev=200)
+        return (pm.field(q[:3], q[3:6] if free_m else pm.unit(q[3:6]), m0, sensors).ravel() - meas) * 1e6
+    return least_squares(resid, start, method="lm", max_nfev=400 if free_m else 200)
 
 
-def fit_best(meas, sensors, m0, positions=STARTS, dirs=DIRS):
+def fit_best(meas, sensors, m0, positions=STARTS, dirs=DIRS, free_m=False):
     """여러 시작점(위치 × 방향) 중 잔차가 가장 작은 해"""
-    sols = [fit_frame(meas, sensors, m0, np.r_[p, d]) for p in positions for d in dirs]
+    sols = [fit_frame(meas, sensors, m0, np.r_[p, d], free_m) for p in positions for d in dirs]
     return min(sols, key=lambda r: r.cost)
 
 
