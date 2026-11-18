@@ -29,13 +29,19 @@ uint32_t icbrt(uint32_t v)
     return r;
 }
 
-/* Rotates each sensor's X,Y into board axes and applies the magnet polarity. */
+/* Mirrors (MIRROR_XY: swap X and Y), then rotates each sensor's X,Y into board axes,
+ * then applies the magnet polarity. Same order as pc/pen_model.py mount_correct. */
 void mount_correct(int32_t lsb[12])
 {
     static const int rot[4] = MOUNT_ROT;
     int k, q;
     for (k = 0; k < 4; k++) {
         int32_t *v = &lsb[3 * k];
+        if (MIRROR_XY) {
+            int32_t x = v[0];
+            v[0] = v[1];
+            v[1] = x;
+        }
         for (q = 0; q < rot[k]; q++) {
             int32_t x = v[0];
             v[0] = -v[1];

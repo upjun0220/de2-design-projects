@@ -8,7 +8,7 @@
  - 미등록 역할의 문턱 결정용 사람과 시험용 사람을 나눈다(leave-one-person-out).
 보고: "N회 중 M회 통과, 95% 신뢰구간". 0회면 "FAR 0%"가 아니라 상한을 쓴다.
 
-실행: python pc/evaluate.py [--lm]        데이터가 있을 때
+실행: python pc/evaluate.py [--lm] [--agg mean]   데이터가 있을 때 (--agg: 템플릿 거리 최소/평균 비교)
       python pc/evaluate.py --check       가짜 데이터로 코드 자체를 검증
 """
 import argparse
@@ -62,12 +62,15 @@ def masked(sig, ch):
     return out
 
 
-def distance_to_person(q, templates):
-    """nios/main.c와 같다: 그 사람의 템플릿 중 가장 가까운 것"""
-    return min(dtw_fast(q, t) for t in templates)
+def distance_to_person(q, templates, agg="min"):
+    """min: nios/main.c와 같다(그 사람의 템플릿 중 가장 가까운 것).
+    mean: 템플릿 5개와의 거리 평균(Pascual-Gaspar 외 2009의 5개 기준 DTW 방식). 판정 문턱 tau가 등록 서명
+    쌍 사이 거리의 평균에서 나오므로 평균 쪽이 tau와 같은 눈금이다. 어느 쪽이 나은지는 실측 데이터로 정한다."""
+    d = [dtw_fast(q, t) for t in templates]
+    return min(d) if agg == "min" else float(np.mean(d))
 
 
-def evaluate(samples, n_enroll=5, verbose=True):
+def evaluate(samples, n_enroll=5, verbose=True, agg="min"):
     """samples: {"who","role","target","date","sig"(128×8)} 목록. 사람별 첫 날짜의 본인 서명으로 등록,
     나머지 날짜의 본인 서명과 다른 역할을 시험에 쓴다. 결과 요약을 돌려준다."""
     people = sorted({s["target"] for s in samples if s["role"] == "genuine"})
@@ -87,7 +90,7 @@ def evaluate(samples, n_enroll=5, verbose=True):
         records = []
         for s in test:
             q = masked(s["sig"], ch)
-            records.append((s, {p: distance_to_person(q, templates[p]) for p in people}))
+            records.append((s, {p: distance_to_person(q, templates[p], agg) for p in people}))
         results[name] = summarize(records, templates)
         if verbose:
             print_summary(name, results[name])
@@ -237,6 +240,8 @@ def check():
     best = max(res["rule"], key=lambda r: r[2])
     assert best[2] == best[3]                                          # 규칙표도 돌아간다
     print_summary("검증", res)
+    res_mean = evaluate(samples, verbose=False, agg="mean")["+기울기·z"]
+    assert res_mean["identify"][0] == res_mean["identify"][1]     # 평균 방식도 같은 경로로 돈다
     lo, hi = clopper_pearson(0, 30)
     assert lo == 0 and 0.10 < hi < 0.13                  # 0/30의 상한은 약 11.6% (3/n 근사 10%)
     assert eer(np.array([1., 2.]), np.array([3., 4.]))[0] == 0
@@ -247,6 +252,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--lm", action="store_true")
     ap.add_argument("--check", action="store_true")
+    ap.add_argument("--agg", choices=("min", "mean"), default="min",
+                    help="사람별 거리: 템플릿 중 최소(보드와 같음) / 평균(문헌의 5개 기준 방식). 둘 다 돌려 비교한다")
     args = ap.parse_args()
     if args.check:
         return check()
@@ -254,7 +261,8 @@ def main():
     if not samples:
         print("pc/data/에 수집 데이터가 없다. collect.py로 먼저 수집한다.")
         return
-    evaluate(samples)
+    print("사람별 거리: 템플릿 중 %s" % ("최소" if args.agg == "min" else "평균"))
+    evaluate(samples, agg=args.agg)
 
 
 if __name__ == "__main__":

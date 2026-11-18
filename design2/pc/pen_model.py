@@ -96,21 +96,26 @@ def tdiv(a, b):
     return q if (a >= 0) == (b >= 0) else -q
 
 
-def mount_correct(lsb, rot=(0, 0, 0, 0), sign=1, zsign=1):
-    """nios/position.c의 mount_correct와 같다. 센서 k의 X,Y를 보드 축으로 돌리고 극성을 곱한다."""
+def mount_correct(lsb, rot=(0, 0, 0, 0), sign=1, zsign=1, mirror=0):
+    """nios/position.c의 mount_correct와 같다. (mirror면 X,Y 교환) → 센서 k의 X,Y를 보드 축으로 돌림 → 극성.
+    mirror: 회전·Z 반전으로는 거울상(X↔Y 교환, 모듈을 뒤집어 붙임)을 만들 수 없어 따로 둔다(config.h MIRROR_XY)."""
     out = [int(v) for v in lsb]
     for k in range(4):
+        if mirror:
+            out[3*k], out[3*k+1] = out[3*k+1], out[3*k]
         for _ in range(rot[k]):
             out[3*k], out[3*k+1] = -out[3*k+1], out[3*k]
         out[3*k], out[3*k+1], out[3*k+2] = sign*out[3*k], sign*out[3*k+1], sign*zsign*out[3*k+2]
     return out
 
 
-def mount_apply(raw, rot=(0, 0, 0, 0), sign=1, zsign=1):
+def mount_apply(raw, rot=(0, 0, 0, 0), sign=1, zsign=1, mirror=0):
     """mount_correct의 실수 배열판. raw (...,12)"""
     out = np.array(raw, float)
     out[..., 2::3] *= zsign
     for k in range(4):
+        if mirror:
+            out[..., [3*k, 3*k+1]] = out[..., [3*k+1, 3*k]]
         for _ in range(rot[k]):
             x, y = out[..., 3*k].copy(), out[..., 3*k+1].copy()
             out[..., 3*k], out[..., 3*k+1] = -y, x
@@ -118,8 +123,8 @@ def mount_apply(raw, rot=(0, 0, 0, 0), sign=1, zsign=1):
 
 
 def read_mount():
-    """nios/config.h의 MOUNT_ROT, FIELD_SIGN, Z_SIGN을 읽는다. 보드와 PC가 같은 값을 쓰게 하려고
-    여기에 따로 적지 않는다. 돌려주는 값: (rot, sign, zsign)"""
+    """nios/config.h의 MOUNT_ROT, FIELD_SIGN, Z_SIGN, MIRROR_XY를 읽는다. 보드와 PC가 같은 값을 쓰게 하려고
+    여기에 따로 적지 않는다. 돌려주는 값: (rot, sign, zsign, mirror)"""
     import os
     import re
     txt = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "nios", "config.h")).read()
@@ -127,7 +132,8 @@ def read_mount():
     rot = tuple(int(v) for v in re.search(r"MOUNT_ROT\s*\{([^}]*)\}", txt).group(1).split(","))
     sign = int(re.search(r"FIELD_SIGN\s+\(?(-?\d+)", txt).group(1))
     zsign = int(re.search(r"Z_SIGN\s+\(?(-?\d+)", txt).group(1))
-    return rot, sign, zsign
+    mirror = int(re.search(r"MIRROR_XY\s+(\d)", txt).group(1))
+    return rot, sign, zsign, mirror
 
 
 UNIFORM_PCT = 20     # nios/config.h와 같게 둔다
