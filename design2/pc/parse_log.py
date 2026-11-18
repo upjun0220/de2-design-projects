@@ -9,6 +9,8 @@
 수집 모드는 프레임을 계속 내보내므로 로그에는 서명 앞의 대기 구간과 끝난 뒤 펜을 든 1초도 들어 있다.
 보드는 첫 펜 내림부터 마지막 펜 내림까지만 서명으로 쓴다(nios/signature.c). 여기서도 똑같이 자른다.
 그러지 않으면 PC 평가가 보드와 다른 신호를 비교하게 된다.
+펜 스위치(SW17) 서명은 끝난 뒤 보드가 끝의 꼬리(펜을 든 뒤의 움직임)를 잘라 낸다(sig_trim_tail). 그 프레임들은
+이미 pen=1로 로그에 찍혔으므로, SIG,DONE,n이 있으면 첫 펜 내림부터 n줄을 서명으로 쓴다.
 """
 import numpy as np
 
@@ -34,9 +36,12 @@ def parse_lines(lines):
             pen = [r[PEN] for r in cur]
             if p[1] == "DONE" and 1 in pen:
                 first, last = pen.index(1), len(pen) - 1 - pen[::-1].index(1)
-                sigs.append(_to_sig(cur[first:last + 1]))
-                if len(p) > 2 and p[2].isdigit() and int(p[2]) != last + 1 - first:
-                    bad += 1
+                n = last + 1 - first
+                if len(p) > 2 and p[2].isdigit():
+                    if int(p[2]) > n:
+                        bad += 1                 # 보드보다 줄이 적다: 줄이 빠졌다
+                    n = min(n, int(p[2]))        # 보드가 꼬리를 잘랐으면 n이 더 작다
+                sigs.append(_to_sig(cur[first:first + n]))
             cur = []
     return sigs, bad
 
@@ -71,6 +76,11 @@ def _check():
     assert bad == 0 and [tuple(r) for r in sigs[0]["pos"].tolist()] == frames and sigs[0]["pen"].tolist() == pen
     sigs, bad = parse_lines(log[:250] + log[251:] + ["SIG,DONE,%d" % len(frames)])
     assert bad == 1                              # 서명 중간의 줄 하나가 빠지면 알려 준다
+    # 보드가 끝의 꼬리를 잘랐을 때(SIG,DONE,n이 pen=1 줄 수보다 작다): 앞의 n줄만 쓰고 오류로 세지 않는다
+    sigs, bad = parse_lines(log + ["SIG,DONE,%d" % (len(frames) - 10)])
+    assert bad == 0 and len(sigs[0]["pos"]) == len(frames) - 10
+    assert [tuple(r) for r in sigs[0]["pos"].tolist()] == frames[:-10]
+    pp._check_trim()                             # 꼬리 자르기의 Python 기준 구현
     print("parse_log OK")
 
 

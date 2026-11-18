@@ -101,6 +101,61 @@ static void test_dtw(void)
     }
 }
 
+/* pf_step against pc/pen_filter.py: reset flag, input x y z, expected x y z per row */
+static void test_filter(void)
+{
+    long ns = rd(), c, i;
+    pen_filter f;
+    for (c = 0; c < ns; c++) {
+        long n = rd();
+        for (i = 0; i < n; i++) {
+            pen_pos p;
+            if (rd()) pf_reset(&f);
+            p.x = (int16_t)rd(); p.y = (int16_t)rd(); p.z = (int16_t)rd(); p.ux = p.uy = 0;
+            pf_step(&f, &p);
+            CHECK("filter x", p.x, rd()); CHECK("filter y", p.y, rd()); CHECK("filter z", p.z, rd());
+        }
+    }
+}
+
+/* sig_trim_tail against pc/preprocess.py trim_tail: n, z_ref, heights, expected n */
+static void test_trim(void)
+{
+    long nc = rd(), c, i;
+    for (c = 0; c < nc; c++) {
+        long n = rd();
+        sig_reset(&s);
+        s.z_ref = (int)rd();
+        for (i = 0; i < n; i++) { memset(&s.p[i], 0, sizeof(s.p[i])); s.p[i].z = (int16_t)rd(); s.pen[i] = 1; }
+        s.n = (int)n;
+        sig_trim_tail(&s);
+        CHECK("trim", s.n, rd());
+    }
+}
+
+/* z_ref in pen switch mode: follows a rising contact height slowly, a lower one at once,
+ * and is kept while the pen is up. */
+static void test_zref(void)
+{
+    pen_pos p;
+    int i;
+    memset(&p, 0, sizeof(p));
+    sig_reset(&s);
+    p.z = 100; sig_feed_switch(&s, &p, 0);
+    CHECK("zref start", s.z_ref, 100);
+    for (i = 0; i < 200; i++) { p.z = 130; sig_feed_switch(&s, &p, 0); }   /* 3 mm higher, still down */
+    CHECK("zref follows up", s.z_ref > 120 && s.z_ref <= 130, 1);
+    CHECK("still down", s.is_down, 1);
+    p.z = 90; sig_feed_switch(&s, &p, 0);
+    CHECK("zref down at once", s.z_ref, 90);
+    p.z = 90 + LIFT_UP + 1; sig_feed_switch(&s, &p, 0);
+    CHECK("lift = up", s.is_down, 0);
+    for (i = 0; i < 50; i++) sig_feed_switch(&s, &p, 0);
+    CHECK("zref kept while up", s.z_ref, 90);
+    p.z = 90 + LIFT_DOWN - 1; sig_feed_switch(&s, &p, 0);
+    CHECK("back down", s.is_down, 1);
+}
+
 static void test_decide(void)
 {
     person p[3];
@@ -320,6 +375,9 @@ int main(int argc, char **argv)
     test_mlp();
     test_signature();
     test_dtw();
+    test_filter();
+    test_trim();
+    test_zref();
     test_decide();
     test_screen();
     test_ui();

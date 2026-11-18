@@ -117,3 +117,57 @@ void mlp_forward(const int32_t in[12], pen_pos *out)
     out->ux = (int16_t)(o[3] >> 4);
     out->uy = (int16_t)(o[4] >> 4);
 }
+
+/* ---- Position filter (config.h PF_*, pc/pen_filter.py is the reference) ----
+ * Per axis: median of the last 3 inputs removes single-frame spikes (costs one frame of lag),
+ * then a One Euro filter: a first-order low-pass x += alpha * (in - x) whose cut-off
+ * frequency fc rises with the filtered speed, so a still pen is smoothed hard and a fast
+ * stroke lags little. alpha = w / (1 + w), w = 2 pi fc Te, Te = 0.02 s.
+ * Units: position Q4 (1/16 of 0.1 mm), alpha Q12, frequency in 0.01 Hz. */
+static int32_t alpha_q12(int32_t fc_chz)
+{
+    int32_t w = fc_chz * 5147 / 1000;          /* 2 pi * 0.02 * 4096 = 514.7 per Hz */
+    return (w << 12) / (4096 + w);
+}
+
+static int32_t median3(int32_t a, int32_t b, int32_t c)
+{
+    int32_t lo = a < b ? a : b, hi = a < b ? b : a;
+    if (c < lo) return lo;
+    return c > hi ? hi : c;
+}
+
+void pf_reset(pen_filter *f)
+{
+    f->valid = 0;
+}
+
+void pf_step(pen_filter *f, pen_pos *p)
+{
+    int16_t *axis[3];
+    int k;
+    axis[0] = &p->x; axis[1] = &p->y; axis[2] = &p->z;
+    for (k = 0; k < 3; k++) {
+        int32_t v = *axis[k];
+        if (v > PF_CLAMP) v = PF_CLAMP;
+        if (v < -PF_CLAMP) v = -PF_CLAMP;
+        if (!f->valid) {                       /* first frame: start from the input as it is */
+            f->m0[k] = f->m1[k] = v;
+            f->x[k] = v << 4;
+            f->dx[k] = 0;
+            *axis[k] = (int16_t)v;
+        } else {
+            int32_t med = median3(f->m0[k], f->m1[k], v), xq, speed, fc;
+            f->m0[k] = f->m1[k];
+            f->m1[k] = v;
+            xq = med << 4;
+            f->dx[k] += (alpha_q12(PF_DCUT) * (xq - f->x[k] - f->dx[k])) >> 12;
+            speed = (f->dx[k] < 0 ? -f->dx[k] : f->dx[k]) * 5 / 16;   /* Q4 0.1 mm/frame -> mm/s */
+            fc = PF_MINCUT + PF_BETA * speed;
+            if (fc > 5000) fc = 5000;
+            f->x[k] += (alpha_q12(fc) * (xq - f->x[k])) >> 12;
+            *axis[k] = (int16_t)(f->x[k] >> 4);
+        }
+    }
+    f->valid = 1;
+}

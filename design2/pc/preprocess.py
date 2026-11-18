@@ -3,7 +3,8 @@
 from pen_model import tdiv
 
 Z_DOWN, Z_UP = 120, 150
-END_UP_FRAMES, MIN_DOWN_FRAMES, MAX_LOST_PCT, MAX_FRAMES = 50, 25, 20, 300
+END_UP_FRAMES, MIN_DOWN_FRAMES, MAX_LOST_PCT, MAX_FRAMES = 50, 25, 20, 500
+TRIM_LIFT, TRIM_WINDOW = 150, 150
 N, CH = 128, 8
 
 
@@ -69,3 +70,48 @@ def segment(stream):
             if down_total >= MIN_DOWN_FRAMES and lost * 100 <= len(frames) * MAX_LOST_PCT:
                 result.append((frames, pen))
     return result
+
+
+def trim_tail(z, z_ref):
+    """펜 스위치 서명 끝의 꼬리 자르기(nios/signature.c sig_trim_tail과 같다). 돌려주는 값: 남길 프레임 수.
+    서명 끝: 마지막 획 → 펜을 듦 → 손을 스위치로 → 스위치 끔. 펜을 든 뒤의 움직임은 서명이 아니다.
+     1. zs = 앞뒤 2프레임씩 평균한 높이(서명이 다 저장된 뒤라 지연이 없다).
+     2. j = zs가 z_ref + TRIM_LIFT보다 낮은 마지막 프레임. 그보다 높게 끝났고 높은 구간이
+        마지막 TRIM_WINDOW 프레임 안에서 시작했으면, 끝에서 펜을 들고 다시 내리지 않은 것이다.
+     3. 처음 높아진 프레임에서 높이가 계속 낮아지는 쪽으로 거슬러 가서, 가장 낮은 점(펜이 종이를 떠난 곳)
+        다음을 자른다.
+    못 찾으면 자르지 않는다(꼬리가 남는 게 획이 잘리는 것보다 낫다)."""
+    n = len(z)
+    if TRIM_LIFT <= 0 or n < 2:
+        return n
+
+    def zs(i):
+        vals = [z[k] for k in range(i - 2, i + 3) if 0 <= k < n]
+        return tdiv(sum(vals), len(vals))
+
+    start = n - TRIM_WINDOW if n > TRIM_WINDOW else 0
+    j = n - 1
+    while j >= 0 and zs(j) >= z_ref + TRIM_LIFT:
+        j -= 1
+    if j < 0 or j == n - 1 or j + 1 < start:
+        return n
+    k = j + 1
+    while k > start and zs(k - 1) <= zs(k):
+        k -= 1
+    return k + 1
+
+
+def _check_trim():
+    """꼬리 자르기의 대표 경우. 숫자는 0.1 mm."""
+    write = [90 + (i % 7) for i in range(200)]                       # 종이 위(약 9 mm, 떨림)
+    lift = [90 + 12 * i for i in range(1, 30)]                        # 끝에서 펜을 듦(최고 약 44 mm)
+    assert trim_tail(write, 90) == 200                                # 들지 않고 끝: 그대로
+    n = trim_tail(write + lift + [440] * 40, 90)
+    assert 195 <= n <= 201, n                                         # 들기 직전에서 잘린다
+    spikes = write[:100] + [300] * 3 + write[100:]                    # 쓰는 중 잠깐 튄 높이
+    assert trim_tail(spikes, 90) == len(spikes)
+    low = write + [90 + 3 * i for i in range(1, 30)]                  # 낮게(15 mm 미만) 들고 끝: 못 찾음
+    assert trim_tail(low, 90) == len(low)
+    long_up = write + lift + [440] * 200                              # 3초 넘게 들고 있었음: 자르지 않음
+    assert trim_tail(long_up, 90) == len(long_up)
+    assert trim_tail([440] * 50, 90) == 50                            # 처음부터 높음(z_ref가 틀림): 자르지 않음

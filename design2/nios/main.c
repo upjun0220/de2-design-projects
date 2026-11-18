@@ -126,6 +126,38 @@ static void vga_cursor(const pen_pos *p, int present, int down)
     relay_cursor(present, down ? C_GREEN : C_DIM, x, y);
 }
 
+/* Pad drawing with a dead band (config.h ANCHOR_R), for the screen only: while the pen is
+ * down, a line is drawn from the last drawn point (the anchor) only once the pen is more
+ * than ANCHOR_R away from it. A pen held still then shows a dot, not a scribble of the
+ * position noise. The stored signature is not changed. down = 0 ends the stroke. */
+static pen_pos anchor;
+static int     anchor_down;
+
+static void pad_draw(const pen_pos *p, int down)
+{
+    if (down && !anchor_down) {
+        anchor = *p;                              /* stroke starts: no line yet */
+        vga_line(p, p);
+    } else if (down) {
+        int32_t dx = p->x - anchor.x, dy = p->y - anchor.y;
+        if (dx * dx + dy * dy > (int32_t)ANCHOR_R * ANCHOR_R) {
+            vga_line(&anchor, p);
+            anchor = *p;
+        }
+    }
+    anchor_down = down;
+}
+
+/* Clears the pad and draws the stored signature again (after its tail was cut). */
+static void pad_redraw(const sig_buf *s)
+{
+    int i;
+    vga_pad_reset();
+    anchor_down = 0;
+    for (i = 0; i < s->n; i++) pad_draw(&s->p[i], s->pen[i]);
+    anchor_down = 0;
+}
+
 /* Small helpers for the text lines built here. sprintf is fine: these run per event, not per frame. */
 static int count_ok(uint32_t err)
 {
@@ -378,15 +410,15 @@ int main(void)
     int32_t base[12], lsb[12], corrected[12], in[12];
     pen_pos pos;
     pen_pos prev_pos;
-    int prev_down = 0;
+    pen_filter filt;
     int pen_sw = 0, pen_sw_prev = 0, pen_sw_hold = 0;   /* SW[17] pen switch, see the main loop */
-    int pen_down = 0, sm_valid = 0;
-    int32_t sm_x = 0, sm_y = 0, sm_z = 0;               /* smoothed position, Q4 */
+    int pen_down = 0;
     uint32_t us_mlp = 0, shown_inputs = 0xFFFFFFFF, shown_err = 0xFFFFFFFF;
     int k, n_ok, saved = 0, rejected = 0, marks = 0;
     char line[80];
 
     memset(&prev_pos, 0, sizeof(prev_pos));
+    pf_reset(&filt);
 
     lcd = fopen("/dev/lcd_0", "w");
     memset(people, 0, sizeof(people));
@@ -425,7 +457,7 @@ int main(void)
         mode = inputs & 3;
         /* SW[17] pen switch: on = signing (pen down), off = signature ends at once.
          * The estimated height is then not used for pen up/down. If a signature ends
-         * while the switch is still on (6 s full), wait for the switch to go off first. */
+         * while the switch is still on (10 s full), wait for the switch to go off first. */
         pen_sw_prev = pen_sw;
         pen_sw = (inputs >> PEN_SWITCH_BIT) & 1;
         if (!pen_sw) pen_sw_hold = 0;
@@ -473,31 +505,27 @@ int main(void)
                 }
                 present = peak >= PEN_PRESENT_LSB && !uniform;
             }
-            /* Smoothing: exponential moving average of x, y, z (weight 1/2^SMOOTH_SHIFT for the
-             * new frame) to calm the frame-to-frame jumps of the position estimate. Restarts when
-             * the pen comes back, so it does not drag a line from the old position. */
-            if (SMOOTH_SHIFT > 0 && present) {
-                if (!sm_valid) { sm_x = pos.x << 4; sm_y = pos.y << 4; sm_z = pos.z << 4; sm_valid = 1; }
-                sm_x += ((pos.x << 4) - sm_x) >> SMOOTH_SHIFT;
-                sm_y += ((pos.y << 4) - sm_y) >> SMOOTH_SHIFT;
-                sm_z += ((pos.z << 4) - sm_z) >> SMOOTH_SHIFT;
-                pos.x = (int16_t)(sm_x >> 4); pos.y = (int16_t)(sm_y >> 4); pos.z = (int16_t)(sm_z >> 4);
-            } else {
-                sm_valid = 0;
-            }
+            /* Filter: median of 3 + One Euro filter on x, y, z (position.c pf_step, config.h PF_*).
+             * Restarts when the pen comes back, so it does not drag a line from the old position.
+             * The filtered position is what is stored, drawn and logged. */
+            if (present) pf_step(&filt, &pos);
+            else pf_reset(&filt);
             lost = err != 0;
             if (pen_sw && !pen_sw_hold)
                 ev = sig_feed_switch(&sig, &pos, lost);            /* switch on: signing */
-            else if (pen_sw || pen_sw_prev || PEN_SWITCH_ONLY)
-                ev = sig_finish(&sig);                             /* switch off (or held): end now */
-            else
+            else if (pen_sw || pen_sw_prev || PEN_SWITCH_ONLY) {
+                /* switch off (or held): end now. Cut the lift at the end first (signature.c) and
+                 * show the signature as it is kept. */
+                int n_before = sig.n;
+                if (sig.active && !pen_sw) sig_trim_tail(&sig);
+                ev = sig_finish(&sig);
+                if (ev == SIG_DONE && sig.n != n_before) pad_redraw(&sig);
+            } else
                 ev = sig_feed(&sig, &pos, lost);                   /* height-based, PEN_SWITCH_ONLY 0 */
             if (pen_sw && (ev == SIG_DONE || ev == SIG_REJECT)) pen_sw_hold = 1;
-            if (ev == SIG_STARTED) vga_pad_reset();
+            if (ev == SIG_STARTED) { vga_pad_reset(); anchor_down = 0; }
             pen_down = sig.active && sig.is_down;                  /* drawing: only inside a signature */
-            if (pen_down && prev_down) vga_line(&prev_pos, &pos);
-            prev_pos = pos;
-            prev_down = pen_down;
+            if (sig.active) pad_draw(&pos, pen_down);
             {
                 vga_cursor(&pos, present, pen_down);
                 if (last_frame % 5 == 0) {          /* numbers at 10 Hz: readable, and cheap */

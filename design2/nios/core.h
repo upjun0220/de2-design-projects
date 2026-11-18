@@ -15,13 +15,24 @@ int      field_is_uniform(const int32_t lsb[12]);
 void     field_to_input(const int32_t lsb[12], int32_t in[12]);
 void     mlp_forward(const int32_t in[12], pen_pos *out);
 
+/* Position filter: median of 3 then One Euro filter on x, y, z (config.h PF_*).
+ * Reset when the pen goes away so it does not drag from the old position. */
+typedef struct {
+    int     valid;
+    int32_t m0[3], m1[3];   /* the two previous inputs, for the median */
+    int32_t x[3], dx[3];    /* filtered position and speed, Q4 */
+} pen_filter;
+void pf_reset(pen_filter *f);
+void pf_step(pen_filter *f, pen_pos *p);   /* filters p->x, y, z in place */
+
 /* ---- signature.c: frame stream -> one signature -> 128x8 int8 ---- */
 typedef struct {
     pen_pos p[MAX_FRAMES];
     uint8_t pen[MAX_FRAMES];
     int     n;
     int     active, is_down, up_run, down_total, lost;
-    int     z_ref;                      /* lowest height in this signature (pen switch mode) */
+    int     z_ref;                      /* contact height (pen switch mode), see ZREF_SHIFT */
+    int32_t z_acc;                      /* z_ref in Q4 */
 } sig_buf;
 
 enum { SIG_NONE = 0, SIG_STARTED, SIG_DONE, SIG_REJECT };
@@ -30,6 +41,7 @@ void sig_reset(sig_buf *s);
 int  sig_feed(sig_buf *s, const pen_pos *p, int lost);  /* returns SIG_* */
 int  sig_feed_switch(sig_buf *s, const pen_pos *p, int lost);  /* SW[17] on: relative-height pen up/down */
 int  sig_finish(sig_buf *s);                            /* KEY1: end now */
+void sig_trim_tail(sig_buf *s);                         /* switch off: cut the lift at the end */
 void sig_preprocess(const sig_buf *s, int8_t out[SIG_N][SIG_CH]);
 
 /* ---- display.c: pen position (0.1 mm) to the 192x192 bitmap of hdl/vga_ui.v ---- */

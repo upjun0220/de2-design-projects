@@ -1,9 +1,10 @@
 /* signature.c - finds one signature in the frame stream and turns it into the
  * fixed 128 x 8 int8 form used by DTW.
  *
- * Start: first frame with the pen down. End: pen up for 1 s, KEY1, or 6 s full.
+ * Start: first frame with the pen down. End: pen up for 1 s, KEY1, or 10 s full.
  * Pen down: estimated height below Z_DOWN (sig_feed), or with the pen switch SW[17] on,
- * the height relative to the lowest point of this signature (sig_feed_switch).
+ * the height relative to the contact height z_ref (sig_feed_switch). When the switch ends
+ * the signature, the lift at the end is cut off first (sig_trim_tail).
  * Discard: less than 0.5 s pen-down, or more than 20 % frames with sensor errors.
  *
  * Preprocessing (all integer, same as pc/preprocess.py):
@@ -30,6 +31,7 @@ void sig_reset(sig_buf *s)
     s->down_total = 0;
     s->lost = 0;
     s->z_ref = 0;
+    s->z_acc = 0;
 }
 
 /* Common end handling: cut the trailing pen-up frames, then check quality. */
@@ -52,6 +54,7 @@ static int sig_store(sig_buf *s, const pen_pos *p, int lost, int up_ends)
         s->active = 1;
         s->n = 0; s->up_run = 0; s->down_total = 0; s->lost = 0;
         s->z_ref = p->z;
+        s->z_acc = p->z << 4;
     }
     s->p[s->n] = *p;
     s->pen[s->n] = (uint8_t)s->is_down;
@@ -73,22 +76,65 @@ int sig_feed(sig_buf *s, const pen_pos *p, int lost)
 }
 
 /* Pen switch mode (SW[17] on, nios/main.c). The switch marks the whole signature; inside it,
- * pen up/down comes from the height RELATIVE to the lowest height seen in this signature
- * (z_ref), because the absolute height estimate is offset by several mm. The first frame
- * is always pen down and sets z_ref. Lifting more than LIFT_UP above z_ref = pen up (no line),
- * coming back below LIFT_DOWN = pen down. LIFT_UP 0 turns this off: always pen down.
- * The switch going off ends the signature (sig_finish in main.c). */
+ * pen up/down comes from the height RELATIVE to the contact height z_ref, because the
+ * absolute height estimate is offset by several mm. The first frame is always pen down and
+ * sets z_ref. While the pen is down, z_ref follows the height: at once when it goes lower,
+ * slowly (ZREF_SHIFT) when it goes higher, because the uncalibrated contact height differs
+ * by a few mm across the pad. While the pen is up, z_ref is kept.
+ * Lifting more than LIFT_UP above z_ref = pen up (no line), coming back below LIFT_DOWN =
+ * pen down. LIFT_UP 0 turns this off: always pen down.
+ * The switch going off ends the signature (sig_trim_tail, sig_finish in main.c). */
 int sig_feed_switch(sig_buf *s, const pen_pos *p, int lost)
 {
     if (!s->active) {
         s->is_down = 1;
     } else {
-        if (p->z < s->z_ref) s->z_ref = p->z;
+        /* z_acc is z_ref in Q4: without the extra bits a difference below 2^ZREF_SHIFT
+         * (3.2 mm for 5) would never move z_ref */
+        if (p->z < s->z_ref) { s->z_acc = p->z << 4; s->z_ref = p->z; }
         if (LIFT_UP <= 0) s->is_down = 1;
         else if (p->z > s->z_ref + LIFT_UP) s->is_down = 0;
         else if (p->z < s->z_ref + LIFT_DOWN) s->is_down = 1;
+        /* follow upwards only after the decision, so the frame that lifts is judged
+         * against the old contact height */
+        if (s->is_down) {
+            s->z_acc += ((p->z << 4) - s->z_acc) >> ZREF_SHIFT;
+            s->z_ref = s->z_acc >> 4;
+        }
     }
     return sig_store(s, p, lost, 0);
+}
+
+/* The signature ends with: last stroke, pen lifted, hand to the switch, switch off. The
+ * movement after the lift is not part of the signature. Find it from the end:
+ *  1. zs = height smoothed over +-2 frames (the whole signature is stored, so no lag).
+ *  2. j = last frame with zs below z_ref + TRIM_LIFT. If the signature ends higher than that
+ *     (and the high part starts within the last TRIM_WINDOW frames), the pen was lifted at
+ *     the end and never came back down.
+ *  3. Walk back from the first high frame while the height keeps falling: the lowest point
+ *     is where the pen left the paper. Cut after it.
+ * When no such lift is found nothing is cut: a tail is less harmful than a lost stroke.
+ * Check: nios/test_host.c against pc/preprocess.py trim_tail. */
+static int32_t z_smooth(const sig_buf *s, int i)
+{
+    int32_t sum = 0;
+    int k, c = 0;
+    for (k = i - 2; k <= i + 2; k++)
+        if (k >= 0 && k < s->n) { sum += s->p[k].z; c++; }
+    return sum / c;
+}
+
+void sig_trim_tail(sig_buf *s)
+{
+    int start = s->n > TRIM_WINDOW ? s->n - TRIM_WINDOW : 0;
+    int j, k;
+    if (TRIM_LIFT <= 0 || s->n < 2) return;
+    for (j = s->n - 1; j >= 0; j--)
+        if (z_smooth(s, j) < s->z_ref + TRIM_LIFT) break;
+    if (j < 0 || j == s->n - 1 || j + 1 < start) return;   /* always high, ends low, or high too long */
+    k = j + 1;
+    while (k > start && z_smooth(s, k - 1) <= z_smooth(s, k)) k--;
+    s->n = k + 1;
 }
 
 int sig_finish(sig_buf *s)

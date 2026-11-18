@@ -10,6 +10,7 @@ import sys
 import numpy as np
 import pen_model as pm
 import preprocess as pp
+import pen_filter as pf
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "hw"))
 import dtw_ref
@@ -74,7 +75,7 @@ def main(path):
     assert 30 < sum(flags) < 200, sum(flags)        # 두 경우가 모두 시험에 들어 있어야 한다
 
     # 3. 서명 분할·전처리 (프레임 수가 짧은 것부터 최대 길이까지, 거부되는 짧은 서명 포함)
-    cases = [10, 20, 40, 77, 128, 129, 200, 299, 400] + [r.randrange(30, 299) for _ in range(40)]
+    cases = [10, 20, 40, 77, 128, 129, 200, 299, 400, 499, 600] + [r.randrange(30, 499) for _ in range(40)]
     out.append(len(cases))
     for c in cases:
         stream = fake_stream(rng, c)
@@ -94,6 +95,56 @@ def main(path):
     out.append(len(pick))
     for _, a, b in pick:
         out += [int(v) for v in a.ravel()] + [int(v) for v in b.ravel()] + [dtw_ref.dtw_rows(a, b)]
+
+    # 5. 위치 필터(중앙값 + 1€): 잡음 섞인 곡선, 한 프레임 튐, 범위 밖 값, 중간 재시작(펜이 사라짐)
+    seqs = []
+    for c in range(12):
+        n = r.randrange(20, 300)
+        t = np.arange(n)
+        speed = r.choice([0.0, 0.3, 1.0, 3.0])
+        rows = []
+        for i in range(n):
+            v = [int(round(400 * np.sin(speed * t[i] / 10 + k) + rng.normal(0, 15))) for k in range(3)]
+            if r.random() < 0.03:
+                v[r.randrange(3)] += r.choice([-1, 1]) * r.randrange(100, 3000)
+            if c == 0 and i % 50 == 7:
+                v = [r.choice([-32000, 32000, 6000, -6000]) for _ in range(3)]
+            rows.append((int(i == 0 or r.random() < 0.02), v))
+        seqs.append(rows)
+    out.append(len(seqs))
+    for rows in seqs:
+        out.append(len(rows))
+        f = pf.PenFilter()
+        for reset, v in rows:
+            if reset:
+                f = pf.PenFilter()
+            out += [reset] + v + list(f.step(v))
+
+    # 6. 펜 스위치 서명 끝의 꼬리 자르기
+    tcases = []
+    for c in range(60):
+        zr = r.randrange(50, 150)
+        n_write = r.randrange(5, 400)
+        z = [zr + int(abs(rng.normal(0, 20))) for _ in range(n_write)]
+        if r.random() < 0.3:                      # 쓰는 중 잠깐 튄 높이
+            i = r.randrange(n_write)
+            z[i:i + 3] = [zr + r.randrange(100, 400)] * len(z[i:i + 3])
+        kind = c % 4
+        if kind == 1:                             # 끝에서 펜을 들고 스위치를 끔
+            rise = r.randrange(5, 30)
+            top = zr + r.randrange(160, 500)
+            z += [z[-1] + (top - z[-1]) * (i + 1) // rise for i in range(rise)] + [top + r.randrange(-20, 20) for _ in range(r.randrange(0, 120))]
+        elif kind == 2:                           # 낮게 들고 끝(못 찾아야 한다)
+            z += [zr + 5 * i for i in range(r.randrange(1, 28))]
+        elif kind == 3:                           # 오래 들고 있었음(창 밖)
+            z += [zr + 300] * r.randrange(140, 200)
+        tcases.append((zr, z[:pp.MAX_FRAMES]))
+    tcases.append((90, [440] * 50))
+    cut = sum(pp.trim_tail(z, zr) < len(z) for zr, z in tcases)
+    assert 10 < cut < len(tcases) - 10, cut         # 자르는 경우와 안 자르는 경우가 모두 시험에 들어 있어야 한다
+    out.append(len(tcases))
+    for zr, z in tcases:
+        out += [len(z), zr] + z + [pp.trim_tail(z, zr)]
 
     with open(path, "w") as f:
         f.write(" ".join(str(v) for v in out))

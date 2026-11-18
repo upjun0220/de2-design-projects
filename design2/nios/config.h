@@ -5,7 +5,7 @@
 
 #define SIG_N       128   /* samples per signature after resampling */
 #define SIG_CH      8     /* x, y, z, vx, vy, ux, uy, pen */
-#define MAX_FRAMES  300   /* 6 s at 50 Hz */
+#define MAX_FRAMES  500   /* 10 s at 50 Hz (was 6 s: long signatures ended early) */
 
 /* Pen contact: magnet centre height above the sensor chips, in 0.1 mm.
  * ESTIMATE: 7..10 mm when touching the paper. Measure after assembly. */
@@ -19,15 +19,43 @@
 #define PEN_SWITCH_BIT  17
 #define PEN_SWITCH_ONLY 1
 
-/* With the switch on, pen up = lifted more than LIFT_UP above the lowest height of this
- * signature, pen down again = back below LIFT_DOWN (0.1 mm). ESTIMATE: tune while signing.
- * Too small: strokes break while writing. Too large: lifts are drawn. LIFT_UP 0 = always down. */
+/* With the switch on, pen up = lifted more than LIFT_UP above the contact height z_ref,
+ * pen down again = back below LIFT_DOWN (0.1 mm). ESTIMATE: tune while signing.
+ * Too small: strokes break while writing. Too large: lifts are drawn. LIFT_UP 0 = always down.
+ * Wider values (e.g. 120 / 100) help when the contact height differs a lot across the pad,
+ * but then the small lifts of a few mm between strokes are no longer seen: try ZREF_SHIFT first. */
 #define LIFT_UP     80
 #define LIFT_DOWN   50
 
-/* Position smoothing: new frame weight 1/2^SMOOTH_SHIFT. 2 = 1/4: about 0.1 s lag at 50 Hz.
- * 0 = off. Larger is smoother and slower. */
-#define SMOOTH_SHIFT 2
+/* z_ref = contact height. While the pen is down it follows the height: at once downwards,
+ * slowly upwards (1/2^ZREF_SHIFT per frame; 5 = about 0.64 s). This copes with the
+ * uncalibrated height being a few mm different at different places on the pad.
+ * While the pen is up z_ref stays where it was. ESTIMATE. */
+#define ZREF_SHIFT  5
+
+/* Position filter (nios/position.c pf_step, pc/pen_filter.py): per axis a median of 3,
+ * then a One Euro filter (Casiez et al., CHI 2012): a low-pass whose cut-off rises with
+ * speed, fc = PF_MINCUT + PF_BETA * speed. Units: 0.01 Hz, and 0.01 Hz per mm/s.
+ * Simulated (jitter 1.5 mm): still jitter 0.58 mm, lag 2.7 mm at 100 mm/s, against
+ * 0.57 mm and 6 mm for the old moving average. ESTIMATE.
+ * Shaking when the pen is still: lower PF_MINCUT. Lagging on fast strokes: raise PF_BETA. */
+#define PF_MINCUT   100
+#define PF_BETA     20
+#define PF_DCUT     50
+#define PF_CLAMP    4000  /* input range in 0.1 mm, keeps the products within 32 bits */
+
+/* Screen only (not the stored signature): while the pen is down, a new point is drawn only
+ * when it is more than ANCHOR_R (0.1 mm) from the last drawn point, so a pen held still
+ * draws a dot instead of a scribble. 0 = off. ESTIMATE. */
+#define ANCHOR_R    15
+
+/* End of a pen switch signature (signature.c sig_trim_tail). After the last stroke the pen is
+ * lifted and the switch turned off; the movement in between would be a tail. The tail is cut
+ * when the pen ended more than TRIM_LIFT (0.1 mm) above z_ref without coming back down,
+ * searched in the last TRIM_WINDOW frames. Cut point = lowest height before that lift.
+ * TRIM_LIFT 0 = off. ESTIMATE: 15 mm, check with data. */
+#define TRIM_LIFT   150
+#define TRIM_WINDOW 150   /* 3 s */
 
 #define END_UP_FRAMES   50    /* pen up for 1.0 s ends the signature */
 #define MIN_DOWN_FRAMES 25    /* less than 0.5 s of pen-down: discard */
