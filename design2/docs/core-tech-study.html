@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>마법 펜 핵심 기술</title>
+<style>
+:root{
+  --bg:#f7f7f5; --card:#ffffff; --ink:#1d2228; --sub:#5b6570; --line:#e3e5e8;
+  --accent:#2f6fb5; --accent-soft:#e8f0fa; --ok:#2e7d4f; --ok-soft:#e7f4ec;
+  --warn:#9a6200; --warn-soft:#fdf3e1; --bad:#b3372f; --bad-soft:#fbeceb;
+  --code:#f1f3f5; --mono:ui-monospace,SFMono-Regular,Consolas,"D2Coding",monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15181c; --card:#1d2126; --ink:#e6e8eb; --sub:#9aa3ad; --line:#2d333a;
+    --accent:#6fa8e6; --accent-soft:#1f2c3b; --ok:#6cc690; --ok-soft:#1c2e24;
+    --warn:#e0ad55; --warn-soft:#33291a; --bad:#ec8a82; --bad-soft:#3a2221; --code:#262b31;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15181c; --card:#1d2126; --ink:#e6e8eb; --sub:#9aa3ad; --line:#2d333a;
+  --accent:#6fa8e6; --accent-soft:#1f2c3b; --ok:#6cc690; --ok-soft:#1c2e24;
+  --warn:#e0ad55; --warn-soft:#33291a; --bad:#ec8a82; --bad-soft:#3a2221; --code:#262b31;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.7 "Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif}
+.wrap{max-width:920px;margin:0 auto;padding:32px 16px 80px}
+header h1{font-size:28px;line-height:1.3;margin:0 0 6px}
+header p{color:var(--sub);margin:0}
+.meta{font-size:13px;color:var(--sub);margin-top:10px}
+nav.toc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:24px 0}
+nav.toc b{display:block;margin-bottom:6px}
+nav.toc ol{margin:0;padding-left:22px;columns:2;column-gap:28px}
+nav.toc a{color:var(--accent);text-decoration:none}
+@media (max-width:640px){nav.toc ol{columns:1}}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px 22px 14px;margin:18px 0}
+section h2{font-size:21px;margin:0 0 4px;scroll-margin-top:16px}
+section h2 .n{color:var(--accent);margin-right:8px}
+section .lead{color:var(--sub);margin:0 0 14px}
+h3{font-size:16.5px;margin:20px 0 6px}
+p{margin:8px 0}
+ul,ol{padding-left:22px;margin:8px 0}
+li{margin:3px 0}
+code{font-family:var(--mono);font-size:.9em;background:var(--code);padding:1px 5px;border-radius:4px}
+pre{font-family:var(--mono);font-size:13.5px;line-height:1.55;background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto;margin:10px 0}
+.formula{font-family:var(--mono);background:var(--accent-soft);border-left:3px solid var(--accent);padding:10px 14px;border-radius:6px;margin:10px 0;overflow-x:auto;white-space:pre}
+table{border-collapse:collapse;width:100%;margin:10px 0;font-size:14.5px}
+.tbl{overflow-x:auto}
+th,td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+th{color:var(--sub);font-weight:600;white-space:nowrap}
+.note{border-radius:8px;padding:10px 14px;margin:12px 0;font-size:15px}
+.note.key{background:var(--ok-soft);border-left:3px solid var(--ok)}
+.note.warn{background:var(--warn-soft);border-left:3px solid var(--warn)}
+.note.bad{background:var(--bad-soft);border-left:3px solid var(--bad)}
+.note b:first-child{margin-right:4px}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--sub);margin-left:6px;vertical-align:middle}
+.tag.meas{color:var(--ok);border-color:var(--ok)}
+.tag.sim{color:var(--warn);border-color:var(--warn)}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:12px 0}
+.flow span{background:var(--accent-soft);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:14px}
+.flow i{color:var(--sub);font-style:normal}
+.flow span.hw{background:var(--ok-soft)}
+.flow span.pc{background:var(--warn-soft)}
+details{border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:8px 0}
+details summary{cursor:pointer;font-weight:600}
+details[open] summary{margin-bottom:6px}
+.legend{font-size:13px;color:var(--sub)}
+.legend span{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin:0 4px 0 10px;border:1px solid var(--line)}
+footer{color:var(--sub);font-size:13px;margin-top:28px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>마법 펜 핵심 기술 정리</h1>
+  <p>자석 펜 서명 식별(DE2) — 발표에서 설명할 수 있어야 하는 원리를 코드 기준으로 정리했다.</p>
+  <div class="meta">2026-11-19 기준 · 수치 옆에 <span class="tag meas">실측</span> <span class="tag sim">시뮬레이션</span>을 구분해 표시 · 주제는 서명 <b>식별</b>이며 인증·보안 장치가 아니다</div>
+</header>
+
+<nav class="toc">
+  <b>목차</b>
+  <ol>
+    <li><a href="#s1">전체 흐름</a></li>
+    <li><a href="#s2">자기 쌍극자 모델</a></li>
+    <li><a href="#s3">센서와 I²C</a></li>
+    <li><a href="#s4">장착 보정과 기준값</a></li>
+    <li><a href="#s5">위치 추정: LM과 MLP</a></li>
+    <li><a href="#s6">고정소수점과 비트 일치 검증</a></li>
+    <li><a href="#s7">위치 필터 (중앙값 + 1€)</a></li>
+    <li><a href="#s8">서명 시작·끝 판정</a></li>
+    <li><a href="#s9">전처리 (128×8)</a></li>
+    <li><a href="#s10">DTW</a></li>
+    <li><a href="#s11">DTW 하드웨어 가속기</a></li>
+    <li><a href="#s12">판정 규칙과 평가 지표</a></li>
+    <li><a href="#s13">DE2 시스템 (Nios II, Qsys)</a></li>
+    <li><a href="#s14">지금까지의 실측 결과</a></li>
+    <li><a href="#s15">예상 질문</a></li>
+  </ol>
+</nav>
+
+<section id="s1">
+  <h2><span class="n">1</span>전체 흐름</h2>
+  <p class="lead">펜 끝 자석의 자기장을 센서 4개가 읽고, 위치를 복원해 서명 궤적을 만들고, 등록된 서명과 비교해 누구인지 고른다.</p>
+  <div class="flow">
+    <span>자석 펜</span><i>→</i>
+    <span class="hw">MLX90393 ×4</span><i>→ I²C →</i>
+    <span class="hw">I²C 리더 (Verilog)</span><i>→</i>
+    <span>기준값 빼기 · 장착 보정</span><i>→</i>
+    <span>위치 MLP (x, y, z, ux, uy)</span><i>→</i>
+    <span>필터</span><i>→</i>
+    <span>서명 버퍼 (SW17)</span><i>→</i>
+    <span>전처리 128×8</span><i>→</i>
+    <span class="hw">DTW (SW / HW)</span><i>→</i>
+    <span>판정</span><i>→</i>
+    <span>LCD · VGA · LED · 7세그</span>
+  </div>
+  <div class="legend">색: <span style="background:var(--ok-soft)"></span>FPGA 하드웨어 <span style="background:var(--accent-soft)"></span>Nios II C <span style="background:var(--warn-soft)"></span>PC(Python)</div>
+  <div class="flow">
+    <span class="pc">쌍극자 시뮬레이션</span><i>→</i><span class="pc">MLP 학습·정수화</span><i>→</i><span class="pc">mlp_weights.h</span><i>·</i>
+    <span class="pc">9점 측정 → gate1.py (장착·세기)</span><i>·</i><span class="pc">수집 로그 → evaluate.py (문턱)</span>
+  </div>
+  <ul>
+    <li><b>DE2가 하는 일:</b> 센서 읽기부터 판정·표시까지 전부(독립 동작). 50 Hz로 한 프레임씩 처리한다.</li>
+    <li><b>PC가 하는 일:</b> 학습, 정수화, 측정 분석. 결과는 C 헤더(<code>mlp_weights.h</code>, <code>config.h</code>)로 보드에 들어간다.</li>
+    <li><b>코드 위치:</b> <code>hdl/</code> Verilog, <code>nios/</code> C, <code>pc/</code> Python. 설정값은 모두 <code>nios/config.h</code> 한 곳에 있다.</li>
+  </ul>
+</section>
+
+<section id="s2">
+  <h2><span class="n">2</span>자기 쌍극자 모델</h2>
+  <p class="lead">작은 자석은 멀리서 보면 "자기 쌍극자"로 근사된다. 위치를 구하는 모든 계산의 바탕이다.</p>
+  <div class="formula">B(r) = (μ0 / 4π) · [ 3 (m·r̂) r̂ − m ] / |r|³</div>
+  <ul>
+    <li><b>r</b>: 자석 중심에서 센서까지의 벡터. <b>m</b>: 자기 모멘트(세기 × 극 방향 단위벡터). 세기 단위 A·m².</li>
+    <li><b>거리의 세제곱에 반비례</b>한다. 2배 멀어지면 1/8. 그래서 센서값의 범위가 수천 배로 넓다 → MLP 입력에 세제곱근을 쓴다(5장).</li>
+    <li><b>근사가 맞는 거리:</b> 자석 크기의 약 3배 이상. 자석이 φ10×10 mm라 약 3 cm 이상이면 잘 맞는다. 센서는 서명 영역에서 4~10 cm 떨어져 있다.</li>
+    <li><b>미지수:</b> 위치 3개(x, y, z) + 극 방향 2개(펜 기울기) = 5개. 자석 세기도 모르면 6개. 측정값은 센서 4개 × 3축 = <b>12개</b>라 풀 수 있다.</li>
+    <li><b>펜 축 둘레 회전(롤)</b>은 관측되지 않는다. 축 방향 자석은 롤과 무관하다 → 11/19에 자석을 펜 끝에 축 방향으로 다시 붙인 이유다(옆에 붙이면 쥐는 각도에 따라 극 방향이 바뀐다).</li>
+  </ul>
+  <div class="note warn"><b>한계</b> 시뮬레이션은 참값 생성과 추정에 같은 쌍극자 모델을 쓴다("inverse crime"). 실제 자석의 비이상성, 주변 철, 센서 위치 오차는 반영되지 않아 실측은 시뮬레이션보다 나쁘게 나온다.</div>
+</section>
+
+<section id="s3">
+  <h2><span class="n">3</span>센서와 I²C</h2>
+  <p class="lead">MLX90393은 3축 홀 센서다. FPGA 안의 Verilog I²C 마스터가 4개를 차례로 읽는다.</p>
+  <div class="tbl"><table>
+    <tr><th>항목</th><th>값</th><th>근거</th></tr>
+    <tr><td>감도</td><td>X·Y 0.250 µT/LSB, Z 0.403 µT/LSB</td><td>데이터시트, GAIN_SEL=5·RES=0</td></tr>
+    <tr><td>주소</td><td>0x18~0x1B (A0/A1 핀으로 4개)</td><td>11/18 보드 스캔 <span class="tag meas">실측</span></td></tr>
+    <tr><td>버스</td><td>1개, SCL 200 kHz, 한 프레임 전송 약 2.6 ms</td><td><code>hdl/i2c_master.v</code>, BRINGUP</td></tr>
+    <tr><td>프레임</td><td>50 Hz (변환 대기 포함 약 9 ms)</td><td><code>hdl/mlx_reader.v</code></td></tr>
+    <tr><td>전압</td><td><b>3.3 V만</b>. 헤더 11번 핀(5 V)은 절대 연결 금지</td><td>Cyclone II는 5 V를 견디지 못한다</td></tr>
+  </table></div>
+  <h3>I²C 핵심</h3>
+  <ul>
+    <li>선 2개: <b>SCL</b>(클럭), <b>SDA</b>(데이터). 둘 다 오픈 드레인 — 장치는 선을 0으로 당기기만 하고, 1은 풀업 저항이 만든다.</li>
+    <li>SDA는 SCL이 0일 때만 바뀐다. SCL이 1일 때 SDA가 바뀌는 것은 <b>START</b>(1→0)와 <b>STOP</b>(0→1)뿐이다.</li>
+    <li>바이트마다 받는 쪽이 SDA를 0으로 당겨 <b>ACK</b>한다. 주소를 보냈는데 ACK가 없으면 그 주소에 장치가 없다 → 부팅 때 I²C 스캔이 이것으로 센서를 찾는다.</li>
+    <li>구현: SCL 한 주기를 4단계로 나눈다(<code>CLK_HZ/(4·SCL_HZ)</code> 클럭씩). SCL을 놓은 뒤 실제로 1이 됐는지 확인하고 넘어간다(clock stretching 대응).</li>
+  </ul>
+</section>
+
+<section id="s4">
+  <h2><span class="n">4</span>장착 보정과 기준값</h2>
+  <p class="lead">센서가 내놓는 값을 "보드 좌표계의 자석 자기장"으로 바꾸는 단계. 11/18까지 위치가 크게 틀린 원인이 여기에 있었다.</p>
+  <h3>기준값 빼기 (KEY0)</h3>
+  <ul>
+    <li>펜이 없을 때의 값(지구 자기장, 센서 오프셋)을 32프레임 평균해 저장하고, 매 프레임 뺀다.</li>
+    <li><b>펜을 50 cm 이상 치우고</b> 눌러야 한다. 펜이 가까이 있으면 그 자기장까지 빠져서 위치가 체계적으로 틀어진다(11/18 실제로 겪음).</li>
+    <li>센서 4개가 거의 같은 벡터를 보면(<code>UNIFORM_PCT</code> 20%) 펜이 아니라 보드 회전·먼 물체로 보고 무시한다.</li>
+  </ul>
+  <h3>장착 보정 (<code>mount_correct</code>)</h3>
+  <ul>
+    <li><code>MOUNT_ROT</code>: 센서별로 패드에 붙은 방향(90° 단위 회전 0~3).</li>
+    <li><code>Z_SIGN</code>: Z축 방향. <code>FIELD_SIGN</code>: 자석 극 전체 부호.</li>
+    <li><code>MIRROR_XY</code>: X·Y 교환(거울상). <b>회전과 Z 반전만으로는 거울상을 만들 수 없다</b>(회전은 방향을 보존하는 변환이고 거울상은 뒤집는 변환이라). 그래서 따로 둔다.</li>
+    <li>값은 <code>pc/gate1.py --find-mount</code>가 9점 측정 로그에서 찾는다: 회전 4⁴ × Z 2 × 거울 2 = 1024가지를 전부 피팅해 잔차가 가장 작은 조합.</li>
+  </ul>
+  <div class="note key"><b>평면 배열의 모호성</b> 센서가 한 평면에 있으면, Z 방향만 뒤집은 장착이 "판 아래 거울 위치의 자석"으로 <b>잔차가 정확히 같게</b> 맞는다. 그래서 탐색은 자석이 판 아래(z &lt; 0)로 풀리는 조합을 버린다(11/19 실측에서 발견).</div>
+  <div class="note warn"><b>교훈</b> 3점만으로 순위를 매기면 센서 하나의 회전 차이가 5%밖에 안 나서 틀린 답을 골랐다. 이제 상위 10개를 9점 전체로 다시 채점한다.</div>
+</section>
+
+<section id="s5">
+  <h2><span class="n">5</span>위치 추정: LM과 MLP</h2>
+  <p class="lead">같은 문제(12개 측정 → 위치·방향)를 PC에서는 반복 최적화로, 보드에서는 작은 신경망으로 푼다.</p>
+  <h3>LM 피팅 (PC, 기준선)</h3>
+  <ul>
+    <li>Levenberg–Marquardt: 쌍극자 모델의 예측값과 측정값의 차이(잔차) 제곱합을 최소로 만드는 x, y, z, m을 반복해서 찾는다.</li>
+    <li>미지수 6개: 위치 3 + 자석 벡터 3(방향과 <b>세기</b>를 함께). 세기를 고정하면 실제 세기가 다를 때 위치가 크게 틀린다 — 합성 시험에서 실제 0.5, 가정 0.9이면 xy 53~79 mm <span class="tag sim">시뮬레이션</span>.</li>
+    <li>국소 최적화라 시작점이 중요하다 → 여러 시작점(위치 × 방향 6개)에서 풀고 잔차가 가장 작은 해를 쓴다.</li>
+    <li>쓰는 곳: <code>gate1.py</code>(장착값·자석 세기·오차 측정), <code>evaluate.py --lm</code>(로그를 다시 계산).</li>
+  </ul>
+  <h3>위치 MLP (보드)</h3>
+  <ul>
+    <li>구조: 입력 12 → 은닉 64 → 은닉 64 → 출력 5(x, y, z, ux, uy). ReLU. 프레임당 곱셈 5,184번 — Nios II/f 하드웨어 곱셈기로 50 Hz 안에 끝난다.</li>
+    <li>입력: 센서값의 <b>세제곱근</b>(부호 유지). 1/r³로 넓어진 범위를 압축해 가까운 곳과 먼 곳을 고르게 다룬다. Z는 감도 비(0.403/0.250)로 맞춘다.</li>
+    <li>학습 데이터: 쌍극자 모델로 만든 합성 데이터(서명 영역 ±5 cm, 높이, 펜 기울기 0~60°, 센서 위치 1 mm·이득 2% 오차 섞음). 실측 참값이 필요 없다.</li>
+    <li>11/19 재학습: 축 방향 자석, 세기 0.57 A·m², 높이 2 mm부터 → 서명 영역 xy 2.6 mm, z 2.1 mm <span class="tag sim">시뮬레이션</span>.</li>
+    <li>왜 LM을 보드에서 안 쓰나: 반복 계산과 실수 연산이 필요해 Nios II에서 50 Hz를 맞추기 어렵다. MLP는 정해진 횟수의 정수 곱셈뿐이다.</li>
+  </ul>
+</section>
+
+<section id="s6">
+  <h2><span class="n">6</span>고정소수점과 비트 일치 검증</h2>
+  <p class="lead">보드 계산은 전부 정수다. Python 기준 구현과 C가 비트 하나까지 같은지 자동으로 확인한다.</p>
+  <ul>
+    <li><b>Qn 표기:</b> 실수에 2ⁿ을 곱해 정수로 저장. Q12면 1.0 = 4096. 곱하면 소수 자리가 더해지므로 <code>&gt;&gt; n</code>으로 되돌린다.</li>
+    <li>쓰는 형식: MLP 가중치 Q10, 은닉값 Q6(4095에서 자름), 출력 Q12. 필터 상태 Q4, 계수 Q12. 위치 단위는 0.1 mm.</li>
+    <li><b>32비트 넘침</b>을 학습 스크립트가 검사한다(합 최대값 출력). 필터는 입력을 ±400 mm로 잘라 곱이 32비트 안에 들게 한다.</li>
+    <li><b>음수 나눗셈 주의:</b> C의 <code>/</code>는 0 쪽으로 버리고 Python의 <code>//</code>는 내림이다. Python 쪽은 <code>tdiv</code>로 C와 맞춘다.</li>
+  </ul>
+  <h3>검증 체계 (<code>sh design2/run_checks.sh</code>)</h3>
+  <ol>
+    <li>Python 기준 모델 자체 검사(위치, 필터, 장착 탐색, 평가, 로그 파서 등).</li>
+    <li><code>gen_golden.py</code>가 입력과 Python 정답을 파일로 쓰고, PC에서 컴파일한 C(<code>test_host.c</code>)가 같은 입력으로 계산해 비교 → <code>C core OK</code>.</li>
+    <li>ModelSim으로 Verilog(I²C 리더, DTW 가속기 테스트 벡터 100개, VGA 화면) 시뮬레이션.</li>
+  </ol>
+  <div class="note warn"><b>주의</b> 이 검사들은 "C가 Python과 같다", "Verilog가 기준 모델과 같다"를 보장할 뿐이다. 보드에서 실제로 맞는지는 별개로 확인해야 한다.</div>
+</section>
+
+<section id="s7">
+  <h2><span class="n">7</span>위치 필터 (중앙값 + 1€)</h2>
+  <p class="lead">추정 위치는 프레임마다 몇 mm씩 흔들린다. 흔들림을 누르면 늦게 따라오는 맞바꿈이 있다.</p>
+  <ol>
+    <li><b>3점 중앙값:</b> 최근 3개 값의 가운데. 한 프레임만 튀는 값이 사라진다. 대가는 1프레임(20 ms) 지연 — 100 mm/s에서 2 mm.</li>
+    <li><b>1€ 필터</b>(Casiez·Roussel·Vogel, CHI 2012): 1차 저역 통과 필터 <code>x ← x + α(입력 − x)</code>의 차단 주파수를 속도에 따라 바꾼다.</li>
+  </ol>
+  <div class="formula">fc = PF_MINCUT + PF_BETA × |속도|        (속도도 PF_DCUT로 거른다)
+α  = w / (1 + w),   w = 2π · fc · Te,   Te = 0.02 s (50 Hz)</div>
+  <ul>
+    <li>멈춰 있으면 fc가 낮아(1 Hz) 세게 다듬고, 빠르게 그으면 fc가 올라가 덜 늦는다.</li>
+    <li>필터를 거친 위치가 저장·표시·로그에 쓰인다. 펜이 사라지면 필터를 처음부터 다시 시작한다.</li>
+  </ul>
+  <div class="tbl"><table>
+    <tr><th>필터 (입력 떨림 1.5 mm)</th><th>멈춤 떨림</th><th>100 mm/s 지연</th><th>곡선 오차</th></tr>
+    <tr><td>없음</td><td>1.48 mm</td><td>0</td><td>1.50 mm</td></tr>
+    <tr><td>예전 이동 평균 (SHIFT 2)</td><td>0.57 mm</td><td>6.0 mm</td><td>5.9 mm</td></tr>
+    <tr><td>중앙값 + 1€ (지금)</td><td>0.58 mm</td><td>2.7 mm</td><td>4.8 mm</td></tr>
+  </table></div>
+  <p class="legend">전부 <span class="tag sim">시뮬레이션</span> (<code>python design2/pc/pen_filter.py --check</code>)</p>
+  <div class="note warn"><b>정직하게</b> 움직이는 구간의 정확도는 필터가 없을 때가 가장 좋다. 필터는 화면 안정과 펜 뗌 판정을 위한 것이다. 화면용 데드밴드(<code>ANCHOR_R</code> 1.5 mm)는 화면에만 적용하고 저장 서명은 바꾸지 않는다.</div>
+</section>
+
+<section id="s8">
+  <h2><span class="n">8</span>서명 시작·끝 판정</h2>
+  <p class="lead">추정 높이만으로는 "펜이 종이에 닿았는가"를 가를 수 없어서 스위치(SW17)를 쓴다.</p>
+  <ul>
+    <li><b>SW17 켬 = 서명 시작, 끔 = 끝.</b> 최대 10초(500프레임).</li>
+    <li><b>획 사이 펜 뗌:</b> 닿은 높이 <code>z_ref</code>보다 <code>LIFT_UP</code>(8 mm) 넘게 올라가면 뗌, <code>LIFT_DOWN</code>(5 mm) 안으로 오면 다시 닿음. 문턱이 두 개인 <b>히스테리시스</b>라 경계에서 깜빡이지 않는다.</li>
+    <li><b><code>z_ref</code> 추적:</b> 펜이 닿아 있는 동안 높이를 따라간다(낮아지면 바로, 높아지면 천천히 약 0.6초). 교정 전이라 자리마다 닿은 높이가 몇 mm씩 달라서다. 뗌 판정을 먼저 하고 추적은 나중에 한다.</li>
+    <li><b>꼬리 자르기</b>(<code>sig_trim_tail</code>): 마지막 획 → 펜 들기 → 스위치로 손 이동 → 끔. 펜을 든 뒤의 움직임은 서명이 아니다.
+      <ol>
+        <li>높이를 앞뒤 2프레임 평균으로 다듬는다(다 저장된 뒤라 지연이 없다).</li>
+        <li>끝에서 15 mm(<code>TRIM_LIFT</code>) 넘게 떠 있고 다시 안 내려왔으면(최근 3초 안), 펜을 들고 끝낸 것이다.</li>
+        <li>높이가 계속 낮아지는 쪽으로 거슬러 가서 가장 낮은 점(종이를 떠난 곳) 다음을 자른다.</li>
+      </ol>
+      못 찾으면 자르지 않는다 — 틀려도 획이 잘리지 않고 꼬리가 남는 쪽으로 틀린다.</li>
+  </ul>
+  <div class="note key"><b>서명하는 법</b> 획 사이엔 살짝 떼고, 끝에는 펜을 2~3 cm 확 들어 올린 뒤 다시 내리지 말고 SW17을 끈다.</div>
+</section>
+
+<section id="s9">
+  <h2><span class="n">9</span>전처리 (128×8)</h2>
+  <p class="lead">길이·위치·크기가 제각각인 서명을 같은 형식으로 맞춘다. 정수만 쓰고 Python과 비트 일치.</p>
+  <ol>
+    <li><b>리샘플:</b> 시간축을 128점으로 선형 보간(서명 길이와 무관하게).</li>
+    <li><b>정규화:</b> 펜이 닿은 점들의 무게중심을 원점으로, 가로 폭을 100으로 맞춘다 → 어디에 얼마나 크게 쓰든 같아진다.</li>
+    <li><b>채널 8개 (int8):</b> x, y, z(가장 낮은 점 기준, 0.4 mm 단위), vx, vy(중앙 차분), ux, uy(극 방향 수평 성분), pen(64 = 닿음, 0 = 뗌).</li>
+    <li><code>CHANNEL_MASK</code>로 쓰지 않을 채널을 0으로 만든다.</li>
+  </ol>
+  <div class="note bad"><b>지금 문제</b> 8개 채널을 모두 쓰고 있다. 높이·기울기는 잡음이 커서 본인 서명끼리의 거리도 키운다 → 문턱 <code>tau</code>가 커져 아무 서명이나 통과한다(11/19). 수집 데이터로 채널 조합을 정할 예정.</div>
+</section>
+
+<section id="s10">
+  <h2><span class="n">10</span>DTW (Dynamic Time Warping)</h2>
+  <p class="lead">같은 사람도 서명 속도가 매번 다르다. DTW는 시간축을 늘이고 줄여 가장 잘 맞는 정렬을 찾은 뒤 거리를 잰다.</p>
+  <div class="formula">d(i, j)   = Σ_c |A[i][c] − B[j][c]|                    (채널별 절대차 합, L1)
+D[i][j]  = d(i, j) + min( D[i−1][j], D[i][j−1], D[i−1][j−1] )
+거리      = D[127][127],   대역 |i − j| ≤ 16 (Sakoe–Chiba)</div>
+  <ul>
+    <li><b>동적계획법:</b> 128×128 표를 채운다. 각 칸은 "여기까지 오는 가장 싼 경로". 대역 밖은 계산하지 않는다(대역 안 3,952칸).</li>
+    <li><b>대역을 두는 이유:</b> 계산량 감소, 그리고 지나치게 늘이는 비현실적인 정렬 방지.</li>
+    <li><b>곱셈이 없다</b>(뺄셈·절댓값·최솟값만) → 하드웨어로 만들기 좋다. 한 칸 값은 최대 8×255 = 2040(11비트), 누적은 24비트에서 포화.</li>
+    <li><b>왜 DTW:</b> 사람 수와 서명 수가 적을 때는 학습형 모델보다 DTW 같은 템플릿 비교가 안정적이다. 등록 = 템플릿 5개 저장이라 보드에서 바로 끝난다.</li>
+    <li>사람별 거리 = 그 사람 템플릿 5개 중 가장 가까운 것(문헌은 평균도 씀 → <code>evaluate.py --agg mean</code>으로 비교 예정).</li>
+  </ul>
+</section>
+
+<section id="s11">
+  <h2><span class="n">11</span>DTW 하드웨어 가속기</h2>
+  <p class="lead">DE2의 역할: DTW를 FPGA 병렬 처리 소자(PE) 배열로 만들어 소프트웨어와 지연·자원을 비교한다.</p>
+  <ul>
+    <li><b>안티대각선 병렬성:</b> D[i][j]는 왼쪽·위·왼쪽위 칸만 필요하다. 그래서 같은 안티대각선(i+j가 같은 칸들)은 서로 의존하지 않아 동시에 계산할 수 있다.</li>
+    <li><b>시스톨릭 배열:</b> 대역 폭만큼 PE 33개(2×16+1)를 한 줄로 놓고, 각 PE는 오프셋 i−j 하나를 맡는다. PE는 이웃과만 값을 주고받는다 → 배선이 단순하고 클럭을 높이기 쉽다.</li>
+    <li>곱셈기 0개. 템플릿 25개(5명 × 5)가 온칩 RAM에 들어간다.</li>
+    <li>비교 1회 276클럭, 템플릿 25개 6,900클럭 <span class="tag sim">ModelSim</span> → 50 MHz면 약 138 µs. 보드 측정(7세그)은 아직.</li>
+    <li>검증: 테스트 벡터 100개(무작위, 동일, 최대 차이, 대역 경계)에서 하드웨어 = Python 100/100 <span class="tag sim">ModelSim</span>.</li>
+    <li>Nios II에서는 Avalon-MM 레지스터(CTRL, STATUS, N_TEMPL, CYCLES, RESULT[k])로 쓴다. <code>SW[5]</code>로 SW/HW 전환.</li>
+  </ul>
+  <div class="note warn"><b>정직하게</b> DTW 25회는 노트북에서도 1 ms 안에 끝난다. 이 가속기의 목적은 "DE2 없이는 불가능"이 아니라 <b>HW/SW 분할을 설계하고 지연·자원을 정량 비교</b>하는 것이다. 시스톨릭 DTW 구조 자체는 표준적인 방법이다.</div>
+</section>
+
+<section id="s12">
+  <h2><span class="n">12</span>판정 규칙과 평가 지표</h2>
+  <div class="formula">tau_k = μ_k + a · σ_k        (등록 서명 5개끼리 거리 10쌍의 평균·표준편차, a = TAU_A = 2)
+판정:  d_k1 &lt; tau_k1  그리고  d_k2 − d_k1 ≥ MARGIN_M  →  등록자 k1,  아니면 "미등록"</div>
+  <ul>
+    <li>k1, k2: 거리가 가장 가까운 두 사람. 둘째와 차이가 작으면 헷갈리는 것으로 보고 미등록 처리한다.</li>
+    <li>한 사람만 등록돼 있으면 둘째 비교가 없어 <code>tau</code> 하나로만 판정한다.</li>
+  </ul>
+  <h3>평가 지표</h3>
+  <div class="tbl"><table>
+    <tr><th>지표</th><th>뜻</th></tr>
+    <tr><td>FRR</td><td>본인인데 거부한 비율</td></tr>
+    <tr><td>FAR</td><td>남인데 받아들인 비율</td></tr>
+    <tr><td>EER</td><td>문턱을 움직여 FAR = FRR이 되는 점의 값. 작을수록 잘 가른다</td></tr>
+    <tr><td>95% 신뢰구간</td><td>시도 수가 적으면 넓다. 0/30이어도 "0%"가 아니라 상한 약 11.6%(Clopper–Pearson)로 보고</td></tr>
+  </table></div>
+  <ul>
+    <li><b>데이터 분리:</b> 등록과 시험은 날짜를 나누고, 문턱을 정하는 사람과 시험하는 사람을 나눈다(leave-one-person-out). 같은 데이터로 정하면 낙관적으로 나온다.</li>
+    <li><b>위조:</b> 무작위 / 사진 보고 따라 쓰기 / 영상 보고 연습 후 따라 쓰기를 따로 보고한다. 위조를 걸러낸다고 주장하지 않는다(식별 장치).</li>
+  </ul>
+</section>
+
+<section id="s13">
+  <h2><span class="n">13</span>DE2 시스템 (Nios II, Qsys)</h2>
+  <ul>
+    <li><b>FPGA:</b> Cyclone II EP2C35F672C6, Quartus II 13.0 SP1. 시스템 클럭 50 MHz.</li>
+    <li><b>Nios II/f:</b> FPGA 안에 만든 32비트 소프트 CPU(명령·데이터 캐시, 하드웨어 곱셈기, 나눗셈은 소프트웨어). 무료판(OpenCore Plus)은 USB-Blaster가 연결되고 <code>quartus_pgm</code> 창이 열려 있는 동안만 돈다 → 시연도 PC를 연결한 채로 한다.</li>
+    <li><b>Qsys 구성:</b> CPU, SDRAM(프로그램·데이터 8 MB), JTAG UART, 타이머, PIO(스위치·키·LED·7세그), 문자 LCD, 사용자 정의 부품 3개(<code>mlx_reader</code>, <code>dtw_accel</code>, <code>vga_ui</code>).</li>
+    <li><b>SDRAM 클럭 위상:</b> SDRAM은 CPU 클럭보다 조금 앞당긴 클럭을 받아야 데이터를 제때 읽는다. Altera 예제 값 −3 ns는 실패하고 <b>−1 ns</b>에서 성공 <span class="tag meas">실측 11/16</span>.</li>
+    <li><b>화면:</b> VGA 80×30 글자 + 192×192 서명 칸 비트맵(Verilog). 같은 화면을 JTAG UART로 노트북에 보내 <code>screen.py</code>가 그린다(모니터 없이 시연). '@'로 시작하는 줄이 화면 명령이다.</li>
+    <li><b>빌드:</b> FPGA를 바꾸면 <code>quartus/build.sh</code>(오래 걸림), C만 바꾸면 <code>nios/build.sh</code> → <code>nios2-download -g</code>(1~2분).</li>
+  </ul>
+  <h3>스위치·키 정리</h3>
+  <div class="tbl"><table>
+    <tr><th>입력</th><th>기능</th></tr>
+    <tr><td><code>SW[1:0]</code></td><td>00 식별 · 01 등록(<code>SW[4:2]</code> = 슬롯 0~4, 5회) · 10 수집(PC로 로그)</td></tr>
+    <tr><td><code>SW[5]</code></td><td>DTW 소프트웨어 / 하드웨어</td></tr>
+    <tr><td><code>SW[7]</code></td><td>LEDR에 센서별 자기장 막대(배선 확인)</td></tr>
+    <tr><td><code>SW[17]</code></td><td>펜 스위치: 켬 = 서명 시작, 끔 = 끝</td></tr>
+    <tr><td><code>KEY0</code></td><td>기준값 다시 재기(펜을 치우고)</td></tr>
+    <tr><td><code>KEY1</code></td><td>서명 강제 종료 / 수집 모드에서 격자점 표시(MARK)</td></tr>
+    <tr><td><code>KEY2</code></td><td>등록 모드에서 마지막 등록 취소</td></tr>
+    <tr><td><code>KEY3</code></td><td>하드웨어 리셋</td></tr>
+  </table></div>
+</section>
+
+<section id="s14">
+  <h2><span class="n">14</span>지금까지의 실측 결과</h2>
+  <div class="tbl"><table>
+    <tr><th>날짜</th><th>항목</th><th>결과</th></tr>
+    <tr><td>11/16</td><td>SDRAM 클럭 위상</td><td>−1 ns에서 동작 <span class="tag meas">실측</span></td></tr>
+    <tr><td>11/18</td><td>센서 4개 I²C</td><td>0x18~0x1B 모두 응답 <span class="tag meas">실측</span></td></tr>
+    <tr><td>11/18</td><td>9점 위치 오차</td><td>44~72 mm (센서 간격, 기준값 오염, 옆 부착 자석, 장착값) <span class="tag meas">실측</span></td></tr>
+    <tr><td>11/19</td><td>9점 위치 오차</td><td>11.7 mm, 그중 일정한 밀림 (2.3, 11.0) mm → 밀림 제외 <b>3.3 mm</b> <span class="tag meas">실측</span></td></tr>
+    <tr><td>11/19</td><td>자석 세기</td><td>0.585 A·m² (가정 0.9보다 약함) <span class="tag meas">실측 피팅</span></td></tr>
+    <tr><td>11/19</td><td>서명 모양</td><td>알아볼 만함 <span class="tag meas">눈으로 확인</span></td></tr>
+    <tr><td>11/19</td><td>식별</td><td>tau가 커서 아무 서명이나 통과 → 채널·문턱 조정 필요 <span class="tag meas">실측</span></td></tr>
+  </table></div>
+  <p>남은 것: 수집 데이터로 <code>CHANNEL_MASK</code>·<code>TAU_A</code> 결정, S3 모듈 방향과 격자 밀림 확인, 로그 프레임 누락(약 33%) 원인, HW/SW 지연 보드 측정.</p>
+</section>
+
+<section id="s15">
+  <h2><span class="n">15</span>예상 질문</h2>
+  <details><summary>센서 4개로 어떻게 3차원 위치를 구하나?</summary>
+    <p>센서 하나가 3축이라 측정값은 12개다. 미지수는 위치 3 + 극 방향 2 (+ 자석 세기 1) = 5~6개라 식이 미지수보다 많다. 쌍극자 모델로 측정값을 가장 잘 설명하는 위치를 찾는다(PC는 LM, 보드는 그걸 흉내 내도록 학습한 MLP).</p></details>
+  <details><summary>왜 MLP를 쓰나? LM으로 충분하지 않나?</summary>
+    <p>LM은 반복 계산과 실수 연산이 필요하고 시작점에 따라 결과가 갈린다. MLP는 정해진 횟수의 정수 곱셈(5,184번)이라 Nios II에서 50 Hz를 맞추고, 실행 시간이 일정하다. 학습은 쌍극자 모델로 만든 합성 데이터로 해서 실측 참값이 필요 없다.</p></details>
+  <details><summary>시뮬레이션 2.6 mm인데 실측은 왜 더 나쁜가?</summary>
+    <p>시뮬레이션은 참값과 추정에 같은 쌍극자 모델을 쓰고, 센서 위치·자석 세기·높이를 정확히 안다고 가정한다. 실물은 센서 위치 오차, 자석 비이상성, 격자를 그린 위치 오차가 있다. 11/19 실측 11.7 mm 중 대부분은 일정한 밀림(격자 중심 어긋남 추정)이고, 이를 빼면 3.3 mm다.</p></details>
+  <details><summary>DTW를 FPGA로 만든 이유는? 노트북이면 금방 하지 않나?</summary>
+    <p>맞다, 노트북에서도 1 ms 안에 끝난다. 목적은 속도 자체가 아니라 HW/SW 분할 설계와 정량 비교(지연, LE, 곱셈기, 메모리)다. DTW는 곱셈 없이 안티대각선 병렬성이 있어 시스톨릭 배열로 만들기 좋다.</p></details>
+  <details><summary>위조 서명도 걸러내나?</summary>
+    <p>아니다. 이 장치는 등록된 사람 중 누구인지 고르는 "식별"이다. 따라 쓰기 위조 실험은 한계를 수치로 보고하는 용도이고, 보안·인증 기능이라고 주장하지 않는다.</p></details>
+  <details><summary>왜 높이로 펜 뗌을 판정하지 않고 스위치를 쓰나?</summary>
+    <p>교정 전 추정 높이는 자리마다 몇 mm씩 다르고 흔들려서, 종이에 닿았는지를 높이만으로 가를 수 없었다(실측). 스위치로 서명 시작과 끝을 확실히 정하고, 그 안에서 획 사이 뗌만 상대 높이로 판정한다.</p></details>
+  <details><summary>Z_SIGN은 어떻게 정했나?</summary>
+    <p>센서가 한 평면에 있으면 Z 방향을 뒤집은 장착이 판 아래 거울 위치의 자석으로 똑같이 맞는다. 물리적으로 자석은 판 위에 있으므로 z &gt; 0으로 풀리는 쪽을 골랐다.</p></details>
+  <details><summary>AI를 어디에 썼고 어떻게 검증했나?</summary>
+    <p>코드 작성, 시뮬레이션 설계, 원인 분석에 썼다. 검증은 Python 기준 구현과 C·Verilog의 비트 일치 시험, 합성 데이터 자체 검사, 보드 실측으로 했다. AI가 틀린 사례(버스를 나누면 빨라진다는 제안, 3점으로 장착을 고른 것, z_ref 정수 시프트 버그 등)는 일지에 기록돼 있다.</p></details>
+</section>
+
+<footer>원본 코드와 문서: <code>design2/README.md</code>, <code>design2/docs/BRINGUP.md</code>, <code>design2/docs/IMPLEMENTATION.md</code>, <code>journal/</code>. 수치는 2026-11-19 기준.</footer>
+</div>
+</body>
+</html>
