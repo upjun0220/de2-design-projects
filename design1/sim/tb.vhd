@@ -117,7 +117,7 @@ begin
                 if hexm = 1 then
                     exp(6 to 8) := ' ' & hx(ar / 16) & hx(ar mod 16);
                 else
-                    exp(6 to 8) := hx(ar / 100) & hx((ar / 10) mod 10) & hx(ar mod 10);
+                    exp(6 to 8) := ' ' & hx(ar / 10) & hx(ar mod 10);
                 end if;
             end if;
             compare(exp, "calc a=" & integer'image(a) & " b=" & integer'image(b) &

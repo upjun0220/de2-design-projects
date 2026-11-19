@@ -21,6 +21,7 @@
 | 2026-11-16 | 사용자 요청으로 LCD의 `COUNTER`/`CALCULATOR` 표시를 없애고(잭팟 문구만 유지, 평소 공백), 잭팟일 때 LEDR은 이진수 유지·LEDG만 점멸하도록 수정(184줄), testbench 갱신(ModelSim 2133개 검사 통과), `quartus_map` 합성 확인, 설명 HTML 갱신 |
 | 2026-11-16 | 사용자 요청으로 `DE2_Project1.vhd`의 주석을 모두 삭제(184줄 → 164줄)하고, 지운 주석의 내용과 원문을 설명 HTML(`docs/DE2_Project1_line_by_line.html`)에 옮김. ModelSim 2133개 검사, `quartus_map` 합성 재확인 |
 | 2026-11-19 | 사용자 요청으로 LCD 기능을 코드에서 완전히 제거(포트, 문구, 전송 로직; 164줄 → 138줄), testbench의 LCD 검사 제거(ModelSim 2130개 검사 통과), `quartus_map` 합성 확인, README와 설명 HTML에서 LCD 내용 삭제 |
+| 2026-11-19 | 사용자 요청으로 불필요한 문법과 중복 신호를 정리(138줄 → 107줄): `d0~d7`을 배열 `d`로, 계산 process를 `abs`와 `base` 한 줄로 합치고 `neg`·`quot`·`remain`·`err` 신호 삭제. 십진수 결과를 3자리에서 2자리로 표시. testbench 기대값 한 줄 수정(ModelSim 2130개 검사 통과), `quartus_map` 합성 확인, 설명 HTML 재작성 |
 | 2026-11-11 | 보드에서 KEY 동시 입력 동작을 확인한 뒤, 설명 HTML의 "동시에 누르면 앞의 것만 적용" 문구를 "같은 클럭에 겹칠 때만"으로 정정. 코드는 수정하지 않음 |
 
 ## 확인할 일

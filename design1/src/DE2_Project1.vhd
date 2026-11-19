@@ -23,13 +23,12 @@ architecture behavior of DE2_Project1 is
     signal cnt    : integer range 0 to 9999 := 0;
     signal s1, s2 : integer range 0 to 10;
     signal a, b   : integer range 0 to 15;
+    signal base   : integer range 10 to 16;
     signal result : integer range 0 to 255;
-    signal quot   : integer range 0 to 15;
-    signal remain : integer range 0 to 15;
-    signal neg    : std_logic;
-    signal err    : std_logic;
     signal valid  : std_logic;
-    signal d0, d1, d2, d3, d4, d5, d6, d7 : integer range 0 to 18;
+
+    type digit_array is array (7 downto 0) of integer range 0 to 18;
+    signal d : digit_array;
 
     type seg_table is array (0 to 18) of std_logic_vector(6 downto 0);
     constant SEG7 : seg_table := (
@@ -68,71 +67,41 @@ begin
     LEDR <= std_logic_vector(to_unsigned(cnt, 18)) when SW(0) = '0' else (others => '0');
     LEDG <= (others => tick(23)) when jp = '1' else (others => '0');
 
-    a <= to_integer(unsigned(SW(17 downto 14)));
-    b <= to_integer(unsigned(SW(13 downto 10)));
-    err <= '1' when SW(2 downto 1) = "11" and b = 0 else '0';
-    valid <= '1' when SW(3) = '1' or (a < 10 and b < 10) else '0';
+    a      <= to_integer(unsigned(SW(17 downto 14)));
+    b      <= to_integer(unsigned(SW(13 downto 10)));
+    base   <= 16 when SW(3) = '1' else 10;
+    valid  <= '1' when SW(3) = '1' or (a < 10 and b < 10) else '0';
+    result <= a + b      when SW(2 downto 1) = "00" else
+              abs(a - b) when SW(2 downto 1) = "01" else
+              a * b;
 
-    process (SW, a, b)
+    process (SW, cnt, a, b, base, result, valid)
     begin
-        result <= 0;
-        quot <= 0;
-        remain <= 0;
-        neg <= '0';
-        case SW(2 downto 1) is
-            when "00" => result <= a + b;
-            when "01" =>
-                if a >= b then
-                    result <= a - b;
-                else
-                    result <= b - a;
-                    neg <= '1';
-                end if;
-            when "10" => result <= a * b;
-            when others =>
-                if b /= 0 then
-                    quot <= a / b;
-                    remain <= a mod b;
-                end if;
-        end case;
-    end process;
-
-    process (SW, cnt, a, b, result, quot, remain, neg, err, valid)
-    begin
-        d7 <= BLANK; d6 <= BLANK; d5 <= BLANK; d4 <= BLANK;
-        d3 <= BLANK; d2 <= BLANK; d1 <= BLANK; d0 <= BLANK;
+        d <= (others => BLANK);
 
         if SW(0) = '0' then
-            d3 <= cnt / 1000;
-            d2 <= (cnt / 100) mod 10;
-            d1 <= (cnt / 10) mod 10;
-            d0 <= cnt mod 10;
-            if cnt = 777 then
-                d7 <= 7; d6 <= 7; d5 <= 7; d4 <= 7;
-            end if;
+            d(3) <= cnt / 1000;
+            d(2) <= (cnt / 100) mod 10;
+            d(1) <= (cnt / 10) mod 10;
+            d(0) <= cnt mod 10;
+            if cnt = 777 then d(7 downto 4) <= (others => 7); end if;
         else
-            if SW(3) = '1' or a < 10 then d6 <= a; end if;
-            if SW(3) = '1' or b < 10 then d4 <= b; end if;
+            if SW(3) = '1' or a < 10 then d(6) <= a; end if;
+            if SW(3) = '1' or b < 10 then d(4) <= b; end if;
             if valid = '1' then
-                if err = '1' then
-                    d2 <= CH_E;  d1 <= CH_R;  d0 <= CH_R;
-                elsif SW(2 downto 1) = "11" then
-                    d3 <= quot;  d1 <= CH_R;  d0 <= remain;
+                if SW(2 downto 1) /= "11" then
+                    if SW(2 downto 1) = "01" and a < b then d(3) <= MINUS; end if;
+                    d(1) <= result / base;
+                    d(0) <= result mod base;
+                elsif b = 0 then
+                    d(2) <= CH_E;  d(1) <= CH_R;  d(0) <= CH_R;
                 else
-                    if neg = '1' then d3 <= MINUS; end if;
-                    if SW(3) = '1' then
-                        d1 <= result / 16;
-                        d0 <= result mod 16;
-                    else
-                        d2 <= result / 100;
-                        d1 <= (result / 10) mod 10;
-                        d0 <= result mod 10;
-                    end if;
+                    d(3) <= a / b;  d(1) <= CH_R;  d(0) <= a mod b;
                 end if;
             end if;
         end if;
     end process;
 
-    HEX0 <= SEG7(d0);  HEX1 <= SEG7(d1);  HEX2 <= SEG7(d2);  HEX3 <= SEG7(d3);
-    HEX4 <= SEG7(d4);  HEX5 <= SEG7(d5);  HEX6 <= SEG7(d6);  HEX7 <= SEG7(d7);
+    HEX0 <= SEG7(d(0));  HEX1 <= SEG7(d(1));  HEX2 <= SEG7(d(2));  HEX3 <= SEG7(d(3));
+    HEX4 <= SEG7(d(4));  HEX5 <= SEG7(d(5));  HEX6 <= SEG7(d(6));  HEX7 <= SEG7(d(7));
 end behavior;
