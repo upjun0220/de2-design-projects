@@ -113,9 +113,15 @@
 #define Z_SIGN     (-1)
 #define MIRROR_XY  1
 #else
-/* 2026-11-18: best of pc/gate1.py --find-mount on the 140 mm layout with the side magnet.
- * NOT a pass: xy error was still about 72 mm. Recheck after the next 9-point measurement. */
-#define MOUNT_ROT  { 0, 2, 2, 0 }
+/* 2026-11-19: pc/gate1.py --find-mount on the 140 mm layout, magnet on the pen axis
+ * (9-point log bringup_20261119.log, last 9 marks). The opposite Z sign fits equally well
+ * but puts the magnet below the sensors (z -3 mm): a flat sensor array cannot tell them apart,
+ * so the one above the board was chosen. Ranked on all 9 points (3 points first chose
+ * {2,2,2,1}, which fits worse on all 9). Result: xy RMS 11.7 mm, of which a constant
+ * offset of (2.3, 11.0) mm; 3.3 mm without the offset. Magnet strength 0.585 A*m^2
+ * (0.55..0.62 over the points), magnet centre about 7.7 mm above the sensors.
+ * S3 is turned 180 degrees against the other three: check the module on the pad. */
+#define MOUNT_ROT  { 2, 2, 2, 0 }
 #define FIELD_SIGN 1
 #define Z_SIGN     1
 #define MIRROR_XY  0

@@ -58,17 +58,31 @@ def find_mount(points, sensors, m0, truth=None, free_m=True):
     """회전 4^4 × Z 방향 2 × 거울상 2를 전부 시험해 잔차가 가장 작은 조합을 찾는다. 격자점 3개(첫·가운데·끝)를 쓴다.
     자석 방향을 반구 제한 없이 피팅하므로 FIELD_SIGN(전체 부호)은 방향에 흡수되어 구별되지 않는다 → 1로 고정.
     같은 이유로 (회전 r, Z_SIGN z)와 (네 센서 모두 r+2, -z)는 같은 결과를 낸다. 둘 중 아무거나 써도 된다.
-    거울상(MIRROR_XY)은 회전·Z 반전으로 만들 수 없어 따로 시험한다. 그래서 거울상 없던 때보다 시간이 두 배 걸린다."""
+    거울상(MIRROR_XY)은 회전·Z 반전으로 만들 수 없어 따로 시험한다. 그래서 거울상 없던 때보다 시간이 두 배 걸린다.
+    센서가 한 평면에 있으면 Z_SIGN만 뒤집은 장착도 "판 아래(z < 0)의 거울 위치 자석"으로 똑같이 맞는다.
+    자석은 판 위에 있으므로 어느 점이든 z < 0으로 풀리는 조합은 버린다(2026-11-19 실측에서 비용이 같게 나와 발견)."""
     idx = np.linspace(0, len(points) - 1, min(3, len(points))).astype(int)
     results = []
     for mirror in (0, 1):
         for rot in itertools.product(range(4), repeat=4):
             for zsign in (1, -1):
-                c = sum(fit_point(correct(points[i], rot, 1, zsign, mirror), sensors, m0,
-                                  None if truth is None else truth[i], free_m).cost for i in idx)
+                sols = [fit_point(correct(points[i], rot, 1, zsign, mirror), sensors, m0,
+                                  None if truth is None else truth[i], free_m) for i in idx]
+                c = float("inf") if any(s.x[2] < 0 for s in sols) else sum(s.cost for s in sols)
                 results.append((c, rot, 1, zsign, mirror))
     results.sort(key=lambda r: r[0])
-    return results[:3]
+    # 3점만으로는 센서 하나의 회전 차이가 몇 %밖에 안 날 수 있다(2026-11-19 실측: 525.9 대 553.9, 9점 전체로는
+    # 순위가 바뀌었다). 상위 10개를 모든 점으로 다시 채점한다. 비용은 점 수로 나눠 3점 기준과 같은 눈금으로 쓴다.
+    rescored = []
+    for c, rot, sign, zsign, mirror in results[:10]:
+        if c == float("inf"):
+            continue
+        sols = [fit_point(correct(points[i], rot, 1, zsign, mirror), sensors, m0,
+                          None if truth is None else truth[i], free_m) for i in range(len(points))]
+        c = float("inf") if any(s.x[2] < 0 for s in sols) else sum(s.cost for s in sols) * len(idx) / len(points)
+        rescored.append((c, rot, sign, zsign, mirror))
+    rescored.sort(key=lambda r: r[0])
+    return rescored[:3]
 
 
 def same_mount(a, b):
@@ -109,7 +123,7 @@ def check():
     rng = np.random.default_rng(4)
     truth = grid(0.03, 0.03)
     true_rot, true_sign, true_z, true_m = (1, 0, 3, 2), -1, -1, 1
-    true_m0 = 0.6
+    true_m0 = round(pm.M0 * 2 / 3, 2)      # 모델 가정과 1.5배 다른 세기
     lines = []
     for x, y in truth:
         pos = np.array([x, y, 0.009])

@@ -6,7 +6,7 @@
 import numpy as np
 
 MU = 1e-7            # μ0/4π
-M0 = 0.9             # A·m². N52 가정의 추정값 → 실제 자석으로 교정해서 바꾼다
+M0 = 0.57            # A·m². 2026-11-19 9점 측정에서 gate1.py가 추정한 값(점별 0.50~0.61). 처음 가정은 0.9(N52)
 HALF = 0.07          # 센서 격자 반폭 (m). 조립 후 실측값으로 바꾼다
 SENSORS = np.array([(x, y, 0.0) for x in (-HALF, HALF) for y in (-HALF, HALF)])
 
@@ -17,10 +17,11 @@ UT_PER_LSB_Z = 0.403
 
 # 자석을 펜에 붙인 방식.
 #   "axial": 원통 축(극 방향)이 펜 축과 같다. README 4장의 원래 설계.
-#   "side":  펜촉 옆에 붙어 극 방향이 펜 축과 직각이다. 2026-11-18 실물이 이렇다.
+#   "side":  펜촉 옆에 붙어 극 방향이 펜 축과 직각이다. 2026-11-18 실물이 이랬다.
+#            2026-11-19 펜 끝에 축 방향으로 다시 붙였다 → "axial".
 #            펜을 손에서 돌려 잡는 각도(롤)에 따라 극 방향이 펜 축 둘레로 돈다. 롤은 관측되지 않으므로
 #            MLP는 롤을 모든 값으로 학습하고, 출력 ux, uy는 "펜 기울기"가 아니라 "자석 극 방향의 수평 성분"이 된다.
-MAGNET = "side"
+MAGNET = "axial"
 
 
 def tilt_vec(ux, uy):
@@ -129,10 +130,11 @@ def read_mount():
     import re
     txt = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "nios", "config.h")).read()
     txt = txt[txt.index("#else", txt.index("TEST_MOUNT")):]          # 시험용 값 다음의 실제 값
-    rot = tuple(int(v) for v in re.search(r"MOUNT_ROT\s*\{([^}]*)\}", txt).group(1).split(","))
-    sign = int(re.search(r"FIELD_SIGN\s+\(?(-?\d+)", txt).group(1))
-    zsign = int(re.search(r"Z_SIGN\s+\(?(-?\d+)", txt).group(1))
-    mirror = int(re.search(r"MIRROR_XY\s+(\d)", txt).group(1))
+    # #define 줄만 읽는다(주석에 같은 이름이 나와도 속지 않게)
+    rot = tuple(int(v) for v in re.search(r"#define\s+MOUNT_ROT\s*\{([^}]*)\}", txt).group(1).split(","))
+    sign = int(re.search(r"#define\s+FIELD_SIGN\s+\(?(-?\d+)", txt).group(1))
+    zsign = int(re.search(r"#define\s+Z_SIGN\s+\(?(-?\d+)", txt).group(1))
+    mirror = int(re.search(r"#define\s+MIRROR_XY\s+(\d)", txt).group(1))
     return rot, sign, zsign, mirror
 
 
