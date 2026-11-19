@@ -1,6 +1,6 @@
 # Design Project #1 — Counter + One Digit Calculator
 
-DE2 보드(Cyclone II EP2C35F672C6), Quartus II 13.0 SP1, **VHDL**. 파일 하나(`src/DE2_Project1.vhd`, 주석 없이 164줄)로 구성한다.
+DE2 보드(Cyclone II EP2C35F672C6), Quartus II 13.0 SP1, **VHDL**. 파일 하나(`src/DE2_Project1.vhd`, 주석 없이 138줄)로 구성한다.
 시연 11/26, 최종 보고서 12/21. 평가: 카운터 정상 동작, 사칙연산과 0으로 나누기 예외 처리, 읽기 쉽고 간결한 코드(줄 수 최소화), 소스코드 발표에서의 이해도.
 
 ## 동작
@@ -27,13 +27,6 @@ DE2 보드(Cyclone II EP2C35F672C6), Quartus II 13.0 SP1, **VHDL**. 파일 하�
 
 **777 잭팟:** 카운터 모드에서 값이 777이면 초록 LED 전체가 약 0.17초마다 켜졌다 꺼지고(번쩍임), HEX7~4에 `7777`이 뜬다. 빨간 LED는 잭팟일 때도 계속 값(777)을 이진수로 보여 준다.
 
-**LCD:** 보드의 16×2 문자 LCD는 영문만 표시한다. 평소에는 비어 있고, 잭팟일 때만 축하 문구가 뜬다.
-
-| 상태 | 1행 | 2행 |
-|---|---|---|
-| 평소 (카운터·계산기 모드) | 비어 있음 | 비어 있음 |
-| 777 잭팟 | `* JACKPOT  777 *` | `CONGRATULATIONS!` |
-
 ## 빌드 (Quartus, 사용자 PC)
 
 1. 프로젝트 이름과 최상위 엔티티를 `DE2_Project1`로 만든다. 장치는 Cyclone II EP2C35F672C6.
@@ -48,7 +41,7 @@ DE2 보드(Cyclone II EP2C35F672C6), Quartus II 13.0 SP1, **VHDL**. 파일 하�
 sh sim/run_sim.sh
 ```
 
-`sim/tb.vhd`가 카운터(롱프레스, 포화, 잭팟, LED)와 계산기(십진수·16진수 전 조합, 십진수 모드의 범위 밖 입력)를 검사한다. LCD 글자와 LED 점멸까지 검사하므로 시뮬레이션 시간이 길다(ModelSim에서 약 1분 반). 마지막 줄이 `TOTAL checks=2133 errors=0`이면 통과.
+`sim/tb.vhd`가 카운터(롱프레스, 포화, 잭팟, LED)와 계산기(십진수·16진수 전 조합, 십진수 모드의 범위 밖 입력)를 검사한다. LED 점멸까지 검사한다. 마지막 줄이 `TOTAL checks=2130 errors=0`이면 통과.
 시뮬레이션은 로직 검증이며 Quartus 합성·핀 할당·보드 동작을 대신하지 않는다.
 
 ## 코드 이해와 발표
@@ -57,7 +50,4 @@ sh sim/run_sim.sh
 
 ## 미확인 사항
 
-- LCD 핀(`LCD_DATA`, `LCD_RS`, `LCD_RW`, `LCD_EN`, `LCD_ON`, `LCD_BLON`)은 서로 다른 공개 저장소 두 곳의 DE2용 `.qsf`가 같은 값을 줘서 쓴 것이며, DE2 User Manual 원문과는 대조하지 않았다. LCD가 안 나오면 먼저 매뉴얼과 대조한다.
-- LCD 초기화는 busy 플래그를 읽지 않고 고정 대기 시간(바이트당 약 2.6 ms)으로 보낸다. 시뮬레이션에서 글자 내용은 확인했지만 실제 LCD 동작은 보드에서 확인해야 한다.
-- 전원 직후 대기는 function set(`x"38"`)을 반복해서 번다. 계산상 `x"0C"`가 시작 후 약 15 ms 지점이라 규격(약 15 ms)에 여유가 크지 않고, 초기화(0~7번)는 처음 한 번만 보낸다. 보드에서 LCD가 비어 있으면 이 대기 구간을 늘린다.
-- Quartus Analysis & Synthesis(`quartus_map`, Cyclone II EP2C35F672C6)는 통과했다(오류 0, 논리 소자 1,767개). 핀 할당을 포함한 전체 컴파일(Fitter), 타이밍, 보드 동작은 사용자가 확인한다.
+- Quartus Analysis & Synthesis(`quartus_map`, Cyclone II EP2C35F672C6)는 통과했다(오류 0). 핀 할당을 포함한 전체 컴파일(Fitter), 타이밍, 보드 동작은 사용자가 확인한다.

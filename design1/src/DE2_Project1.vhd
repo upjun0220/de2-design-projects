@@ -9,8 +9,6 @@ entity DE2_Project1 is
         SW       : in  std_logic_vector(17 downto 0);
         LEDR     : out std_logic_vector(17 downto 0);
         LEDG     : out std_logic_vector(7 downto 0);
-        LCD_DATA : out std_logic_vector(7 downto 0);
-        LCD_RS, LCD_RW, LCD_EN, LCD_ON, LCD_BLON : out std_logic;
         HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, HEX7 : out std_logic_vector(6 downto 0)
     );
 end DE2_Project1;
@@ -40,9 +38,7 @@ architecture behavior of DE2_Project1 is
         "0001000", "0000011", "1000110", "0100001", "0000110", "0001110",
         "1111111", "0111111", "0101111");
 
-    constant JACKPOT_TXT : string(1 to 32) := "* JACKPOT  777 *" & "CONGRATULATIONS!";
     signal tick : unsigned(23 downto 0) := (others => '0');
-    signal step : integer range 0 to 41 := 0;
     signal jp   : std_logic;
 begin
     s1 <= 1 when SW(1) = '0' else 5;
@@ -54,9 +50,6 @@ begin
             k1 <= KEY;
             k2 <= k1;
             tick <= tick + 1;
-            if tick(16 downto 0) = 0 then
-                if step = 41 then step <= 8; else step <= step + 1; end if;
-            end if;
             if SW(0) = '0' then
                 if k2(0) = '1' and k1(0) = '0' then
                     cnt <= 0;
@@ -137,25 +130,6 @@ begin
                     end if;
                 end if;
             end if;
-        end if;
-    end process;
-
-    LCD_RW  <= '0';  LCD_ON <= '1';  LCD_BLON <= '1';
-    LCD_EN  <= '1' when tick(16 downto 15) = "10" else '0';
-    LCD_RS  <= '1' when step > 8 and step /= 25 else '0';
-
-    process (step, jp)
-        variable i : integer range 1 to 32;
-    begin
-        i := 1;
-        if step > 25 then i := step - 9; elsif step > 8 then i := step - 8; end if;
-        if    step < 6  then LCD_DATA <= x"38";
-        elsif step = 6  then LCD_DATA <= x"0C";
-        elsif step = 7  then LCD_DATA <= x"06";
-        elsif step = 8  then LCD_DATA <= x"80";
-        elsif step = 25 then LCD_DATA <= x"C0";
-        elsif jp = '1'  then LCD_DATA <= std_logic_vector(to_unsigned(character'pos(JACKPOT_TXT(i)), 8));
-        else                 LCD_DATA <= x"20";
         end if;
     end process;
 
