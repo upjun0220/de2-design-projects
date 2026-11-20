@@ -295,10 +295,14 @@ static void test_ui(void)
     check_row("ratio", 26, 51, "SW / HW = x2249  (log scale)");
     check_row("status", 29, 0, " ready ");
     CHECK("banner colour", scr_attr[20][62], C_DGREEN << 4 | C_WHITE);
-    CHECK("bar colour under threshold", scr_attr[13][54], C_TRACK << 4 | C_GREEN);
+    /* row 13 is person 2 (under tau): the bar takes the person's colour; the tau mark is white */
+    CHECK("bar colour under threshold", scr_attr[13][54], C_TRACK << 4 | ui_person_colour[1]);
     CHECK("bar colour over threshold", scr_attr[12][54], C_TRACK << 4 | C_DIM);
-    CHECK("mark on a filled bar", scr_attr[12][57], C_DIM << 4 | C_AMBER);
-    CHECK("mark past the bar", scr_attr[13][57], C_TRACK << 4 | C_AMBER);
+    CHECK("mark on a filled bar", scr_attr[12][57], C_DIM << 4 | C_WHITE);
+    CHECK("mark past the bar", scr_attr[13][57], C_TRACK << 4 | C_WHITE);
+    ui_banner_person(2, "IDENTIFIED AS", "PERSON 3", "d 1 < tau 2");
+    check_row("person banner", 20, 51, "          PERSON 3           ");
+    CHECK("person banner colour", scr_attr[20][62], C_PANEL << 4 | ui_person_colour[2]);
 
     CHECK("tilt 30", ui_tilt_deg(128, 0), 30);
     CHECK("tilt 0", ui_tilt_deg(0, 0), 0);

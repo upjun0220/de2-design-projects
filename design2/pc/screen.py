@@ -36,6 +36,7 @@ class Screen:
         self.cells = np.zeros((30, 80), dtype=np.uint16)         # attr << 8 | ch
         self.bitmap = np.zeros((BM, BM), dtype=bool)
         self.cursor = (0, 0, 0, 0)                              # on, colour, x, y
+        self.ink = INK                                          # 서명 선 색(@I, hdl/vga_ui.v INK)
         self.dirty = True
 
     def apply(self, line):
@@ -55,6 +56,11 @@ class Screen:
                 self.line(*(int(v) for v in p[1:5]))
             elif p[0] == "@P":
                 self.cursor = tuple(int(v) for v in p[1:5])
+            elif p[0] == "@I":
+                ink = int(p[1])
+                if not 0 <= ink < 16:
+                    return False
+                self.ink = ink
             else:
                 return False
         except (ValueError, IndexError, TypeError):
@@ -91,7 +97,7 @@ class Screen:
         index = np.where(glyph, np.repeat(np.repeat(fg, 16, 0), 8, 1), np.repeat(np.repeat(bg, 16, 0), 8, 1))
         bm = np.zeros((H, W), dtype=bool)
         bm[BM_Y0:BM_Y0 + 2*BM, BM_X0:BM_X0 + 2*BM] = np.repeat(np.repeat(self.bitmap, 2, 0), 2, 1)
-        index = np.where(~glyph & bm, INK, index)
+        index = np.where(~glyph & bm, self.ink, index)
         on, colour, cx, cy = self.cursor
         if on:
             px, py = BM_X0 + 2*cx, BM_Y0 + 2*cy
@@ -207,6 +213,10 @@ def check(screen_txt):
     assert img.shape == (H, W, 3)
     # 커서 픽셀은 커서 색(팔레트 8)이어야 한다: 커서 중심에서 오른쪽으로 5픽셀
     assert tuple(img[BM_Y0 + 2*170, BM_X0 + 2*60 + 5]) == tuple(load_palette()[8])
+    # 잉크 색(@I): 서명 선이 그 팔레트 색으로 그려진다(사람별 색)
+    assert scr.apply("@I 12") and not scr.apply("@I 99")
+    img = scr.render(np.array(load_font(), dtype=np.uint8), np.array(load_palette(), dtype=np.uint8))
+    assert tuple(img[BM_Y0 + 2*20, BM_X0 + 2*10]) == tuple(load_palette()[12])
     print("screen OK")
 
 

@@ -259,6 +259,9 @@ static void middle_clear(void)
 }
 
 /* d = 0: no result yet, only the thresholds are shown. best = -1: nobody. */
+/* Person colours: P1 cyan, P2 amber, P3 blue, P4 green, P5 white. Red stays for "not enrolled". */
+const uint8_t ui_person_colour[MAX_SLOTS] = { C_CYAN, C_AMBER, C_BLUE, C_GREEN, C_WHITE };
+
 void ui_match(const uint32_t *d, const person *people, int best)
 {
     int k;
@@ -266,21 +269,21 @@ void ui_match(const uint32_t *d, const person *people, int best)
     middle_clear();
     for (k = 0; k < MAX_SLOTS; k++) {
         int row = 12 + k, e, col;
-        put(RX, row, "P", k == best ? C_WHITE : C_TEXT, C_BG);
-        put_num(RX + 1, row, (uint32_t)(k + 1), 1, k == best ? C_WHITE : C_TEXT, C_BG);
+        put(RX, row, "P", ui_person_colour[k], C_BG);
+        put_num(RX + 1, row, (uint32_t)(k + 1), 1, ui_person_colour[k], C_BG);
         if (people[k].count != ENROLL_COUNT) {
             put(RX + 3, row, people[k].count ? "enrolling" : "empty slot", C_DIM, C_BG);
             continue;
         }
         /* 16 cells = 0..16000: 1000 per cell */
         e = d ? (int)((d[k] > 16000 ? 16000 : d[k]) * 8 + 500) / 1000 : 0;
-        col = d && d[k] < people[k].tau ? C_GREEN : C_DIM;
+        col = d && d[k] < people[k].tau ? ui_person_colour[k] : C_DIM;
         bar(RX + 3, row, 16, e, col);
-        tick(RX + 3, row, 16, (int)(people[k].tau / 1000), e, C_AMBER, col);
+        tick(RX + 3, row, 16, (int)(people[k].tau / 1000), e, C_WHITE, col);
         if (d) put_num(RX + 20, row, d[k], 5, k == best ? C_WHITE : C_TEXT, C_BG);
         if (k == best) put(RX + 26, row, "<", C_WHITE, C_BG);
     }
-    ui_cell(RX + 3, 17, G_VLINE, C_BG << 4 | C_AMBER);
+    ui_cell(RX + 3, 17, G_VLINE, C_BG << 4 | C_WHITE);
     put(RX + 5, 17, "= threshold tau", C_DIM, C_BG);
 }
 
@@ -335,6 +338,14 @@ void ui_banner(int kind, const char *top, const char *mid, const char *bot)
     centre(19, top, fg_of[kind], bg_of[kind]);
     centre(20, mid, C_WHITE, bg_of[kind]);
     centre(21, bot, fg_of[kind], bg_of[kind]);
+}
+
+/* Result banner in the colour of person k (identified). */
+void ui_banner_person(int k, const char *top, const char *mid, const char *bot)
+{
+    centre(19, top, ui_person_colour[k], C_PANEL);
+    centre(20, mid, ui_person_colour[k], C_PANEL);
+    centre(21, bot, C_TEXT, C_PANEL);
 }
 
 /* ---- DTW TIME panel, rows 23..26. us = 0: not measured yet. ---- */

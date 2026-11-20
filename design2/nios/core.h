@@ -84,6 +84,7 @@ void relay_refresh_row(void);
 void relay_clear(void);
 void relay_line(int x0, int y0, int x1, int y1);
 void relay_cursor(int on, int colour, int x, int y);
+void relay_ink(int colour);                 /* colour of the pad bitmap (signature lines) */
 
 void ui_frame(void);
 void ui_title(int mode, int use_hw, int sensors_ok);
@@ -94,6 +95,9 @@ void ui_match(const uint32_t *d, const person *people, int best);
 void ui_enroll(int slot, int count, uint32_t tau);
 void ui_collect(int saved, int rejected, int marks);
 void ui_banner(int kind, const char *top, const char *mid, const char *bot);
+/* Each enrolled person has a colour (banner, distance bars, signature ink on the pad). */
+extern const uint8_t ui_person_colour[MAX_SLOTS];
+void ui_banner_person(int k, const char *top, const char *mid, const char *bot);
 void ui_time(uint32_t hw_us, uint32_t sw_us);
 void ui_put(int col, int row, const char *s, int fg);
 void ui_bar(int col, int row, int len, int eighths, int fg);

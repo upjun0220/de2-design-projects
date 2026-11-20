@@ -8,6 +8,7 @@
  *   @K                   clear the pad bitmap
  *   @L x0 y0 x1 y1       line on the pad bitmap (192 x 192)
  *   @P on colour x y     pen cursor
+ *   @I colour            ink (palette index) of the pad bitmap
  *
  * Text is sent only where it changed: ui_cell() records it, relay_flush() sends one
  * line per changed row. relay_refresh_row() resends one whole row now and then, so a
@@ -94,6 +95,14 @@ void relay_line(int x0, int y0, int x1, int y1)
     p = put_dec(p, y0); *p++ = ' ';
     p = put_dec(p, x1); *p++ = ' ';
     p = put_dec(p, y1); *p++ = '\n'; *p = 0;
+    relay_out(buf);
+}
+
+void relay_ink(int colour)
+{
+    char buf[12], *p = buf;
+    *p++ = '@'; *p++ = 'I'; *p++ = ' ';
+    p = put_dec(p, colour); *p++ = '\n'; *p = 0;
     relay_out(buf);
 }
 

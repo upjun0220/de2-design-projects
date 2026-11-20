@@ -70,6 +70,7 @@ static uint32_t read_inputs(void)
 #define VGA_FROM 1
 #define VGA_TO 2
 #define VGA_CURSOR 3
+#define VGA_INK 4
 #define VGA_TEXT 4096
 
 void ui_cell(int col, int row, uint8_t ch, uint8_t attr)
@@ -124,6 +125,13 @@ static void vga_cursor(const pen_pos *p, int present, int down)
     screen_xy(p, &x, &y);
     IOWR(VGA_0_BASE, VGA_CURSOR, ((uint32_t)(present != 0) << 31) | ((uint32_t)(down ? C_GREEN : C_DIM) << 24) | (y << 16) | x);
     relay_cursor(present, down ? C_GREEN : C_DIM, x, y);
+}
+
+/* Colour of the signature lines on the pad (a palette index, the whole bitmap at once). */
+static void vga_ink(int colour)
+{
+    IOWR(VGA_0_BASE, VGA_INK, colour);
+    relay_ink(colour);
 }
 
 /* Pad drawing with a dead band (config.h ANCHOR_R), for the screen only: while the pen is
@@ -330,8 +338,10 @@ static void do_identify(int use_hw)
     ui_status(status);
     if (who >= 0) {
         snprintf(line, sizeof(line), "d %lu < tau %lu", (unsigned long)d[who], (unsigned long)people[who].tau);
-        ui_banner(BANNER_OK, "IDENTIFIED AS", names[who], line);
+        ui_banner_person(who, "IDENTIFIED AS", names[who], line);
+        vga_ink(ui_person_colour[who]);          /* the signature turns the person's colour */
     } else {
+        vga_ink(C_RED);
         if (near < 0) snprintf(line, sizeof(line), "nobody is enrolled yet");
         else if (d[near] >= people[near].tau)
             snprintf(line, sizeof(line), "P%d: d %lu > tau %lu", near + 1, (unsigned long)d[near], (unsigned long)people[near].tau);
@@ -523,7 +533,12 @@ int main(void)
             } else
                 ev = sig_feed(&sig, &pos, lost);                   /* height-based, PEN_SWITCH_ONLY 0 */
             if (pen_sw && (ev == SIG_DONE || ev == SIG_REJECT)) pen_sw_hold = 1;
-            if (ev == SIG_STARTED) { vga_pad_reset(); anchor_down = 0; }
+            if (ev == SIG_STARTED) {
+                int slot = (inputs >> 2) & 7;          /* enrolling: draw in that person's colour */
+                vga_pad_reset();
+                anchor_down = 0;
+                vga_ink(mode == 1 && slot < MAX_SLOTS ? ui_person_colour[slot] : C_WHITE);
+            }
             pen_down = sig.active && sig.is_down;                  /* drawing: only inside a signature */
             if (sig.active) pad_draw(&pos, pen_down);
             {
