@@ -122,7 +122,9 @@
  * (0.55..0.62 over the points), magnet centre about 7.7 mm above the sensors.
  * S3 is turned 180 degrees against the other three: check the module on the pad. */
 #define MOUNT_ROT  { 2, 2, 2, 0 }
-#define FIELD_SIGN 1
+/* 2026-11-20: the chopstick pen has its magnet pole pointing down (fitted uz = -1.0 at all
+ * 9 points), the MLP is trained for poles pointing up: flip the field. */
+#define FIELD_SIGN (-1)
 #define Z_SIGN     1
 #define MIRROR_XY  0
 #endif
