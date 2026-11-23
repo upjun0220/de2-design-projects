@@ -46,7 +46,7 @@ sh sim/run_sim.sh
 
 ## 코드 이해와 발표
 
-`docs/DE2_Project1_code_explanation.html`에 줄별 설명, 동작 예시, 발표 예상 질문 15개, 시연 순서가 있다.
+`docs/DE2_Project1_code_explanation.html`에 줄별 설명, 동작 예시, 발표 예상 질문 16개, 시연 순서가 있다.
 
 ## 미확인 사항
 
