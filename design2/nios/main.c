@@ -419,15 +419,14 @@ int main(void)
     uint32_t last_frame = 0, err = 0, prev_keys = 0xF, inputs;
     int32_t base[12], lsb[12], corrected[12], in[12];
     pen_pos pos;
-    pen_pos prev_pos;
     pen_filter filt;
     int pen_sw = 0, pen_sw_prev = 0, pen_sw_hold = 0;   /* SW[17] pen switch, see the main loop */
     int pen_down = 0;
     uint32_t us_mlp = 0, shown_inputs = 0xFFFFFFFF, shown_err = 0xFFFFFFFF;
-    int k, n_ok, saved = 0, rejected = 0, marks = 0;
+    int k, saved = 0, rejected = 0, marks = 0;
     char line[80];
 
-    memset(&prev_pos, 0, sizeof(prev_pos));
+    memset(&pos, 0, sizeof(pos));
     pf_reset(&filt);
 
     lcd = fopen("/dev/lcd_0", "w");
@@ -435,7 +434,7 @@ int main(void)
     sig_reset(&sig);
     relay_init();
     ui_frame();
-    ui_pen(&prev_pos, 0, 0);
+    ui_pen(&pos, 0, 0);
 
     /* Tell the reader where the sensors are, then restart its init sequence */
     {
@@ -448,11 +447,10 @@ int main(void)
     usleep(200000);
     i2c_scan();
     err = MLX(MLX_ERR);
-    for (k = 0, n_ok = 0; k < 4; k++) n_ok += !((err >> k) & 1);
-    snprintf(line, sizeof(line), "SENSORS OK %d/4", n_ok);
+    snprintf(line, sizeof(line), "SENSORS OK %d/4", count_ok(err));
     lcd_show(line, "");
-    ui_put(3, 12, line, n_ok == 4 ? C_GREEN : C_RED);
-    ui_title(0, 0, n_ok);
+    ui_put(3, 12, line, count_ok(err) == 4 ? C_GREEN : C_RED);
+    ui_title(0, 0, count_ok(err));
     relay_flush();
     usleep(1000000);
     baseline_measure(&last_frame, base);
@@ -490,11 +488,16 @@ int main(void)
 
         ev = SIG_NONE;
         if (wait_frame(&last_frame, lsb, &err)) {
-            uint32_t raw_peak = 0;
+            /* raw_peak: before the baseline, for saturation. peak: after it, for "pen present"
+             * (without that, the position of an absent pen, noise through the network,
+             * would move the cursor around). */
+            uint32_t raw_peak = 0, peak = 0;
             for (k = 0; k < 12; k++) {
                 uint32_t a = lsb[k] < 0 ? -lsb[k] : lsb[k];
                 if (a > raw_peak) raw_peak = a;
                 lsb[k] -= base[k];
+                a = lsb[k] < 0 ? -lsb[k] : lsb[k];
+                if (a > peak) peak = a;
             }
             if (inputs & (1u << 7)) show_field_bars(lsb, raw_peak);
             t0 = MLX(MLX_NOW);
@@ -505,16 +508,7 @@ int main(void)
             uniform = field_is_uniform(corrected);
             if (uniform) pos.z = Z_AWAY;      /* not the pen: do not start or continue a signature */
             us_mlp = MLX(MLX_NOW) - t0;
-            {
-                /* The pen is "present" when a sensor sees it. Without this the position of
-                 * an absent pen (noise through the network) would move the cursor around. */
-                uint32_t peak = 0;
-                for (k = 0; k < 12; k++) {
-                    uint32_t a = lsb[k] < 0 ? -lsb[k] : lsb[k];
-                    if (a > peak) peak = a;
-                }
-                present = peak >= PEN_PRESENT_LSB && !uniform;
-            }
+            present = peak >= PEN_PRESENT_LSB && !uniform;
             /* Filter: median of 3 + One Euro filter on x, y, z (position.c pf_step, config.h PF_*).
              * Restarts when the pen comes back, so it does not drag a line from the old position.
              * The filtered position is what is stored, drawn and logged. */
@@ -541,15 +535,13 @@ int main(void)
             }
             pen_down = sig.active && sig.is_down;                  /* drawing: only inside a signature */
             if (sig.active) pad_draw(&pos, pen_down);
-            {
-                vga_cursor(&pos, present, pen_down);
-                if (last_frame % 5 == 0) {          /* numbers at 10 Hz: readable, and cheap */
-                    ui_pen(&pos, pen_down, present);
-                    ui_sensors(lsb, err);
-                    if (sig.active) {
-                        snprintf(line, sizeof(line), "%d.%d s   %d frames", sig.n / 50, sig.n % 50 / 5, sig.n);
-                        ui_banner(BANNER_INFO, "", "SIGNING...", line);
-                    }
+            vga_cursor(&pos, present, pen_down);
+            if (last_frame % 5 == 0) {              /* numbers at 10 Hz: readable, and cheap */
+                ui_pen(&pos, pen_down, present);
+                ui_sensors(lsb, err);
+                if (sig.active) {
+                    snprintf(line, sizeof(line), "%d.%d s   %d frames", sig.n / 50, sig.n % 50 / 5, sig.n);
+                    ui_banner(BANNER_INFO, "", "SIGNING...", line);
                 }
             }
             if (mode == 2) {

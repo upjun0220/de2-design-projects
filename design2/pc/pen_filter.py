@@ -104,7 +104,7 @@ def check():
     rng = np.random.default_rng(7)
     sigma = 1.5
     print("필터 비교 (시뮬레이션, 입력 떨림 σ %.1f mm, 50 Hz)" % sigma)
-    raw = measure("필터 없음", lambda v: np.asarray(v), rng, sigma)
+    measure("필터 없음", lambda v: np.asarray(v), rng, sigma)
     e2 = measure("이동 평균 SHIFT 2", lambda v: ema(v, 2), rng, sigma)
     e3 = measure("이동 평균 SHIFT 3", lambda v: ema(v, 3), rng, sigma)
     pf = measure("중앙값3 + 1€", run_pf, rng, sigma)

@@ -58,9 +58,6 @@ def track(S, pos, th, ph, calib=False):
         est.append(q.copy())
     return np.array(est)
 
-def wrap(a):
-    return (a + np.pi) % (2*np.pi) - np.pi
-
 def evaluate(S, calib, ntraj=6):
     exy, ez, eth, eph, vrel, vcorr = [], [], [], [], [], []
     for _ in range(ntraj):

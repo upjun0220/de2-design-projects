@@ -2,7 +2,6 @@
 실행: python pc/gen_sim_vec.py build/app_sim/sim_vec.h"""
 import os
 import sys
-import numpy as np
 import pen_model as pm
 from gen_golden import load_weights
 

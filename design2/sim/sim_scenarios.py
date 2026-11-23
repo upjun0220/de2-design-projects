@@ -1,4 +1,4 @@
-import os, re, sys, numpy as np
+import os, numpy as np
 src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sim_sig_tracking.py'), encoding='utf-8').read().split('if __name__')[0]
 src = src.replace('M0 = 0.55', 'M0 = 0.9')
 src = src.replace('z = 0.045 + 0.004*np.sin(2*np.pi*1.7*t + p[4])', 'z = ZB + ZA*np.sin(2*np.pi*1.7*t + p[4])')
