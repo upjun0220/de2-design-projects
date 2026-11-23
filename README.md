@@ -34,6 +34,7 @@ Design 2 평가 기준은 Creativity, Quality, Level of understanding이고, 제
 │  ├─ hdl/              Verilog (I²C 마스터, 병렬 MAC, 상위 모듈)
 │  ├─ nios/             Nios II C
 │  └─ quartus/          프로젝트, Qsys, 핀 할당
+├─ demo/                발표 시연용 통합 이미지 (Design 1 + 2, SW9로 전환)
 ├─ journal/             Design 2 제출용 작업 일지 (날짜별)
 └─ prompts/             Design 2 제출용 프롬프트 기록
 ```
