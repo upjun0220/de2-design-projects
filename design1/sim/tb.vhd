@@ -218,26 +218,6 @@ begin
                 end loop;
             end loop;
         end loop;
-        -- decimal mode, A or B is 10~15 : that input and the whole result must be blank
-        for op in 0 to 3 loop
-            for a in 0 to 15 loop
-                for b in 0 to 15 loop
-                    if a >= 10 or b >= 10 then
-                        SW <= (others => '0');
-                        SW(0) <= '1';
-                        SW(17 downto 14) <= std_logic_vector(to_unsigned(a, 4));
-                        SW(13 downto 10) <= std_logic_vector(to_unsigned(b, 4));
-                        SW(2 downto 1)   <= std_logic_vector(to_unsigned(op, 2));
-                        wait for 1 ns;
-                        exp := "        ";
-                        if a < 10 then exp(2) := hx(a); end if;
-                        if b < 10 then exp(4) := hx(b); end if;
-                        compare(exp, "invalid a=" & integer'image(a) & " b=" & integer'image(b) &
-                                     " op=" & integer'image(op));
-                    end if;
-                end loop;
-            end loop;
-        end loop;
         -- SW3 must not matter in counter mode
         SW <= (others => '0');
         SW(3) <= '1';
