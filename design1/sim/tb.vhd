@@ -51,7 +51,6 @@ begin
         variable errors, checks : integer := 0;
         variable exp : string(1 to 8);
         variable r, ar, q, rm : integer;
-        variable hi, lo : boolean := false;     -- jackpot LED states seen so far
 
         impure function shown return string is
         begin
@@ -67,16 +66,16 @@ begin
             end if;
         end procedure;
 
-        -- counter shows v on HEX3~0 and binary on LEDR, jackpot at 777 : 7777, all green LEDs flash together
+        -- counter shows v on HEX3~0 and binary on LEDR, jackpot at 777 : 7777 and all green LEDs on
         procedure cnt_is(v : integer; name : string) is
             variable pre : string(1 to 4);
         begin
             if v = 777 then pre := "7777"; else pre := "    "; end if;
             compare(pre & hx(v / 1000) & hx((v / 100) mod 10) & hx((v / 10) mod 10) & hx(v mod 10), name);
             checks := checks + 1;
-            -- red = value in binary always, green = all off, at the jackpot all the same (flashing)
+            -- red = value in binary always, green = all off, at the jackpot all on
             if LEDR /= std_logic_vector(to_unsigned(v, 18)) or
-               (v /= 777 and LEDG /= "00000000") or (v = 777 and LEDG /= (7 downto 0 => LEDG(0))) then
+               (v /= 777 and LEDG /= "00000000") or (v = 777 and LEDG /= "11111111") then
                 errors := errors + 1;
                 report "FAIL " & name & ": LEDs wrong";
             end if;
@@ -175,16 +174,10 @@ begin
         for i in 1 to 6 loop press(3, 20); end loop;
         cnt_is(776, "776 no jackpot");
         press(3, 20);    cnt_is(777, "777 jackpot on");
-        for i in 1 to 5 loop                            -- LEDs must flash : both states within 200 ms
-            if LEDG(0) = '1' then hi := true; else lo := true; end if;
-            cnt_is(777, "777 jackpot flashing");
+        for i in 1 to 5 loop                            -- LEDs must stay on, not flash
+            cnt_is(777, "777 jackpot stays on");
             wait for 50 ms;
         end loop;
-        checks := checks + 1;
-        if not (hi and lo) then
-            errors := errors + 1;
-            report "FAIL jackpot LEDs do not flash";
-        end if;
         press(3, 20);    cnt_is(778, "778 jackpot off");
         press(1, 20);    cnt_is(777, "777 again jackpot on");
         SW(0) <= '1';  wait for 1 ns;

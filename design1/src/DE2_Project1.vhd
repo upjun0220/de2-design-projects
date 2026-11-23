@@ -37,7 +37,6 @@ architecture behavior of DE2_Project1 is
         "0001000", "0000011", "1000110", "0100001", "0000110", "0001110",
         "1111111", "0111111", "0101111");
 
-    signal tick : unsigned(23 downto 0) := (others => '0');
     signal jp   : std_logic;
 begin
     s1 <= 1 when SW(1) = '0' else 5;
@@ -48,7 +47,6 @@ begin
         if rising_edge(CLOCK_50) then
             k1 <= KEY;
             k2 <= k1;
-            tick <= tick + 1;
             if SW(0) = '0' then
                 if k2(0) = '1' and k1(0) = '0' then
                     cnt <= 0;
@@ -65,7 +63,7 @@ begin
 
     jp   <= '1' when SW(0) = '0' and cnt = 777 else '0';
     LEDR <= std_logic_vector(to_unsigned(cnt, 18)) when SW(0) = '0' else (others => '0');
-    LEDG <= (others => tick(23)) when jp = '1' else (others => '0');
+    LEDG <= (others => jp);
 
     a      <= to_integer(unsigned(SW(17 downto 14)));
     b      <= to_integer(unsigned(SW(13 downto 10)));
