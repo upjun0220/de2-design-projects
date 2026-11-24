@@ -58,8 +58,10 @@ typedef struct {
 } person;
 
 uint32_t isqrt(uint32_t v);
-/* tau from the pairwise distances among the enrolled signatures */
+/* mean + a * standard deviation of n distances */
 uint32_t enroll_threshold(const uint32_t *pairwise, int n);
+/* tau from the distances among the enrolled signatures (leave one out, nearest) */
+uint32_t enroll_tau(uint32_t dist[ENROLL_COUNT][ENROLL_COUNT]);
 /* d[k] = distance to person k. Returns the person, or -1 for "not enrolled". */
 int decide(const uint32_t *d, const person *people, int n_people);
 

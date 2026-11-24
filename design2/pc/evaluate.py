@@ -139,11 +139,13 @@ def lopo_pass(records, g_scores):
 
 def rule_table(records, templates):
     """보드의 판정 규칙(nios/decide.c)을 문턱 값 a, m별로 돌려 본다. nios/config.h 값을 고르는 데 쓴다.
-    tau = 등록 서명끼리 거리의 평균 + a*표준편차. 돌려주는 값: (a, m, 정답, 본인 수, 위조 통과, 위조 수)"""
+    tau = 등록 서명마다 나머지 중 가장 가까운 것과의 거리, 그 평균 + a*표준편차(decide.c enroll_tau).
+    돌려주는 값: (a, m, 정답, 본인 수, 위조 통과, 위조 수)"""
     stats = {}
     for p, ts in templates.items():
-        pair = [dtw_fast(ts[i], ts[j]) for i in range(len(ts)) for j in range(i + 1, len(ts))]
-        stats[p] = (np.mean(pair), np.std(pair)) if pair else (0.0, 0.0)
+        n = len(ts)
+        near = [min(dtw_fast(ts[i], ts[j]) for j in range(n) if j != i) for i in range(n)] if n > 1 else []
+        stats[p] = (np.mean(near), np.std(near)) if near else (0.0, 0.0)
     rows = []
     for a in (0.0, 1.0, 2.0, 3.0, 5.0):
         for m in (0, 500, 2000):

@@ -125,9 +125,13 @@ class Bench:
         return np.array(pp.preprocess(frames, pen), dtype=np.int8)
 
 
-def enroll_threshold(pair, a):
-    """nios/decide.c와 같은 뜻의 실수판(문턱 탐색용)"""
-    return np.mean(pair) + a * np.std(pair)
+def enroll_threshold(templates, a):
+    """nios/decide.c enroll_tau와 같은 뜻의 실수판(문턱 탐색용).
+    등록 서명마다 나머지 서명 중 가장 가까운 것과의 거리를 구해 그 평균 + a*표준편차.
+    판정이 '가장 가까운 템플릿과의 거리'를 쓰므로 문턱도 같은 종류의 값으로 정한다."""
+    n = len(templates)
+    near = [min(dtw_fast(templates[i], templates[j]) for j in range(n) if j != i) for i in range(n)]
+    return np.mean(near) + a * np.std(near)
 
 
 def run(args):
@@ -144,9 +148,8 @@ def run(args):
                 fails += 1
             else:
                 t.append(s)
-        pair = [dtw_fast(t[i], t[j]) for i in range(5) for j in range(i + 1, 5)]
         templates.append(t)
-        tau.append(enroll_threshold(pair, 2.0))
+        tau.append(enroll_threshold(t, 2.0))
 
     def score(sig):
         return np.array([min(dtw_fast(sig, t) for t in templates[k]) for k in range(len(templates))])

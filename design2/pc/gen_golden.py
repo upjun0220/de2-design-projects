@@ -29,6 +29,13 @@ def load_weights():
     return layers
 
 
+def channel_mask():
+    """nios/config.h의 CHANNEL_MASK. 보드는 쓰지 않는 채널을 0으로 만든다(signature.c)."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    txt = open(os.path.join(here, "..", "nios", "config.h")).read()
+    return int(re.search(r"#define\s+CHANNEL_MASK\s+(\w+)", txt).group(1), 0)
+
+
 def fake_stream(rng, n):
     """서명처럼 움직이는 정수 프레임 열. 펜 올림·내림과 끝의 1 s 올림을 포함."""
     t = np.arange(n)
@@ -48,6 +55,7 @@ def main(path):
     r = random.Random(5)
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     out = []
+    mask = channel_mask()
 
     # 1. 세제곱근
     vals = [0, 1, 7, 8, 26, 27, 1000, 1 << 20, (1 << 28) - 1] + [r.randrange(1 << 28) for _ in range(200)]
@@ -87,7 +95,7 @@ def main(path):
         for frames, pen in sigs:
             out.append(len(frames))
             for row in pp.preprocess(frames, pen):
-                out += row
+                out += [v if (mask >> c) & 1 else 0 for c, v in enumerate(row)]
 
     # 4. DTW
     pairs = dtw_ref.make_vectors()

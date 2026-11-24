@@ -388,12 +388,12 @@ static void do_enroll(int slot)
     p->count++;
     templates_changed = 1;
     if (p->count == ENROLL_COUNT) {
-        uint32_t pair[ENROLL_COUNT * (ENROLL_COUNT - 1) / 2];
-        int i, j, n = 0;
+        uint32_t dist[ENROLL_COUNT][ENROLL_COUNT];
+        int i, j;
         for (i = 0; i < ENROLL_COUNT; i++)
             for (j = i + 1; j < ENROLL_COUNT; j++)
-                pair[n++] = dtw_sw((csig)templates[slot][i], (csig)templates[slot][j]);
-        p->tau = enroll_threshold(pair, n);
+                dist[i][j] = dist[j][i] = dtw_sw((csig)templates[slot][i], (csig)templates[slot][j]);
+        p->tau = enroll_tau(dist);
         printf("ENROLL slot=%d tau=%lu\n", slot, (unsigned long)p->tau);
     }
     snprintf(line, sizeof(line), "%d/%d", p->count, ENROLL_COUNT);

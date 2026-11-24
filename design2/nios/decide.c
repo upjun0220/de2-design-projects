@@ -2,8 +2,8 @@
  *
  * Person k1 is accepted when d[k1] < tau[k1] and the second best person is at
  * least MARGIN_M further away. Otherwise the answer is "not enrolled".
- * tau = mean + a * standard deviation of the distances between the person's own
- * enrolled signatures.
+ * tau = mean + a * standard deviation of each enrolled signature's distance to the
+ * nearest of the person's other enrolled signatures (enroll_tau).
  * Check: nios/test_host.c.
  */
 #include "core.h"
@@ -32,6 +32,22 @@ uint32_t enroll_threshold(const uint32_t *pairwise, int n)
         var += (uint32_t)(e * e) / n;
     }
     return mean + ((isqrt(var) << 4) * TAU_A_Q8 >> 8);
+}
+
+/* tau for one person from the distances among the enrolled signatures (dist[i][j], i != j).
+ * A query is scored by its distance to the NEAREST template, so tau is set from the
+ * same kind of number: each enrolled signature's distance to the nearest of the other
+ * ones (leave one out). The mean of all pairs would be larger and let anything in. */
+uint32_t enroll_tau(uint32_t dist[ENROLL_COUNT][ENROLL_COUNT])
+{
+    uint32_t nearest[ENROLL_COUNT];
+    int i, j;
+    for (i = 0; i < ENROLL_COUNT; i++) {
+        nearest[i] = DTW_BIG;
+        for (j = 0; j < ENROLL_COUNT; j++)
+            if (j != i && dist[i][j] < nearest[i]) nearest[i] = dist[i][j];
+    }
+    return enroll_threshold(nearest, ENROLL_COUNT);
 }
 
 int decide(const uint32_t *d, const person *people, int n_people)

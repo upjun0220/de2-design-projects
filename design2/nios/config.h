@@ -64,8 +64,11 @@
 #define BASELINE_FRAMES 32    /* frames averaged for KEY0 baseline (0.64 s) */
 
 /* Which of the 8 DTW input channels are used, bit 0 = x ... bit 7 = pen. Set after
- * comparing channel sets with pc/evaluate.py. Unused channels become 0. */
-#define CHANNEL_MASK 0xFF
+ * comparing channel sets with pc/evaluate.py. Unused channels become 0.
+ * 0x9B = x, y, vx, vy, pen (the "+speed" set of pc/evaluate.py). Height and tilt are
+ * left out: on the board they changed with how the pen was held more than with the
+ * signature, which made tau large (2026-11-24, not measured yet). */
+#define CHANNEL_MASK 0x9B
 
 /* Identification rule, README section 6.4. ESTIMATE: set from validation data. */
 #define ENROLL_COUNT 5        /* signatures per person */

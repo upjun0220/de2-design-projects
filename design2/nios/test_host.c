@@ -165,6 +165,16 @@ static void test_decide(void)
 
     CHECK("no spread: tau = mean", enroll_threshold(same, 4), 1000);
     CHECK("tau = mean + 2*sigma", enroll_threshold(spread, 4), 1192);  /* isqrt scaled by 16 */
+    {   /* nearest other signature: 1000, 1000, 1000, 1000, 3000 -> mean 1400, sigma 800 */
+        uint32_t m[ENROLL_COUNT][ENROLL_COUNT];
+        int i, j;
+        for (i = 0; i < ENROLL_COUNT; i++)
+            for (j = 0; j < ENROLL_COUNT; j++) m[i][j] = 9000;
+        m[0][1] = m[1][0] = 1000;
+        m[2][3] = m[3][2] = 1000;
+        m[4][0] = m[0][4] = 3000;
+        CHECK("tau from nearest, not from all pairs", enroll_tau(m), 1400 + 2*800);
+    }
 
     d[0] = 1000; d[1] = 5000; d[2] = 9000;
     CHECK("nobody enrolled", decide(d, p, 3), -1);
