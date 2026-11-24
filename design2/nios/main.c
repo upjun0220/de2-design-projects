@@ -12,6 +12,7 @@
  * to the laptop over the JTAG UART (nios/relay.c, pc/screen.py) for use without a monitor.
  * SW[7]: LEDR shows the field strength at each sensor (for checking wiring).
  * SW[17]: pen switch. On = signing, off = the signature ends (config.h PEN_SWITCH_*).
+ * SW[9]: LCD text off (used by the presentation image demo/, where SW[9] up shows Design 1).
  *
  * Bring-up: at power up the LCD shows which of the four sensors answer, and the
  * I2C addresses found are printed to the JTAG UART. Run this before anything else.
@@ -21,6 +22,7 @@
 #include <unistd.h>
 #include "system.h"
 #include "io.h"
+#include "altera_avalon_lcd_16207_regs.h"
 #include "core.h"
 
 /* mlx_reader registers (word offsets) */
@@ -58,6 +60,14 @@ static void lcd_show(const char *a, const char *b)
     if (!lcd) return;
     fprintf(lcd, "\x1b[2J\x1b[1;1H%.16s\x1b[2;1H%.16s", a, b);
     fflush(lcd);
+}
+
+/* HD44780 "display on/off" command (0x0C on, 0x08 off). The text stays in the LCD and
+ * comes back when it is turned on again, and lcd_show still works while it is off. */
+static void lcd_display(int on)
+{
+    while (IORD_ALTERA_AVALON_LCD_16207_STATUS(LCD_0_BASE) & ALTERA_AVALON_LCD_16207_STATUS_BUSY_MSK) ;
+    IOWR_ALTERA_AVALON_LCD_16207_COMMAND(LCD_0_BASE, on ? 0x0C : 0x08);
 }
 
 static uint32_t read_inputs(void)
@@ -416,7 +426,7 @@ static void show_mode(uint32_t inputs, uint32_t err, int saved, int rejected, in
 
 int main(void)
 {
-    uint32_t last_frame = 0, err = 0, prev_keys = 0xF, inputs;
+    uint32_t last_frame = 0, err = 0, prev_keys = 0xF, inputs, lcd_off = 0;
     int32_t base[12], lsb[12], corrected[12], in[12];
     pen_pos pos;
     pen_filter filt;
@@ -462,6 +472,7 @@ int main(void)
         keys = (inputs >> 18) & 0xF;
         pressed = prev_keys & ~keys;      /* falling edges, keys are active low */
         prev_keys = keys;
+        if (((inputs >> 9) & 1) != lcd_off) { lcd_off ^= 1; lcd_display(!lcd_off); }
         mode = inputs & 3;
         /* SW[17] pen switch: on = signing (pen down), off = signature ends at once.
          * The estimated height is then not used for pen up/down. If a signature ends

@@ -8,9 +8,11 @@
 // Both designs run all the time. Only the inputs and outputs are switched:
 //  - Design 2 keeps its enrolled signatures while Design 1 is shown: its keys read
 //    "not pressed" (so KEY3 does not reset the Nios and KEY0 does not take a baseline)
-//    and its switches stay at the last value seen before SW[9] went up.
+//    and its switches stay at the last value seen before SW[9] went up. Only SW[9] itself
+//    reaches Design 2 live: the Nios turns the LCD text off while it is up (main.c).
 //  - Design 1 sees no key presses while Design 2 is shown, so the counter keeps its value.
 //  - LCD, VGA, SDRAM and the sensor header always belong to Design 2 (Design 1 uses none).
+//    LCD_ON stays 1: it is the LCD power, and power off would lose the LCD setup.
 module demo_top (
     input         CLOCK_50,
     input  [3:0]  KEY,
@@ -45,7 +47,7 @@ module demo_top (
     );
 
     de2_top u_design2 (
-        .CLOCK_50(CLOCK_50), .KEY(d1 ? 4'hF : KEY), .SW(sw2), .LEDR(r2), .LEDG(g2),
+        .CLOCK_50(CLOCK_50), .KEY(d1 ? 4'hF : KEY), .SW({sw2[17:10], d1, sw2[8:0]}), .LEDR(r2), .LEDG(g2),
         .HEX0(h2[6:0]),   .HEX1(h2[13:7]),  .HEX2(h2[20:14]), .HEX3(h2[27:21]),
         .HEX4(h2[34:28]), .HEX5(h2[41:35]), .HEX6(h2[48:42]), .HEX7(h2[55:49]),
         .LCD_ON(LCD_ON), .LCD_BLON(LCD_BLON), .LCD_RS(LCD_RS), .LCD_RW(LCD_RW), .LCD_EN(LCD_EN),

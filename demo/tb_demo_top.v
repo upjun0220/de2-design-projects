@@ -51,7 +51,7 @@ module tb_demo_top;
         sw = 18'h3C201; key = 4'h7; @(posedge clk); @(posedge clk); #1;   // KEY3 and SW changed in Design 1
         check(ledr[7:4] == 4'h7, "design 1 sees the keys");
         check(dut.u_design2.KEY == 4'hF, "design 2: no keys, no reset");
-        check(dut.u_design2.SW == 18'h20023, "design 2 switches frozen");
+        check(dut.u_design2.SW == 18'h20223, "design 2 switches frozen, SW9 live");
 
         key = 4'hF; sw = 18'h00003; @(posedge clk); @(posedge clk); #1;   // back to Design 2
         check(ledr == 18'h00003 && hex0 == 7'h22, "design 2 again, new switches");
