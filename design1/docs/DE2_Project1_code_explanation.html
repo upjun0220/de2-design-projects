@@ -265,7 +265,7 @@ details[open] summary{ margin-bottom:8px; }
 <p><code>/</code>는 몫, <code>mod</code>는 나머지, <code>10 ** i</code>는 10의 i제곱(1, 10, 100, 1000)입니다. 7세그는 한 칸에 숫자 한 개만 띄울 수 있어서 십진수를 자릿수별로 쪼갭니다. <code>for</code> 반복문은 소프트웨어처럼 도는 것이 아니라 합성할 때 4줄로 펼쳐집니다. 값이 777이면 HEX7~4(<code>d(7 downto 4)</code>)에 7을 넣어 <code>7777</code>을 띄웁니다.</p>
 
 <h3>9-3. 계산기 표시</h3>
-<pre class="code"><code><span class="ln">65</span>        <span class="k">else</span>
+<pre class="code"><code><span class="ln">65</span>        <span class="k">elsif</span> a &lt; base <span class="k">and</span> b &lt; base <span class="k">then</span>
 <span class="ln">66</span>            d(6) &lt;= a;  d(4) &lt;= b;
 <span class="ln">67</span>            <span class="k">if</span> SW(2 <span class="k">downto</span> 1) /= "11" <span class="k">then</span>
 <span class="ln">68</span>                <span class="k">if</span> SW(2 <span class="k">downto</span> 1) = "01" <span class="k">and</span> a &lt; b <span class="k">then</span> d(3) &lt;= MINUS; <span class="k">end</span> <span class="k">if</span>;
@@ -277,7 +277,7 @@ details[open] summary{ margin-bottom:8px; }
 <span class="ln">74</span>            <span class="k">end</span> <span class="k">if</span>;
 <span class="ln">75</span>        <span class="k">end</span> <span class="k">if</span>;</code></pre>
 <ul>
-  <li>A는 HEX6(<code>d(6)</code>), B는 HEX4(<code>d(4)</code>)에 한 자리로 띄웁니다. 십진수 모드에서도 입력 범위를 거르지 않으므로 A, B는 0~9로 맞춰 쓰는 것이 전제입니다.</li>
+  <li>A는 HEX6(<code>d(6)</code>), B는 HEX4(<code>d(4)</code>)에 한 자리로 띄웁니다. 65번 줄의 <code>a &lt; base and b &lt; base</code> 때문에 십진수 모드에서 A나 B가 10 이상이면 이 부분을 건너뛰어, 61번 줄의 기본값대로 표시가 모두 꺼집니다. 16진수 모드는 <code>base</code>가 16이라 0~15가 항상 통과합니다.</li>
   <li><b>나눗셈이 아닌 연산</b>(<code>/= "11"</code>) : 뺄셈에서 A가 B보다 작으면 HEX3에 <code>-</code>. 결과 <code>res</code>를 <code>base</code>로 나눈 몫이 HEX1(<code>d(1)</code>), 나머지가 HEX0(<code>d(0)</code>)이라 <b>두 자리</b>로 보입니다. 16진수 모드는 16으로, 십진수 모드는 10으로 나눕니다.<br>
       예) 15 × 15 = 225 → 16진수 모드: 225 ÷ 16 = 14(E), 225 mod 16 = 1 → <code>E1</code></li>
   <li><b>0으로 나눔</b>(<code>elsif b = 0</code>) → <code>E</code>, <code>r</code>, <code>r</code>을 HEX2~0에 띄워 <code> Err</code>가 됩니다.</li>
@@ -349,7 +349,7 @@ details[open] summary{ margin-bottom:8px; }
 <p>DE2 보드의 7세그먼트는 active-low 방식이라 해당 획에 0을 주면 켜지고 1을 주면 꺼지기 때문입니다. 숫자 0은 g만 끄면 되므로 <code>"1000000"</code>입니다.</p></details>
 
 <details><summary>Q15. 십진수 모드에서 A나 B에 10 이상을 넣으면 어떻게 되나요?</summary>
-<p>입력 범위를 따로 거르지 않습니다. A와 B는 16진수 글자(A~F) 그대로 표시되고 계산도 하지만, 곱셈 결과가 큰 경우(14 × 14 등)는 결과의 앞자리가 표 범위를 벗어나 이상한 모양이 될 수 있습니다. 십진수 모드는 0~9 입력을 전제로 하고, 0~F를 쓰려면 SW3을 1로 올려 16진수 모드로 바꿉니다.</p></details>
+<p>계산기 표시가 모두 꺼집니다. 한 자리 십진수는 0~9라서, 65번 줄 <code>elsif a &lt; base and b &lt; base</code>가 거짓이면 아무 것도 쓰지 않고 61번 줄의 빈칸 기본값이 남습니다. 줄 수는 늘지 않았습니다(<code>else</code>를 바꿈). 이 검사가 없으면 16진수 글자가 보이고, 14 × 14 같은 곱은 <code>res / 10</code>이 숫자표 범위(0~18)를 넘습니다. 0~F를 쓰려면 SW3을 1로 올려 16진수 모드로 바꿉니다.</p></details>
 
 <details><summary>Q16. <code>10 ** i</code>와 <code>for</code>는 무슨 뜻인가요?</summary>
 <p><code>**</code>는 거듭제곱이라 <code>10 ** i</code>는 10의 i제곱(1, 10, 100, 1000)입니다. <code>for i in 0 to 3 loop</code>는 i가 0~3일 때의 줄을 하드웨어로 4개 펼쳐 줍니다. 즉 <code>d(0) &lt;= cnt mod 10</code>, <code>d(1) &lt;= (cnt / 10) mod 10</code> 같은 네 줄과 같습니다.</p></details>
@@ -428,7 +428,7 @@ details[open] summary{ margin-bottom:8px; }
 <span class="ln">62</span>        <span class="k">if</span> SW(0) = '0' <span class="k">then</span>
 <span class="ln">63</span>            <span class="k">for</span> i <span class="k">in</span> 0 <span class="k">to</span> 3 <span class="k">loop</span> d(i) &lt;= (cnt / 10 ** i) <span class="k">mod</span> 10; <span class="k">end</span> <span class="k">loop</span>;
 <span class="ln">64</span>            <span class="k">if</span> cnt = 777 <span class="k">then</span> d(7 <span class="k">downto</span> 4) &lt;= (<span class="k">others</span> =&gt; 7); <span class="k">end</span> <span class="k">if</span>;
-<span class="ln">65</span>        <span class="k">else</span>
+<span class="ln">65</span>        <span class="k">elsif</span> a &lt; base <span class="k">and</span> b &lt; base <span class="k">then</span>
 <span class="ln">66</span>            d(6) &lt;= a;  d(4) &lt;= b;
 <span class="ln">67</span>            <span class="k">if</span> SW(2 <span class="k">downto</span> 1) /= "11" <span class="k">then</span>
 <span class="ln">68</span>                <span class="k">if</span> SW(2 <span class="k">downto</span> 1) = "01" <span class="k">and</span> a &lt; b <span class="k">then</span> d(3) &lt;= MINUS; <span class="k">end</span> <span class="k">if</span>;

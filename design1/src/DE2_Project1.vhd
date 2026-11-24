@@ -62,7 +62,7 @@ begin
         if SW(0) = '0' then
             for i in 0 to 3 loop d(i) <= (cnt / 10 ** i) mod 10; end loop;
             if cnt = 777 then d(7 downto 4) <= (others => 7); end if;
-        else
+        elsif a < base and b < base then
             d(6) <= a;  d(4) <= b;
             if SW(2 downto 1) /= "11" then
                 if SW(2 downto 1) = "01" and a < b then d(3) <= MINUS; end if;

@@ -27,6 +27,7 @@
 | 2026-11-23 | 사용자 요청으로 `docs/DE2_Project1_code_explanation.html`을 80줄 코드에 맞게 다시 작성(예전 169줄 기준 설명 교체, 예상 질문 16개) |
 | 2026-11-23 | 사용자 요청으로 발표 시연용 통합 이미지(`demo/`)를 작성. Design 1과 Design 2를 FPGA 하나에 넣고 `SW9`로 전환하는 상위 모듈(`demo/demo_top.v`, Verilog)과 빌드 스크립트. `DE2_Project1.vhd`는 수정하지 않고 그대로 넣음 |
 | 2026-11-11 | 보드에서 KEY 동시 입력 동작을 확인한 뒤, 설명 HTML의 "동시에 누르면 앞의 것만 적용" 문구를 "같은 클럭에 겹칠 때만"으로 정정. 코드는 수정하지 않음 |
+| 2026-11-24 | 사용자 요청으로 십진수 모드에서 A나 B가 10 이상이면 계산기 표시를 끄도록 65번 줄 `else`를 `elsif a < base and b < base then`으로 수정(80줄 유지), testbench에 10~15 입력 검사 추가(ModelSim 2129개 검사 통과, GHDL은 이 PC에 없음), README와 설명 HTML 갱신
 
 ## 확인할 일
 

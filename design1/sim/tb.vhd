@@ -100,7 +100,9 @@ begin
             SW(2 downto 1)   <= std_logic_vector(to_unsigned(op, 2));
             wait for 1 ns;
             exp(1 to 4) := ' ' & hx(a) & ' ' & hx(b);
-            if op = 3 and b = 0 then
+            if hexm = 0 and (a > 9 or b > 9) then
+                exp := "        ";                  -- decimal mode, A or B not 0~9: all blank
+            elsif op = 3 and b = 0 then
                 exp(5 to 8) := " Err";
             elsif op = 3 then
                 q := a / b;  rm := a mod b;
@@ -215,6 +217,15 @@ begin
             for a in 0 to 15 loop
                 for b in 0 to 15 loop
                     check_calc(a, b, op, 1);
+                end loop;
+            end loop;
+        end loop;
+        -- calculator, decimal mode, A or B = 10~15: nothing is shown. Run last: right after
+        -- such a product a valid input would see the old res for one delta (simulation only).
+        for op in 0 to 3 loop
+            for a in 0 to 15 loop
+                for b in 0 to 15 loop
+                    if a > 9 or b > 9 then check_calc(a, b, op, 0); end if;
                 end loop;
             end loop;
         end loop;
