@@ -10,7 +10,8 @@ ALTERA="${ALTERA:-/c/altera/13.0sp1}"
 SOF=demo/build/output_files/demo_time_limited.sof
 [ -f "$SOF" ] || { echo "no $SOF: run sh demo/build.sh first"; exit 1; }
 export CYGWIN=nodosfilewarning
-export PATH="$ALTERA/quartus/bin/cygwin/bin:$ALTERA/quartus/bin:$ALTERA/nios2eds/bin:$PATH"
+# Altera's old cygwin goes last: its tail cannot open /dev/null from Git Bash.
+export PATH="$ALTERA/quartus/bin:$ALTERA/nios2eds/bin:$PATH:$ALTERA/quartus/bin/cygwin/bin"
 
 # 1. FPGA. quartus_pgm asks "enter i or q" after programming and must keep waiting there:
 #    an open, empty stdin keeps it waiting.
