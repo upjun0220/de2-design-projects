@@ -10,6 +10,6 @@ static int clamp(int v, int lo, int hi)
 
 void screen_xy(const pen_pos *p, int *sx, int *sy)
 {
-    *sx = clamp(96 + p->x / SCREEN_SCALE, 0, 191);
-    *sy = clamp(96 - p->y / SCREEN_SCALE, 0, 191);
+    *sx = clamp(96 + VIEW_SIGN * p->x / SCREEN_SCALE, 0, 191);   /* VIEW_FLIP: turned 180 deg */
+    *sy = clamp(96 - VIEW_SIGN * p->y / SCREEN_SCALE, 0, 191);
 }

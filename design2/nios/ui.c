@@ -211,9 +211,9 @@ void ui_pen(const pen_pos *p, int down, int present)
         return;
     }
     put(RX + 7, 2, down ? "DOWN" : "UP  ", col, C_BG);
-    put_tenths(RX + 2, 3, p->x, 1, C_TEXT, C_BG);
+    put_tenths(RX + 2, 3, VIEW_SIGN * p->x, 1, C_TEXT, C_BG);     /* as seen on the screen */
     put(RX + 7, 3, " mm", C_TEXT, C_BG);
-    put_tenths(RX + 16, 3, p->y, 1, C_TEXT, C_BG);
+    put_tenths(RX + 16, 3, VIEW_SIGN * p->y, 1, C_TEXT, C_BG);
     put(RX + 21, 3, " mm", C_TEXT, C_BG);
     put_tenths(RX + 2, 4, p->z < 0 ? 0 : p->z, 0, C_TEXT, C_BG);
     put(RX + 7, 4, " mm", C_TEXT, C_BG);
@@ -224,7 +224,7 @@ void ui_pen(const pen_pos *p, int down, int present)
     tick(RX + 12, 4, 16, Z_UP / 20, z_eighths, C_DIM, col);
     put_num(RX + 5, 5, (uint32_t)ui_tilt_deg(p->ux, p->uy), 2, C_TEXT, C_BG);
     put(RX + 7, 5, " deg", C_TEXT, C_BG);
-    ui_cell(RX + 21, 5, (uint8_t)(G_ARROW_E + ui_octant(p->ux, p->uy)), C_BG << 4 | C_CYAN);
+    ui_cell(RX + 21, 5, (uint8_t)(G_ARROW_E + ui_octant(VIEW_SIGN * p->ux, VIEW_SIGN * p->uy)), C_BG << 4 | C_CYAN);
 }
 
 /* ---- SENSORS panel, rows 7..9. Placed like the real corners of the board. ---- */
@@ -236,7 +236,8 @@ void ui_sensors(const int32_t lsb[12], uint32_t err)
     int k;
     header(7, "SENSORS |B| uT");
     for (k = 0; k < 4; k++) {
-        int c = col_of[k], r = row_of[k], e;
+        int at = VIEW_FLIP ? 3 - k : k;          /* turned 180 deg: the opposite corner */
+        int c = col_of[at], r = row_of[at], e;
         int32_t x = lsb[3*k] >> 3, y = lsb[3*k + 1] >> 3, z = (lsb[3*k + 2] * 1612 / 1000) >> 3;
         uint32_t mag = isqrt((uint32_t)(x*x + y*y + z*z)) << 3;   /* field strength in X/Y LSBs */
         put(c, r, "S", C_TEXT, C_BG);

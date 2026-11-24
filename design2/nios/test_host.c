@@ -196,12 +196,12 @@ static void test_screen(void)
     int x, y;
     screen_xy(&p, &x, &y);
     CHECK("centre x", x, 96); CHECK("centre y", y, 96);
-    p.x = 5 * 60; p.y = 5 * 30;      /* right and up on the board */
+    p.x = 5 * 60; p.y = 5 * 30;      /* right and up on the board (left and down with VIEW_FLIP) */
     screen_xy(&p, &x, &y);
-    CHECK("right", x, 156); CHECK("up is smaller y", y, 66);
+    CHECK("right", x, VIEW_FLIP ? 36 : 156); CHECK("up is smaller y", y, VIEW_FLIP ? 126 : 66);
     p.x = 30000; p.y = -30000;
     screen_xy(&p, &x, &y);
-    CHECK("clamp x", x, 191); CHECK("clamp y", y, 191);
+    CHECK("clamp x", x, VIEW_FLIP ? 0 : 191); CHECK("clamp y", y, VIEW_FLIP ? 0 : 191);
 }
 
 /* ---- ui.c: the screen is kept in arrays here ---- */
@@ -287,11 +287,12 @@ static void test_ui(void)
     check_row("title", 0, 0, " DE2 MAGIC PEN  signature identification     MODE IDENTIFY  DTW HW  50Hz  S 4/4 ");
     check_row("frame", 1, 0, "~~ PAD 96 x 96 mm ~");
     check_row("state", 2, 51, "state  DOWN");
-    check_row("xy", 3, 51, "x +12.4 mm    y  -8.1 mm");
+    check_row("xy", 3, 51, VIEW_FLIP ? "x -12.4 mm    y  +8.1 mm" : "x +12.4 mm    y  -8.1 mm");
     check_row("z", 4, 51, "z   8.8 mm  88883 || ");       /* 8.8 mm = 35 steps = 4 cells + 3/8; marks at 12 and 15 mm */
     check_row("tilt", 5, 51, "tilt 30 deg   toward ~");
-    check_row("sensor 0", 9, 51, "S0 84    100");           /* 400 LSB = 100 uT: 12 steps = 1 cell + 4/8 */
-    check_row("sensor 2", 9, 66, "S2 NO ANSWER");
+    /* 400 LSB = 100 uT: 12 steps = 1 cell + 4/8. VIEW_FLIP: S0 top right, S2 top left */
+    check_row("sensor 0", VIEW_FLIP ? 8 : 9, VIEW_FLIP ? 66 : 51, "S0 84    100");
+    check_row("sensor 2", VIEW_FLIP ? 8 : 9, VIEW_FLIP ? 51 : 66, "S2 NO ANSWER");
     check_row("P1", 12, 51, "P1 888|888881        9120  ");
     check_row("P2", 13, 51, "P2 883|              2412 <");
     check_row("P3", 14, 51, "P3 8888|88888886    12740  ");

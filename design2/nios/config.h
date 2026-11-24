@@ -100,6 +100,12 @@
  * 2026-11-18: modules swapped on the pad, S0<->S3 and S1<->S2. */
 #define SENSOR_CFG { 0x01B, 0x01A, 0x019, 0x018 }
 
+/* Screen only: 1 turns the pad, the cursor, the pen numbers and the SENSORS panel by
+ * 180 degrees, for a pad placed the other way round in front of the user (2026-11-24).
+ * Positions, signatures and the mounting values below stay in the board axes. */
+#define VIEW_FLIP 1
+#define VIEW_SIGN (VIEW_FLIP ? -1 : 1)
+
 /* How the sensors and the magnet are mounted. pc/gate1.py --find-mount finds these
  * from a measurement. ESTIMATE until then.
  * MOUNT_ROT: quarter turns (counter-clockwise, seen from above) of each sensor
