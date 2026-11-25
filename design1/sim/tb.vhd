@@ -66,12 +66,10 @@ begin
             end if;
         end procedure;
 
-        -- counter shows v on HEX3~0 and binary on LEDR, jackpot at 777 : 7777 and all green LEDs on
+        -- counter shows v on HEX3~0 and binary on LEDR, HEX7~4 always blank, jackpot at 777 : all green LEDs on
         procedure cnt_is(v : integer; name : string) is
-            variable pre : string(1 to 4);
         begin
-            if v = 777 then pre := "7777"; else pre := "    "; end if;
-            compare(pre & hx(v / 1000) & hx((v / 100) mod 10) & hx((v / 10) mod 10) & hx(v mod 10), name);
+            compare("    " & hx(v / 1000) & hx((v / 100) mod 10) & hx((v / 10) mod 10) & hx(v mod 10), name);
             checks := checks + 1;
             -- red = value in binary always, green = all off, at the jackpot all on
             if LEDR /= std_logic_vector(to_unsigned(v, 18)) or

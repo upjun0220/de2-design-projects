@@ -39,7 +39,7 @@ ul{padding-left:1.2em}
 <body>
 <main>
 <h1>DE2 Design Project #1 — 줄별 설명</h1>
-<p class="sub">카운터 + 한 자리 계산기 (보너스 포함) · <code>design1/src/DE2_Project1.vhd</code> 80줄 · 발표 준비용</p>
+<p class="sub">카운터 + 한 자리 계산기 (보너스 포함) · <code>design1/src/DE2_Project1.vhd</code> 79줄 · 발표 준비용</p>
 <nav><a href="#s1">머리말 주석</a><a href="#s2">라이브러리와 입출력 핀</a><a href="#s3">선언부 — 상수, 표, 신호</a><a href="#s4">카운터</a><a href="#s5">LED와 잭팟 판정</a><a href="#s6">계산기</a><a href="#s7">7세그 표시 결정</a><a href="#s9">출력 연결</a><a href="#orig">주석이 있던 원본</a><a href="#qa">예상 질문</a><a href="#notes">알아둘 점</a></nav>
 
 <div class="flow">
@@ -47,7 +47,7 @@ ul{padding-left:1.2em}
 <ol>
 <li>입력: 스위치 <code>SW</code>와 버튼 <code>KEY</code>를 읽는다. <code>SW0</code>이 카운터/계산기를 고른다.</li>
 <li>카운터 모드: 버튼을 누르는 순간 <code>cnt</code>가 바뀐다(0~9999). 계산기 모드: 스위치 값으로 매번 다시 계산한다.</li>
-<li>표시: 결과를 문자 코드로 바꿔 7세그(HEX)와 LED(LEDR/LEDG)에 내보낸다. 777이면 잭팟 효과가 나온다.</li>
+<li>표시: 결과를 문자 코드로 바꿔 7세그(HEX)와 LED(LEDR/LEDG)에 내보낸다. 777이면 초록 LED가 모두 켜진다(잭팟).</li>
 </ol>
 </div>
 
@@ -56,7 +56,7 @@ ul{padding-left:1.2em}
 <div class="row"><div class="code gone"><div class="rng">코드에서 삭제한 주석 (원문)</div><pre>-- SW0 : 0 = counter, 1 = calculator</pre></div><div class="why"><code>SW0</code>이 카운터/계산기를 고르는 스위치다. 0이면 카운터, 1이면 계산기.</div></div>
 <div class="row"><div class="code gone"><div class="rng">코드에서 삭제한 주석 (원문)</div><pre>-- Counter    : SW1 = mode, KEY3/KEY2/KEY1 = change value, KEY0 = reset
 --              HEX3~0 = value, LEDR = value in binary
---              jackpot at 777 : green LEDs stay on, HEX7~4 show 7777</pre></div><div class="why">카운터 모드 요약. <code>SW1</code>은 증감 크기를 고르고(0: +1/+2/-1, 1: +5/+10/-5), <code>KEY3/KEY2/KEY1</code>이 값을 바꾸고 <code>KEY0</code>이 0으로 리셋한다. 값은 HEX3~0에 십진수로, LEDR에 이진수로 나온다. 값이 777이면 잭팟(초록 LED가 켜진 채 유지, HEX7~4에 7777).</div></div>
+--              jackpot at 777 : green LEDs stay on</pre></div><div class="why">카운터 모드 요약. <code>SW1</code>은 증감 크기를 고르고(0: +1/+2/-1, 1: +5/+10/-5), <code>KEY3/KEY2/KEY1</code>이 값을 바꾸고 <code>KEY0</code>이 0으로 리셋한다. 값은 HEX3~0에 십진수로, LEDR에 이진수로 나온다. 값이 777이면 잭팟(초록 LED가 켜진 채 유지).</div></div>
 <div class="row"><div class="code gone"><div class="rng">코드에서 삭제한 주석 (원문)</div><pre>-- Calculator : SW17~14 = A, SW13~10 = B, SW2~1 = operation (00 +, 01 -, 10 *, 11 /)
 --              SW3 = 0 : decimal (A, B = 0~9),  SW3 = 1 : hexadecimal (0~F)
 --              A on HEX6, B on HEX4, result on HEX3~0
@@ -128,31 +128,30 @@ ul{padding-left:1.2em}
 <div class="row"><div class="code"><div class="rng">61줄</div><pre><span class="ln">61</span>        d &lt;= (others =&gt; BLANK);</pre></div><div class="why">먼저 8칸 모두 빈칸으로 둔다. <code>(others =&gt; BLANK)</code>는 배열의 모든 칸을 한 값으로 채운다는 뜻이다. 아래에서 필요한 칸만 덮어쓴다.</div></div>
 <div class="row"><div class="code"><div class="rng">62줄</div><pre><span class="ln">62</span>        if SW(0) = &#x27;0&#x27; then</pre></div><div class="why">카운터 모드.</div></div>
 <div class="row"><div class="code"><div class="rng">63줄</div><pre><span class="ln">63</span>            for i in 0 to 3 loop d(i) &lt;= (cnt / 10 ** i) mod 10; end loop;</pre></div><div class="why">값을 자릿수로 쪼갠다. <code>i</code>번째 자리는 <code>(cnt / 10 ** i) mod 10</code>이다. <code>10 ** i</code>는 10의 i제곱(1, 10, 100, 1000)이라 i=0이 일의 자리(HEX0), i=3이 천의 자리(HEX3)다. 예) 1234, i=2 → 1234/100=12, 12 mod 10=2. <code>for</code> 반복문은 합성할 때 4줄로 펼쳐진다.</div></div>
-<div class="row"><div class="code"><div class="rng">64줄</div><pre><span class="ln">64</span>            if cnt = 777 then d(7 downto 4) &lt;= (others =&gt; 7); end if;</pre></div><div class="why">잭팟(777)이면 HEX7~4에 7을 4개 띄운다. <code>d(7 downto 4)</code>는 배열의 네 칸을 한꺼번에 가리킨다.</div></div>
-<div class="row"><div class="code"><div class="rng">65줄</div><pre><span class="ln">65</span>        elsif a &lt; base and b &lt; base then</pre></div><div class="why">계산기 모드. 단, 십진수 모드(<code>base</code> = 10)에서 A나 B가 10 이상이면 거짓이 되어 아무 것도 쓰지 않으므로 61줄의 기본값대로 표시가 모두 꺼진다. 한 자리 십진수는 0~9이기 때문이다. 16진수 모드는 <code>base</code> = 16이라 0~15가 항상 통과한다.</div></div>
-<div class="row"><div class="code"><div class="rng">66줄</div><pre><span class="ln">66</span>            d(6) &lt;= a;  d(4) &lt;= b;</pre></div><div class="why">A는 HEX6, B는 HEX4에 표시.</div></div>
-<div class="row"><div class="code"><div class="rng">67줄</div><pre><span class="ln">67</span>            if SW(2 downto 1) /= &quot;11&quot; then</pre></div><div class="why"><code>/=</code>는 '같지 않다'. 나눗셈이 아닌 연산(+, -, ×)이면 아래 두 단계로 표시한다.</div></div>
-<div class="row"><div class="code"><div class="rng">68줄</div><pre><span class="ln">68</span>                if SW(2 downto 1) = &quot;01&quot; and a &lt; b then d(3) &lt;= MINUS; end if;</pre></div><div class="why">뺄셈에서 A가 B보다 작으면 결과가 음수이므로 HEX3에 '-'.</div></div>
-<div class="row"><div class="code"><div class="rng">69줄</div><pre><span class="ln">69</span>                d(1) &lt;= res / base;  d(0) &lt;= res mod base;</pre></div><div class="why">결과를 <code>base</code>로 나눈 몫이 HEX1, 나머지가 HEX0이다. 16진수 모드는 16으로 나눠 225 → E1, 십진수 모드는 10으로 나눠 십의 자리와 일의 자리가 된다(최대 81).</div></div>
-<div class="row"><div class="code"><div class="rng">70~71줄</div><pre><span class="ln">70</span>            elsif b = 0 then
-<span class="ln">71</span>                d(2) &lt;= CH_E;  d(1) &lt;= CH_R;  d(0) &lt;= CH_R;</pre></div><div class="why">0으로 나눔: HEX2~0에 ' Err'(E, r, r).</div></div>
-<div class="row"><div class="code"><div class="rng">72~73줄</div><pre><span class="ln">72</span>            else
-<span class="ln">73</span>                d(3) &lt;= a / b;  d(1) &lt;= CH_R;  d(0) &lt;= a mod b;</pre></div><div class="why">나눗셈: HEX3=몫, HEX1='r', HEX0=나머지. 예) 7÷3 → <code>2 r1</code>. 이 줄은 B≠0일 때만 실행되므로 0으로 나누는 일이 없다.</div></div>
-<div class="row"><div class="code"><div class="rng">74~76줄</div><pre><span class="ln">74</span>            end if;
-<span class="ln">75</span>        end if;
-<span class="ln">76</span>    end process;</pre></div><div class="why">열려 있던 <code>if</code>들과 <code>process</code>를 닫는다.</div></div>
+<div class="row"><div class="code"><div class="rng">64줄</div><pre><span class="ln">64</span>        elsif a &lt; base and b &lt; base then</pre></div><div class="why">계산기 모드. 단, 십진수 모드(<code>base</code> = 10)에서 A나 B가 10 이상이면 거짓이 되어 아무 것도 쓰지 않으므로 61줄의 기본값대로 표시가 모두 꺼진다. 한 자리 십진수는 0~9이기 때문이다. 16진수 모드는 <code>base</code> = 16이라 0~15가 항상 통과한다.</div></div>
+<div class="row"><div class="code"><div class="rng">65줄</div><pre><span class="ln">65</span>            d(6) &lt;= a;  d(4) &lt;= b;</pre></div><div class="why">A는 HEX6, B는 HEX4에 표시.</div></div>
+<div class="row"><div class="code"><div class="rng">66줄</div><pre><span class="ln">66</span>            if SW(2 downto 1) /= &quot;11&quot; then</pre></div><div class="why"><code>/=</code>는 '같지 않다'. 나눗셈이 아닌 연산(+, -, ×)이면 아래 두 단계로 표시한다.</div></div>
+<div class="row"><div class="code"><div class="rng">67줄</div><pre><span class="ln">67</span>                if SW(2 downto 1) = &quot;01&quot; and a &lt; b then d(3) &lt;= MINUS; end if;</pre></div><div class="why">뺄셈에서 A가 B보다 작으면 결과가 음수이므로 HEX3에 '-'.</div></div>
+<div class="row"><div class="code"><div class="rng">68줄</div><pre><span class="ln">68</span>                d(1) &lt;= res / base;  d(0) &lt;= res mod base;</pre></div><div class="why">결과를 <code>base</code>로 나눈 몫이 HEX1, 나머지가 HEX0이다. 16진수 모드는 16으로 나눠 225 → E1, 십진수 모드는 10으로 나눠 십의 자리와 일의 자리가 된다(최대 81).</div></div>
+<div class="row"><div class="code"><div class="rng">69~70줄</div><pre><span class="ln">69</span>            elsif b = 0 then
+<span class="ln">70</span>                d(2) &lt;= CH_E;  d(1) &lt;= CH_R;  d(0) &lt;= CH_R;</pre></div><div class="why">0으로 나눔: HEX2~0에 ' Err'(E, r, r).</div></div>
+<div class="row"><div class="code"><div class="rng">71~72줄</div><pre><span class="ln">71</span>            else
+<span class="ln">72</span>                d(3) &lt;= a / b;  d(1) &lt;= CH_R;  d(0) &lt;= a mod b;</pre></div><div class="why">나눗셈: HEX3=몫, HEX1='r', HEX0=나머지. 예) 7÷3 → <code>2 r1</code>. 이 줄은 B≠0일 때만 실행되므로 0으로 나누는 일이 없다.</div></div>
+<div class="row"><div class="code"><div class="rng">73~75줄</div><pre><span class="ln">73</span>            end if;
+<span class="ln">74</span>        end if;
+<span class="ln">75</span>    end process;</pre></div><div class="why">열려 있던 <code>if</code>들과 <code>process</code>를 닫는다.</div></div>
 </section>
 <section id="s9"><h2>출력 연결</h2><p class="intro">문자 코드를 7세그 패턴으로 바꿔 핀으로 내보낸다.</p>
-<div class="row"><div class="code"><div class="rng">78~79줄</div><pre><span class="ln">78</span>    HEX0 &lt;= SEG7(d(0));  HEX1 &lt;= SEG7(d(1));  HEX2 &lt;= SEG7(d(2));  HEX3 &lt;= SEG7(d(3));
-<span class="ln">79</span>    HEX4 &lt;= SEG7(d(4));  HEX5 &lt;= SEG7(d(5));  HEX6 &lt;= SEG7(d(6));  HEX7 &lt;= SEG7(d(7));</pre></div><div class="why">문자 코드 <code>d(N)</code>을 <code>SEG7</code> 표에서 찾아 <code>HEXN</code> 핀으로 내보낸다.</div></div>
-<div class="row"><div class="code"><div class="rng">80줄</div><pre><span class="ln">80</span>end behavior;</pre></div><div class="why">architecture 끝.</div></div>
+<div class="row"><div class="code"><div class="rng">77~78줄</div><pre><span class="ln">77</span>    HEX0 &lt;= SEG7(d(0));  HEX1 &lt;= SEG7(d(1));  HEX2 &lt;= SEG7(d(2));  HEX3 &lt;= SEG7(d(3));
+<span class="ln">78</span>    HEX4 &lt;= SEG7(d(4));  HEX5 &lt;= SEG7(d(5));  HEX6 &lt;= SEG7(d(6));  HEX7 &lt;= SEG7(d(7));</pre></div><div class="why">문자 코드 <code>d(N)</code>을 <code>SEG7</code> 표에서 찾아 <code>HEXN</code> 핀으로 내보낸다.</div></div>
+<div class="row"><div class="code"><div class="rng">79줄</div><pre><span class="ln">79</span>end behavior;</pre></div><div class="why">architecture 끝.</div></div>
 </section>
 
-<section id="orig"><h2>주석이 있던 원본</h2><p class="intro">저장소의 코드에는 주석이 없다. 지운 주석을 포함한 원본(97줄)이다.</p><details><summary>펼치기</summary><pre><span class="ln">1</span>-- DE2 Design Project #1 : Counter + One Digit Calculator (with bonus)
+<section id="orig"><h2>주석이 있던 원본</h2><p class="intro">저장소의 코드에는 주석이 없다. 지운 주석을 포함한 원본(96줄)이다.</p><details><summary>펼치기</summary><pre><span class="ln">1</span>-- DE2 Design Project #1 : Counter + One Digit Calculator (with bonus)
 <span class="ln">2</span>-- SW0 : 0 = counter, 1 = calculator
 <span class="ln">3</span>-- Counter    : SW1 = mode, KEY3/KEY2/KEY1 = change value, KEY0 = reset
 <span class="ln">4</span>--              HEX3~0 = value, LEDR = value in binary
-<span class="ln">5</span>--              jackpot at 777 : green LEDs stay on, HEX7~4 show 7777
+<span class="ln">5</span>--              jackpot at 777 : green LEDs stay on
 <span class="ln">6</span>-- Calculator : SW17~14 = A, SW13~10 = B, SW2~1 = operation (00 +, 01 -, 10 *, 11 /)
 <span class="ln">7</span>--              SW3 = 0 : decimal (A, B = 0~9),  SW3 = 1 : hexadecimal (0~F)
 <span class="ln">8</span>--              A on HEX6, B on HEX4, result on HEX3~0
@@ -228,27 +227,26 @@ ul{padding-left:1.2em}
 <span class="ln">78</span>        d &lt;= (others =&gt; BLANK);          -- everything off first
 <span class="ln">79</span>        if SW(0) = &#x27;0&#x27; then              -- counter : thousands, hundreds, tens, ones
 <span class="ln">80</span>            for i in 0 to 3 loop d(i) &lt;= (cnt / 10 ** i) mod 10; end loop;
-<span class="ln">81</span>            if cnt = 777 then d(7 downto 4) &lt;= (others =&gt; 7); end if;   -- jackpot : show 7777
-<span class="ln">82</span>        elsif a &lt; base and b &lt; base then   -- calculator (decimal mode : all blank if A or B is 10 or more)
-<span class="ln">83</span>            d(6) &lt;= a;  d(4) &lt;= b;
-<span class="ln">84</span>            if SW(2 downto 1) /= &quot;11&quot; then                   -- + - * : 2 digits
-<span class="ln">85</span>                if SW(2 downto 1) = &quot;01&quot; and a &lt; b then d(3) &lt;= MINUS; end if;   -- MINUS = code 17 = &#x27;-&#x27; (d(3) is an integer code, not a character)
-<span class="ln">86</span>                d(1) &lt;= res / base;  d(0) &lt;= res mod base;
-<span class="ln">87</span>            elsif b = 0 then                                 -- divide by zero : &quot; Err&quot;
-<span class="ln">88</span>                d(2) &lt;= CH_E;  d(1) &lt;= CH_R;  d(0) &lt;= CH_R;
-<span class="ln">89</span>            else                                             -- division : &quot;quotient r remainder&quot;
-<span class="ln">90</span>                d(3) &lt;= a / b;  d(1) &lt;= CH_R;  d(0) &lt;= a mod b;
-<span class="ln">91</span>            end if;
-<span class="ln">92</span>        end if;
-<span class="ln">93</span>    end process;
-<span class="ln">94</span>
-<span class="ln">95</span>    HEX0 &lt;= SEG7(d(0));  HEX1 &lt;= SEG7(d(1));  HEX2 &lt;= SEG7(d(2));  HEX3 &lt;= SEG7(d(3));
-<span class="ln">96</span>    HEX4 &lt;= SEG7(d(4));  HEX5 &lt;= SEG7(d(5));  HEX6 &lt;= SEG7(d(6));  HEX7 &lt;= SEG7(d(7));
-<span class="ln">97</span>end behavior;</pre></details></section>
+<span class="ln">81</span>        elsif a &lt; base and b &lt; base then   -- calculator (decimal mode : all blank if A or B is 10 or more)
+<span class="ln">82</span>            d(6) &lt;= a;  d(4) &lt;= b;
+<span class="ln">83</span>            if SW(2 downto 1) /= &quot;11&quot; then                   -- + - * : 2 digits
+<span class="ln">84</span>                if SW(2 downto 1) = &quot;01&quot; and a &lt; b then d(3) &lt;= MINUS; end if;   -- MINUS = code 17 = &#x27;-&#x27; (d(3) is an integer code, not a character)
+<span class="ln">85</span>                d(1) &lt;= res / base;  d(0) &lt;= res mod base;
+<span class="ln">86</span>            elsif b = 0 then                                 -- divide by zero : &quot; Err&quot;
+<span class="ln">87</span>                d(2) &lt;= CH_E;  d(1) &lt;= CH_R;  d(0) &lt;= CH_R;
+<span class="ln">88</span>            else                                             -- division : &quot;quotient r remainder&quot;
+<span class="ln">89</span>                d(3) &lt;= a / b;  d(1) &lt;= CH_R;  d(0) &lt;= a mod b;
+<span class="ln">90</span>            end if;
+<span class="ln">91</span>        end if;
+<span class="ln">92</span>    end process;
+<span class="ln">93</span>
+<span class="ln">94</span>    HEX0 &lt;= SEG7(d(0));  HEX1 &lt;= SEG7(d(1));  HEX2 &lt;= SEG7(d(2));  HEX3 &lt;= SEG7(d(3));
+<span class="ln">95</span>    HEX4 &lt;= SEG7(d(4));  HEX5 &lt;= SEG7(d(5));  HEX6 &lt;= SEG7(d(6));  HEX7 &lt;= SEG7(d(7));
+<span class="ln">96</span>end behavior;</pre></details></section>
 
-<section id="qa"><h2>발표 예상 질문</h2><p class="intro">코드를 보지 않고 답해 보면 좋은 질문.</p><details><summary>버튼을 길게 눌러도 왜 한 번만 오르나?</summary><p>38줄의 <code>ed</code>는 <code>k2</code>가 1이고 <code>k1</code>이 0인 순간(1→0으로 바뀐 때)에만 1이다. 누르고 있는 동안은 <code>k2</code>와 <code>k1</code>이 모두 0이라 <code>ed</code>=0이고, 40~41줄의 <code>n</code>은 값을 그대로 둔다.</p></details><details><summary>뺄셈이 음수면 어떻게 처리하나?</summary><p>57줄에서 <code>abs(a - b)</code>로 큰 수에서 작은 수를 뺀 절댓값을 <code>res</code>에 넣는다. 표시 단계(68줄)가 <code>a &lt; b</code>이면 HEX3에 '-'를 붙인다.</p></details><details><summary>나머지는 어떻게 구하나?</summary><p>73줄: 몫은 <code>a / b</code>, 나머지는 <code>a mod b</code>로 구한다. 0으로 나누는 경우는 70줄에서 먼저 걸러 낸다.</p></details><details><summary>16진수 결과는 어떻게 두 자리로 나누나?</summary><p>69줄: 결과를 <code>base</code>(16)로 나눈 몫이 HEX1, 나머지가 HEX0. 225는 14와 1이라서 E1이다. 십진수 모드에서는 <code>base</code>가 10이라 같은 줄이 십의 자리와 일의 자리를 만든다.</p></details><details><summary>동시에 버튼 두 개를 누르면?</summary><p>40~41줄의 <code>when ... else</code> 체인이 위에서부터 하나만 고르므로 KEY0 &gt; KEY3 &gt; KEY2 &gt; KEY1 순서로 하나만 적용되지만, 이것은 두 눌림이 <b>같은 클럭(20 ns)</b>에 겹칠 때만이다. 손으로 누르면 몇 ms 어긋나서 두 에지가 따로 잡혀 둘 다 적용된다. 예) KEY3과 KEY2를 거의 동시에 누르면 +1 후 +2로 +3, KEY3을 먼저 누르고 KEY0을 누르면 0, KEY0을 먼저 누르고 KEY3을 누르면 1(보드에서 확인). 동시 입력에 대한 규칙은 과제에 따로 없다.</p></details><details><summary>777일 때 LEDR의 이진수 표시는 어떻게 되나?</summary><p>51~52줄: 잭팟이어도 LEDR은 계속 이진수(777 = 1100001001)를 보여 주고, 초록 LED(LEDG)가 모두 켜져 있다.</p></details><details><summary><code>integer</code>와 <code>unsigned</code>는 왜 나눠 쓰나?</summary><p><code>integer</code>는 범위만 정하면 되는 숫자라서 계산과 비교(<code>/</code>, <code>mod</code>, <code>&gt;</code>)에 쓴다(<code>cnt</code>, <code>a</code>, <code>b</code>). <code>unsigned</code>는 비트 묶음을 음수 없는 숫자로 보는 타입이라 스위치 비트를 숫자로 바꿀 때(<code>to_integer(unsigned(SW(17 downto 14)))</code>) 쓴다.</p></details><details><summary><code>mod 10</code>은 무슨 뜻인가?</summary><p>10으로 나눈 나머지, 즉 십진수의 마지막 자리다. <code>cnt mod 10</code>이 일의 자리, <code>(cnt / 10) mod 10</code>이 십의 자리다.</p></details><details><summary><code>MINUS</code>를 놔두고 <code>'-'</code>를 쓰면 안 되나?</summary><p><code>d(3)</code>는 문자 코드(정수 0~18)를 담는 칸이라서 문자 <code>'-'</code>를 넣을 수 없다. <code>MINUS</code>는 코드 17이고, 7세그 표 17번 칸이 '-' 모양이다.</p></details><details><summary>HEX7~4에 7777은 왜 띄우나?</summary><p>카운터 모드에서 쓰지 않는 왼쪽 네 칸을 잭팟 연출에 쓴다. 777일 때만 <code>d(7 downto 4)</code>를 7로 덮어쓴다(64줄).</p></details><details><summary><code>d &lt;= (others =&gt; BLANK)</code>는 무슨 뜻인가?</summary><p>61줄: 배열 <code>d</code>의 8칸을 전부 BLANK로 채운다. <code>others</code>는 '나머지 전부'다. 이 아래에서 필요한 칸만 다시 대입하는데, 같은 process 안에서는 마지막 대입이 이긴다.</p></details><details><summary><code>10 ** i</code>는 무슨 뜻인가?</summary><p>63줄: <code>**</code>는 거듭제곱이라 10의 i제곱이다. 1, 10, 100, 1000으로 나눈 뒤 10으로 나눈 나머지를 취하면 일, 십, 백, 천의 자리가 된다.</p></details><details><summary>십진수 모드에서 A나 B에 10 이상을 넣으면?</summary><p>계산기 표시(A, B, 결과)가 모두 꺼진다. 65줄 <code>elsif a &lt; base and b &lt; base then</code>이 거짓이면 아무 것도 쓰지 않아 61줄의 빈칸 기본값이 남는다. 한 자리 십진수는 0~9이기 때문이다. 0~F를 쓰려면 SW3을 1로 올려 16진수 모드로 바꾼다.</p></details></section>
+<section id="qa"><h2>발표 예상 질문</h2><p class="intro">코드를 보지 않고 답해 보면 좋은 질문.</p><details><summary>버튼을 길게 눌러도 왜 한 번만 오르나?</summary><p>38줄의 <code>ed</code>는 <code>k2</code>가 1이고 <code>k1</code>이 0인 순간(1→0으로 바뀐 때)에만 1이다. 누르고 있는 동안은 <code>k2</code>와 <code>k1</code>이 모두 0이라 <code>ed</code>=0이고, 40~41줄의 <code>n</code>은 값을 그대로 둔다.</p></details><details><summary>뺄셈이 음수면 어떻게 처리하나?</summary><p>57줄에서 <code>abs(a - b)</code>로 큰 수에서 작은 수를 뺀 절댓값을 <code>res</code>에 넣는다. 표시 단계(67줄)가 <code>a &lt; b</code>이면 HEX3에 '-'를 붙인다.</p></details><details><summary>나머지는 어떻게 구하나?</summary><p>72줄: 몫은 <code>a / b</code>, 나머지는 <code>a mod b</code>로 구한다. 0으로 나누는 경우는 69줄에서 먼저 걸러 낸다.</p></details><details><summary>16진수 결과는 어떻게 두 자리로 나누나?</summary><p>68줄: 결과를 <code>base</code>(16)로 나눈 몫이 HEX1, 나머지가 HEX0. 225는 14와 1이라서 E1이다. 십진수 모드에서는 <code>base</code>가 10이라 같은 줄이 십의 자리와 일의 자리를 만든다.</p></details><details><summary>동시에 버튼 두 개를 누르면?</summary><p>40~41줄의 <code>when ... else</code> 체인이 위에서부터 하나만 고르므로 KEY0 &gt; KEY3 &gt; KEY2 &gt; KEY1 순서로 하나만 적용되지만, 이것은 두 눌림이 <b>같은 클럭(20 ns)</b>에 겹칠 때만이다. 손으로 누르면 몇 ms 어긋나서 두 에지가 따로 잡혀 둘 다 적용된다. 예) KEY3과 KEY2를 거의 동시에 누르면 +1 후 +2로 +3, KEY3을 먼저 누르고 KEY0을 누르면 0, KEY0을 먼저 누르고 KEY3을 누르면 1(보드에서 확인). 동시 입력에 대한 규칙은 과제에 따로 없다.</p></details><details><summary>777일 때 LEDR의 이진수 표시는 어떻게 되나?</summary><p>51~52줄: 잭팟이어도 LEDR은 계속 이진수(777 = 1100001001)를 보여 주고, 초록 LED(LEDG)가 모두 켜져 있다.</p></details><details><summary><code>integer</code>와 <code>unsigned</code>는 왜 나눠 쓰나?</summary><p><code>integer</code>는 범위만 정하면 되는 숫자라서 계산과 비교(<code>/</code>, <code>mod</code>, <code>&gt;</code>)에 쓴다(<code>cnt</code>, <code>a</code>, <code>b</code>). <code>unsigned</code>는 비트 묶음을 음수 없는 숫자로 보는 타입이라 스위치 비트를 숫자로 바꿀 때(<code>to_integer(unsigned(SW(17 downto 14)))</code>) 쓴다.</p></details><details><summary><code>mod 10</code>은 무슨 뜻인가?</summary><p>10으로 나눈 나머지, 즉 십진수의 마지막 자리다. <code>cnt mod 10</code>이 일의 자리, <code>(cnt / 10) mod 10</code>이 십의 자리다.</p></details><details><summary><code>MINUS</code>를 놔두고 <code>'-'</code>를 쓰면 안 되나?</summary><p><code>d(3)</code>는 문자 코드(정수 0~18)를 담는 칸이라서 문자 <code>'-'</code>를 넣을 수 없다. <code>MINUS</code>는 코드 17이고, 7세그 표 17번 칸이 '-' 모양이다.</p></details><details><summary><code>d &lt;= (others =&gt; BLANK)</code>는 무슨 뜻인가?</summary><p>61줄: 배열 <code>d</code>의 8칸을 전부 BLANK로 채운다. <code>others</code>는 '나머지 전부'다. 이 아래에서 필요한 칸만 다시 대입하는데, 같은 process 안에서는 마지막 대입이 이긴다.</p></details><details><summary><code>10 ** i</code>는 무슨 뜻인가?</summary><p>63줄: <code>**</code>는 거듭제곱이라 10의 i제곱이다. 1, 10, 100, 1000으로 나눈 뒤 10으로 나눈 나머지를 취하면 일, 십, 백, 천의 자리가 된다.</p></details><details><summary>십진수 모드에서 A나 B에 10 이상을 넣으면?</summary><p>계산기 표시(A, B, 결과)가 모두 꺼진다. 64줄 <code>elsif a &lt; base and b &lt; base then</code>이 거짓이면 아무 것도 쓰지 않아 61줄의 빈칸 기본값이 남는다. 한 자리 십진수는 0~9이기 때문이다. 0~F를 쓰려면 SW3을 1로 올려 16진수 모드로 바꾼다.</p></details></section>
 
-<section id="notes"><h2>알아둘 점</h2><ul><li>시뮬레이션(ModelSim)에서 카운터, 계산기 전 조합(십진수 0~9, 16진수 0~F, 십진수 모드의 10 이상 입력은 표시 꺼짐), 잭팟 LED 유지를 2129개 검사해 통과했다. 보드 동작은 확인하지 않았다.</li><li>Quartus Analysis &amp; Synthesis(<code>quartus_map</code>)는 통과했다(오류 0). 배치·배선, 타이밍, 보드 동작은 확인하지 않았다.</li><li>십진수 모드에서 A나 B가 10 이상이면 계산기 표시를 모두 끈다(65줄). <code>else</code>를 <code>elsif</code>로 바꾼 것이라 줄 수는 그대로다.</li><li>십진수 결과는 두 자리로 보인다(예: 7 → <code> 07</code>). 결과가 최대 81이라 세 번째 자리가 항상 0이어서 뺐다. 16진수 결과는 원래 두 자리였다.</li><li>이 문서는 80줄 버전(주석을 모두 지운 코드) 기준이다. 지운 주석의 원문은 맨 아래 '주석이 있던 원본'에 있다. 개념 설명과 시연 순서는 <code>DE2_Project1_code_explanation.html</code>에 있다.</li></ul></section>
+<section id="notes"><h2>알아둘 점</h2><ul><li>시뮬레이션(ModelSim)에서 카운터, 계산기 전 조합(십진수 0~9, 16진수 0~F, 십진수 모드의 10 이상 입력은 표시 꺼짐), 잭팟 LED 유지를 2129개 검사해 통과했다. 보드 동작은 확인하지 않았다.</li><li>Quartus Analysis &amp; Synthesis(<code>quartus_map</code>)는 통과했다(오류 0). 배치·배선, 타이밍, 보드 동작은 확인하지 않았다.</li><li>십진수 모드에서 A나 B가 10 이상이면 계산기 표시를 모두 끈다(64줄). <code>else</code>를 <code>elsif</code>로 바꾼 것이라 줄 수는 그대로다.</li><li>십진수 결과는 두 자리로 보인다(예: 7 → <code> 07</code>). 결과가 최대 81이라 세 번째 자리가 항상 0이어서 뺐다. 16진수 결과는 원래 두 자리였다.</li><li>이 문서는 79줄 버전(주석을 모두 지운 코드) 기준이다. 지운 주석의 원문은 맨 아래 '주석이 있던 원본'에 있다. 개념 설명과 시연 순서는 <code>DE2_Project1_code_explanation.html</code>에 있다.</li></ul></section>
 </main>
 </body>
 </html>

@@ -63,7 +63,7 @@ details[open] summary{ margin-bottom:8px; }
 
 <header>
   <h1>DE2 Design Project #1 코드 설명</h1>
-  <p>Counter + One Digit Calculator (보너스 포함) · VHDL · Cyclone II EP2C35F672C6 · 소스 80줄 (파일 1개, 주석 없음)</p>
+  <p>Counter + One Digit Calculator (보너스 포함) · VHDL · Cyclone II EP2C35F672C6 · 소스 79줄 (파일 1개, 주석 없음)</p>
 </header>
 
 <nav>
@@ -84,7 +84,7 @@ details[open] summary{ margin-bottom:8px; }
   <a href="#full">부록. 전체 코드</a>
 </nav>
 
-<div class="note">이 문서는 주석을 모두 지운 80줄 코드 기준입니다. 줄마다 붙인 설명과 지운 주석의 원문은 <code>DE2_Project1_line_by_line.html</code>에 있습니다.</div>
+<div class="note">이 문서는 주석을 모두 지운 79줄 코드 기준입니다. 줄마다 붙인 설명과 지운 주석의 원문은 <code>DE2_Project1_line_by_line.html</code>에 있습니다.</div>
 
 <h2 id="overview">1. 한눈에 보기</h2>
 <p>스위치 <code>SW0</code> 하나로 <b>카운터</b>와 <b>한 자리 계산기</b>를 오가는 회로입니다. 결과는 7세그먼트(HEX)에 표시하고, 보너스로 LED 표시, 777 잭팟, 나눗셈 나머지, 16진수 표시를 넣었습니다.</p>
@@ -110,7 +110,7 @@ details[open] summary{ margin-bottom:8px; }
 <tr><td><code>SW17~14</code></td><td>사용 안 함</td><td>숫자 A (4비트 이진수)</td></tr>
 <tr><td><code>KEY3 / KEY2 / KEY1</code></td><td>증가(+s) / 증가(+2s) / 감소(-s)</td><td>사용 안 함</td></tr>
 <tr><td><code>KEY0</code></td><td>리셋 (0으로)</td><td>사용 안 함</td></tr>
-<tr><td>표시</td><td>HEX3~0 = 카운터 값, LEDR = 이진수, 777이면 LEDG 전부 켜짐 + HEX7~4에 7777</td><td>HEX6 = A, HEX4 = B, HEX3~0 = 결과</td></tr>
+<tr><td>표시</td><td>HEX3~0 = 카운터 값, LEDR = 이진수, 777이면 LEDG 전부 켜짐</td><td>HEX6 = A, HEX4 = B, HEX3~0 = 결과</td></tr>
 </table>
 
 <h2 id="entity">3. 라이브러리와 포트 (entity)</h2>
@@ -224,7 +224,7 @@ details[open] summary{ margin-bottom:8px; }
 <ul>
   <li><code>to_unsigned(cnt, 18)</code> : 정수 <code>cnt</code>를 18비트 이진수로 바꿔 <code>LEDR</code> 18개 전체에 연결합니다. 9999는 14비트라 위 4개는 항상 0입니다.</li>
   <li><code>(others =&gt; '0')</code> : 모든 비트를 0으로 채운다는 뜻입니다. 계산기 모드(SW0 = 1)에서는 LED를 끕니다.</li>
-  <li><code>LEDG</code> : 카운터 모드에서 <code>cnt = 777</code>이면 초록 LED 8개를 <b>모두 켠 채 유지</b>합니다(깜빡이지 않음). HEX7~4에 <code>7777</code>을 띄우는 부분은 9장 표시 프로세스에 있습니다.</li>
+  <li><code>LEDG</code> : 카운터 모드에서 <code>cnt = 777</code>이면 초록 LED 8개를 <b>모두 켠 채 유지</b>합니다(깜빡이지 않음).</li>
   <li>이 부분은 클럭 없이 값이 바뀌는 즉시 반응하는 <b>조합회로</b>입니다.</li>
 </ul>
 
@@ -253,42 +253,41 @@ details[open] summary{ margin-bottom:8px; }
 <span class="ln">61</span>        d &lt;= (<span class="k">others</span> =&gt; BLANK);</code></pre>
 <p>모든 칸을 빈칸으로 두고 시작해서 필요한 칸만 아래에서 덮어씁니다. <code>(others =&gt; BLANK)</code>는 배열의 모든 칸을 한 값으로 채운다는 뜻이고, 같은 신호에 여러 번 대입하면 <b>마지막 대입이 적용</b>됩니다. 이 덕분에 "안 쓰는 칸은 끈다"를 일일이 적지 않아도 됩니다. 감지 목록 <code>(SW, cnt, a, b, base, res)</code>의 신호가 바뀔 때마다 다시 실행됩니다.</p>
 
-<h3>9-2. 카운터 표시와 잭팟</h3>
+<h3>9-2. 카운터 표시</h3>
 <pre class="code"><code><span class="ln">62</span>        <span class="k">if</span> SW(0) = '0' <span class="k">then</span>
-<span class="ln">63</span>            <span class="k">for</span> i <span class="k">in</span> 0 <span class="k">to</span> 3 <span class="k">loop</span> d(i) &lt;= (cnt / 10 ** i) <span class="k">mod</span> 10; <span class="k">end</span> <span class="k">loop</span>;
-<span class="ln">64</span>            <span class="k">if</span> cnt = 777 <span class="k">then</span> d(7 <span class="k">downto</span> 4) &lt;= (<span class="k">others</span> =&gt; 7); <span class="k">end</span> <span class="k">if</span>;</code></pre>
+<span class="ln">63</span>            <span class="k">for</span> i <span class="k">in</span> 0 <span class="k">to</span> 3 <span class="k">loop</span> d(i) &lt;= (cnt / 10 ** i) <span class="k">mod</span> 10; <span class="k">end</span> <span class="k">loop</span>;</code></pre>
 <table>
 <tr><th>cnt = 1234</th><th class="c">i = 3 → d(3) (천)</th><th class="c">i = 2 → d(2) (백)</th><th class="c">i = 1 → d(1) (십)</th><th class="c">i = 0 → d(0) (일)</th></tr>
 <tr><td>식 <code>(cnt / 10 ** i) mod 10</code></td><td class="c"><code>1234 / 1000 mod 10</code></td><td class="c"><code>1234 / 100 mod 10</code></td><td class="c"><code>1234 / 10 mod 10</code></td><td class="c"><code>1234 / 1 mod 10</code></td></tr>
 <tr><td>값</td><td class="c">1</td><td class="c">2</td><td class="c">3</td><td class="c">4</td></tr>
 </table>
-<p><code>/</code>는 몫, <code>mod</code>는 나머지, <code>10 ** i</code>는 10의 i제곱(1, 10, 100, 1000)입니다. 7세그는 한 칸에 숫자 한 개만 띄울 수 있어서 십진수를 자릿수별로 쪼갭니다. <code>for</code> 반복문은 소프트웨어처럼 도는 것이 아니라 합성할 때 4줄로 펼쳐집니다. 값이 777이면 HEX7~4(<code>d(7 downto 4)</code>)에 7을 넣어 <code>7777</code>을 띄웁니다.</p>
+<p><code>/</code>는 몫, <code>mod</code>는 나머지, <code>10 ** i</code>는 10의 i제곱(1, 10, 100, 1000)입니다. 7세그는 한 칸에 숫자 한 개만 띄울 수 있어서 십진수를 자릿수별로 쪼갭니다. <code>for</code> 반복문은 소프트웨어처럼 도는 것이 아니라 합성할 때 4줄로 펼쳐집니다. 카운터 모드에서는 HEX7~4를 쓰지 않아 빈칸입니다.</p>
 
 <h3>9-3. 계산기 표시</h3>
-<pre class="code"><code><span class="ln">65</span>        <span class="k">elsif</span> a &lt; base <span class="k">and</span> b &lt; base <span class="k">then</span>
-<span class="ln">66</span>            d(6) &lt;= a;  d(4) &lt;= b;
-<span class="ln">67</span>            <span class="k">if</span> SW(2 <span class="k">downto</span> 1) /= "11" <span class="k">then</span>
-<span class="ln">68</span>                <span class="k">if</span> SW(2 <span class="k">downto</span> 1) = "01" <span class="k">and</span> a &lt; b <span class="k">then</span> d(3) &lt;= MINUS; <span class="k">end</span> <span class="k">if</span>;
-<span class="ln">69</span>                d(1) &lt;= res / base;  d(0) &lt;= res <span class="k">mod</span> base;
-<span class="ln">70</span>            <span class="k">elsif</span> b = 0 <span class="k">then</span>
-<span class="ln">71</span>                d(2) &lt;= CH_E;  d(1) &lt;= CH_R;  d(0) &lt;= CH_R;
-<span class="ln">72</span>            <span class="k">else</span>
-<span class="ln">73</span>                d(3) &lt;= a / b;  d(1) &lt;= CH_R;  d(0) &lt;= a <span class="k">mod</span> b;
-<span class="ln">74</span>            <span class="k">end</span> <span class="k">if</span>;
-<span class="ln">75</span>        <span class="k">end</span> <span class="k">if</span>;</code></pre>
+<pre class="code"><code><span class="ln">64</span>        <span class="k">elsif</span> a &lt; base <span class="k">and</span> b &lt; base <span class="k">then</span>
+<span class="ln">65</span>            d(6) &lt;= a;  d(4) &lt;= b;
+<span class="ln">66</span>            <span class="k">if</span> SW(2 <span class="k">downto</span> 1) /= "11" <span class="k">then</span>
+<span class="ln">67</span>                <span class="k">if</span> SW(2 <span class="k">downto</span> 1) = "01" <span class="k">and</span> a &lt; b <span class="k">then</span> d(3) &lt;= MINUS; <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">68</span>                d(1) &lt;= res / base;  d(0) &lt;= res <span class="k">mod</span> base;
+<span class="ln">69</span>            <span class="k">elsif</span> b = 0 <span class="k">then</span>
+<span class="ln">70</span>                d(2) &lt;= CH_E;  d(1) &lt;= CH_R;  d(0) &lt;= CH_R;
+<span class="ln">71</span>            <span class="k">else</span>
+<span class="ln">72</span>                d(3) &lt;= a / b;  d(1) &lt;= CH_R;  d(0) &lt;= a <span class="k">mod</span> b;
+<span class="ln">73</span>            <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">74</span>        <span class="k">end</span> <span class="k">if</span>;</code></pre>
 <ul>
-  <li>A는 HEX6(<code>d(6)</code>), B는 HEX4(<code>d(4)</code>)에 한 자리로 띄웁니다. 65번 줄의 <code>a &lt; base and b &lt; base</code> 때문에 십진수 모드에서 A나 B가 10 이상이면 이 부분을 건너뛰어, 61번 줄의 기본값대로 표시가 모두 꺼집니다. 16진수 모드는 <code>base</code>가 16이라 0~15가 항상 통과합니다.</li>
+  <li>A는 HEX6(<code>d(6)</code>), B는 HEX4(<code>d(4)</code>)에 한 자리로 띄웁니다. 64번 줄의 <code>a &lt; base and b &lt; base</code> 때문에 십진수 모드에서 A나 B가 10 이상이면 이 부분을 건너뛰어, 61번 줄의 기본값대로 표시가 모두 꺼집니다. 16진수 모드는 <code>base</code>가 16이라 0~15가 항상 통과합니다.</li>
   <li><b>나눗셈이 아닌 연산</b>(<code>/= "11"</code>) : 뺄셈에서 A가 B보다 작으면 HEX3에 <code>-</code>. 결과 <code>res</code>를 <code>base</code>로 나눈 몫이 HEX1(<code>d(1)</code>), 나머지가 HEX0(<code>d(0)</code>)이라 <b>두 자리</b>로 보입니다. 16진수 모드는 16으로, 십진수 모드는 10으로 나눕니다.<br>
       예) 15 × 15 = 225 → 16진수 모드: 225 ÷ 16 = 14(E), 225 mod 16 = 1 → <code>E1</code></li>
   <li><b>0으로 나눔</b>(<code>elsif b = 0</code>) → <code>E</code>, <code>r</code>, <code>r</code>을 HEX2~0에 띄워 <code> Err</code>가 됩니다.</li>
   <li><b>나눗셈</b>(<code>else</code>) → HEX3 = 몫(<code>a / b</code>), HEX2 = 빈칸, HEX1 = <code>r</code>, HEX0 = 나머지(<code>a mod b</code>). 예) 7 ÷ 3 → <code>2 r1</code>. 이 줄은 B가 0이 아닐 때만 실행되므로 0으로 나누는 일이 없습니다.</li>
-  <li>이 프로세스는 59~76번 줄입니다.</li>
+  <li>이 프로세스는 59~75번 줄입니다.</li>
 </ul>
 
 <h2 id="hexout">10. 출력 연결</h2>
-<pre class="code"><code><span class="ln">78</span>    HEX0 &lt;= SEG7(d(0));  HEX1 &lt;= SEG7(d(1));  HEX2 &lt;= SEG7(d(2));  HEX3 &lt;= SEG7(d(3));
-<span class="ln">79</span>    HEX4 &lt;= SEG7(d(4));  HEX5 &lt;= SEG7(d(5));  HEX6 &lt;= SEG7(d(6));  HEX7 &lt;= SEG7(d(7));
-<span class="ln">80</span><span class="k">end</span> behavior;</code></pre>
+<pre class="code"><code><span class="ln">77</span>    HEX0 &lt;= SEG7(d(0));  HEX1 &lt;= SEG7(d(1));  HEX2 &lt;= SEG7(d(2));  HEX3 &lt;= SEG7(d(3));
+<span class="ln">78</span>    HEX4 &lt;= SEG7(d(4));  HEX5 &lt;= SEG7(d(5));  HEX6 &lt;= SEG7(d(6));  HEX7 &lt;= SEG7(d(7));
+<span class="ln">79</span><span class="k">end</span> behavior;</code></pre>
 <p>8개 칸 각각에서 문자 코드 <code>d(N)</code>을 <code>SEG7</code> 표의 칸 번호로 써서 7세그 패턴을 찾아 HEX 출력에 연결합니다. 마지막 <code>end behavior;</code>로 설계가 끝납니다.</p>
 
 <h2 id="examples">11. 동작 예시</h2>
@@ -331,7 +330,7 @@ details[open] summary{ margin-bottom:8px; }
 <p>SW3이 1이면 <code>base</code>가 16이 되어 <code>res / base</code>(윗자리)와 <code>res mod base</code>(아랫자리)가 16으로 나눈 몫과 나머지가 됩니다. 십진수 모드에서는 같은 식이 10으로 나눕니다. <code>SEG7</code> 표에 10~15의 패턴(<code>A, b, C, d, E, F</code>)이 들어 있어서 이 값들이 문자로 보입니다.</p></details>
 
 <details><summary>Q9. 777 잭팟은 어떻게 구현했나요?</summary>
-<p><code>cnt = 777</code>인지 비교합니다. 참이면 초록 LED(<code>LEDG</code>) 8개를 모두 켠 채 유지하고(깜빡이지 않음), 표시 프로세스에서 HEX7~4에 7을 넣어 <code>7777</code>을 띄웁니다. 777에서 벗어나면 꺼집니다. 빨간 LED는 잭팟일 때도 계속 값(777)의 이진수를 보여 줍니다.</p></details>
+<p><code>cnt = 777</code>인지 비교합니다. 참이면 초록 LED(<code>LEDG</code>) 8개를 모두 켠 채 유지합니다(깜빡이지 않음). 7세그먼트에는 따로 표시하지 않고 값 777이 그대로 보입니다. 777에서 벗어나면 꺼집니다. 빨간 LED는 잭팟일 때도 계속 값(777)의 이진수를 보여 줍니다.</p></details>
 
 <details><summary>Q10. 두 버튼을 동시에 누르면요?</summary>
 <p>다음 값 <code>n</code>의 <code>when ... else</code> 순서(KEY0 → KEY3 → KEY2 → KEY1)대로 하나만 적용됩니다. 이것은 두 눌림이 <b>같은 클럭(20ns)</b>에 겹칠 때만이고, 손으로 누르면 몇 ms 어긋나서 두 에지가 따로 잡혀 둘 다 적용됩니다. 예) KEY3과 KEY2를 거의 동시에 누르면 +1 후 +2로 +3, KEY3을 먼저 누르고 KEY0을 누르면 0, KEY0을 먼저 누르고 KEY3을 누르면 1입니다(보드에서 확인). 동시 입력에 대한 규칙은 과제에 따로 없습니다.</p></details>
@@ -349,7 +348,7 @@ details[open] summary{ margin-bottom:8px; }
 <p>DE2 보드의 7세그먼트는 active-low 방식이라 해당 획에 0을 주면 켜지고 1을 주면 꺼지기 때문입니다. 숫자 0은 g만 끄면 되므로 <code>"1000000"</code>입니다.</p></details>
 
 <details><summary>Q15. 십진수 모드에서 A나 B에 10 이상을 넣으면 어떻게 되나요?</summary>
-<p>계산기 표시가 모두 꺼집니다. 한 자리 십진수는 0~9라서, 65번 줄 <code>elsif a &lt; base and b &lt; base</code>가 거짓이면 아무 것도 쓰지 않고 61번 줄의 빈칸 기본값이 남습니다. 줄 수는 늘지 않았습니다(<code>else</code>를 바꿈). 이 검사가 없으면 16진수 글자가 보이고, 14 × 14 같은 곱은 <code>res / 10</code>이 숫자표 범위(0~18)를 넘습니다. 0~F를 쓰려면 SW3을 1로 올려 16진수 모드로 바꿉니다.</p></details>
+<p>계산기 표시가 모두 꺼집니다. 한 자리 십진수는 0~9라서, 64번 줄 <code>elsif a &lt; base and b &lt; base</code>가 거짓이면 아무 것도 쓰지 않고 61번 줄의 빈칸 기본값이 남습니다. 줄 수는 늘지 않았습니다(<code>else</code>를 바꿈). 이 검사가 없으면 16진수 글자가 보이고, 14 × 14 같은 곱은 <code>res / 10</code>이 숫자표 범위(0~18)를 넘습니다. 0~F를 쓰려면 SW3을 1로 올려 16진수 모드로 바꿉니다.</p></details>
 
 <details><summary>Q16. <code>10 ** i</code>와 <code>for</code>는 무슨 뜻인가요?</summary>
 <p><code>**</code>는 거듭제곱이라 <code>10 ** i</code>는 10의 i제곱(1, 10, 100, 1000)입니다. <code>for i in 0 to 3 loop</code>는 i가 0~3일 때의 줄을 하드웨어로 4개 펼쳐 줍니다. 즉 <code>d(0) &lt;= cnt mod 10</code>, <code>d(1) &lt;= (cnt / 10) mod 10</code> 같은 네 줄과 같습니다.</p></details>
@@ -358,7 +357,7 @@ details[open] summary{ margin-bottom:8px; }
 <ol>
   <li><b>카운터</b> (SW0 = 0) : <code>0000</code> 확인 → KEY3을 길게 눌러도 +1만 되는지 → KEY2 → KEY1 → SW1을 올려 +5 / +10 / -5 → KEY0 리셋.</li>
   <li><b>LED</b> : 값이 바뀔 때 빨간 LED가 이진수로 바뀌는지 확인.</li>
-  <li><b>잭팟</b> : 777을 만들면(예: SW1을 올려 KEY2로 +10을 77번, SW1을 내려 KEY3으로 +1을 7번) 초록 LED 전부 켜짐 + HEX7~4에 <code>7777</code>.</li>
+  <li><b>잭팟</b> : 777을 만들면(예: SW1을 올려 KEY2로 +10을 77번, SW1을 내려 KEY3으로 +1을 7번) 초록 LED 전부 켜짐.</li>
   <li><b>계산기</b> (SW0 = 1) : A = 7, B = 3으로 덧셈 → 뺄셈 → 곱셈 → 나눗셈(<code>2 r1</code>). A와 B를 바꿔 <code>- 04</code>, B = 0으로 <code>Err</code>.</li>
   <li><b>16진수</b> (SW3 = 1) : A = 15, B = 15로 곱셈 → <code>E1</code>. SW3을 내려 십진수로 돌아갑니다(십진수 모드에서는 A, B를 0~9로 맞춰 시연).</li>
 </ol>
@@ -427,23 +426,22 @@ details[open] summary{ margin-bottom:8px; }
 <span class="ln">61</span>        d &lt;= (<span class="k">others</span> =&gt; BLANK);
 <span class="ln">62</span>        <span class="k">if</span> SW(0) = '0' <span class="k">then</span>
 <span class="ln">63</span>            <span class="k">for</span> i <span class="k">in</span> 0 <span class="k">to</span> 3 <span class="k">loop</span> d(i) &lt;= (cnt / 10 ** i) <span class="k">mod</span> 10; <span class="k">end</span> <span class="k">loop</span>;
-<span class="ln">64</span>            <span class="k">if</span> cnt = 777 <span class="k">then</span> d(7 <span class="k">downto</span> 4) &lt;= (<span class="k">others</span> =&gt; 7); <span class="k">end</span> <span class="k">if</span>;
-<span class="ln">65</span>        <span class="k">elsif</span> a &lt; base <span class="k">and</span> b &lt; base <span class="k">then</span>
-<span class="ln">66</span>            d(6) &lt;= a;  d(4) &lt;= b;
-<span class="ln">67</span>            <span class="k">if</span> SW(2 <span class="k">downto</span> 1) /= "11" <span class="k">then</span>
-<span class="ln">68</span>                <span class="k">if</span> SW(2 <span class="k">downto</span> 1) = "01" <span class="k">and</span> a &lt; b <span class="k">then</span> d(3) &lt;= MINUS; <span class="k">end</span> <span class="k">if</span>;
-<span class="ln">69</span>                d(1) &lt;= res / base;  d(0) &lt;= res <span class="k">mod</span> base;
-<span class="ln">70</span>            <span class="k">elsif</span> b = 0 <span class="k">then</span>
-<span class="ln">71</span>                d(2) &lt;= CH_E;  d(1) &lt;= CH_R;  d(0) &lt;= CH_R;
-<span class="ln">72</span>            <span class="k">else</span>
-<span class="ln">73</span>                d(3) &lt;= a / b;  d(1) &lt;= CH_R;  d(0) &lt;= a <span class="k">mod</span> b;
-<span class="ln">74</span>            <span class="k">end</span> <span class="k">if</span>;
-<span class="ln">75</span>        <span class="k">end</span> <span class="k">if</span>;
-<span class="ln">76</span>    <span class="k">end</span> <span class="k">process</span>;
-<span class="ln">77</span>
-<span class="ln">78</span>    HEX0 &lt;= SEG7(d(0));  HEX1 &lt;= SEG7(d(1));  HEX2 &lt;= SEG7(d(2));  HEX3 &lt;= SEG7(d(3));
-<span class="ln">79</span>    HEX4 &lt;= SEG7(d(4));  HEX5 &lt;= SEG7(d(5));  HEX6 &lt;= SEG7(d(6));  HEX7 &lt;= SEG7(d(7));
-<span class="ln">80</span><span class="k">end</span> behavior;</code></pre>
+<span class="ln">64</span>        <span class="k">elsif</span> a &lt; base <span class="k">and</span> b &lt; base <span class="k">then</span>
+<span class="ln">65</span>            d(6) &lt;= a;  d(4) &lt;= b;
+<span class="ln">66</span>            <span class="k">if</span> SW(2 <span class="k">downto</span> 1) /= "11" <span class="k">then</span>
+<span class="ln">67</span>                <span class="k">if</span> SW(2 <span class="k">downto</span> 1) = "01" <span class="k">and</span> a &lt; b <span class="k">then</span> d(3) &lt;= MINUS; <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">68</span>                d(1) &lt;= res / base;  d(0) &lt;= res <span class="k">mod</span> base;
+<span class="ln">69</span>            <span class="k">elsif</span> b = 0 <span class="k">then</span>
+<span class="ln">70</span>                d(2) &lt;= CH_E;  d(1) &lt;= CH_R;  d(0) &lt;= CH_R;
+<span class="ln">71</span>            <span class="k">else</span>
+<span class="ln">72</span>                d(3) &lt;= a / b;  d(1) &lt;= CH_R;  d(0) &lt;= a <span class="k">mod</span> b;
+<span class="ln">73</span>            <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">74</span>        <span class="k">end</span> <span class="k">if</span>;
+<span class="ln">75</span>    <span class="k">end</span> <span class="k">process</span>;
+<span class="ln">76</span>
+<span class="ln">77</span>    HEX0 &lt;= SEG7(d(0));  HEX1 &lt;= SEG7(d(1));  HEX2 &lt;= SEG7(d(2));  HEX3 &lt;= SEG7(d(3));
+<span class="ln">78</span>    HEX4 &lt;= SEG7(d(4));  HEX5 &lt;= SEG7(d(5));  HEX6 &lt;= SEG7(d(6));  HEX7 &lt;= SEG7(d(7));
+<span class="ln">79</span><span class="k">end</span> behavior;</code></pre>
 
 </div>
 </body>
