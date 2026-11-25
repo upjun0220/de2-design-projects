@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>마법 펜 발표 준비</title>
+<style>
+:root {
+  --bg: #f7f7f5; --panel: #ffffff; --text: #1d1f23; --dim: #5d636e; --line: #dcdfe4;
+  --accent: #2f6fd6; --accent-soft: #e7effc;
+  --meas: #1f8a4c; --meas-soft: #e3f4ea;
+  --sim: #b4690e; --sim-soft: #fbf0e0;
+  --syn: #6b4fc2; --syn-soft: #eeeafb;
+  --est: #8a8f98; --est-soft: #eef0f2;
+  --warn: #b3261e; --warn-soft: #fbe9e7;
+  --code-bg: #f1f2f4;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171b; --panel: #1d2026; --text: #e6e8eb; --dim: #a0a6b0; --line: #30343c;
+    --accent: #79a8ff; --accent-soft: #1f2a40;
+    --meas: #5fd08f; --meas-soft: #17301f; --sim: #f0a94a; --sim-soft: #33260f;
+    --syn: #b39cff; --syn-soft: #261f3b; --est: #a0a6b0; --est-soft: #262a31;
+    --warn: #ff8a80; --warn-soft: #3a1c1a; --code-bg: #262a31;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15171b; --panel: #1d2026; --text: #e6e8eb; --dim: #a0a6b0; --line: #30343c;
+  --accent: #79a8ff; --accent-soft: #1f2a40;
+  --meas: #5fd08f; --meas-soft: #17301f; --sim: #f0a94a; --sim-soft: #33260f;
+  --syn: #b39cff; --syn-soft: #261f3b; --est: #a0a6b0; --est-soft: #262a31;
+  --warn: #ff8a80; --warn-soft: #3a1c1a; --code-bg: #262a31;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.7 system-ui, -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+  word-break: keep-all;
+}
+.wrap { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 32px; max-width: 1120px; margin: 0 auto; padding: 32px 24px 80px; }
+nav { position: sticky; top: 24px; align-self: start; font-size: 14px; }
+nav b { display: block; margin-bottom: 8px; color: var(--dim); font-weight: 600; }
+nav a { display: block; padding: 3px 0; color: var(--dim); text-decoration: none; }
+nav a:hover { color: var(--accent); }
+main { min-width: 0; }
+header h1 { font-size: 30px; line-height: 1.3; margin: 0 0 6px; }
+header p { margin: 0; color: var(--dim); }
+section { margin-top: 44px; }
+h2 { font-size: 22px; margin: 0 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+h2 .n { color: var(--accent); margin-right: 8px; }
+h3 { font-size: 17px; margin: 22px 0 8px; }
+p { margin: 8px 0; }
+code { font-family: Consolas, "D2Coding", monospace; font-size: 0.92em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin: 12px 0; }
+.say { border-left: 4px solid var(--accent); background: var(--accent-soft); border-radius: 0 10px 10px 0; padding: 14px 18px; margin: 12px 0; }
+.say b.lab { display: block; font-size: 13px; color: var(--accent); margin-bottom: 4px; }
+.warn { border-left: 4px solid var(--warn); background: var(--warn-soft); border-radius: 0 10px 10px 0; padding: 12px 16px; margin: 12px 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.tag { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; white-space: nowrap; vertical-align: 1px; }
+.t-meas { color: var(--meas); background: var(--meas-soft); }
+.t-sim { color: var(--sim); background: var(--sim-soft); }
+.t-syn { color: var(--syn); background: var(--syn-soft); }
+.t-est { color: var(--est); background: var(--est-soft); }
+.t-none { color: var(--warn); background: var(--warn-soft); }
+.tbl { overflow-x: auto; margin: 10px 0; }
+table { border-collapse: collapse; width: 100%; font-size: 15px; background: var(--panel); }
+th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+th { background: var(--code-bg); font-weight: 600; }
+td.num { white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* pipeline diagram */
+.flow { display: flex; flex-direction: column; gap: 0; margin: 14px 0; }
+.stage { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; align-items: stretch; }
+.where { font-size: 13px; font-weight: 600; color: var(--dim); padding-top: 12px; text-align: right; }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.box.hw { border-color: var(--syn); box-shadow: inset 4px 0 0 var(--syn); }
+.box.sw { border-color: var(--accent); box-shadow: inset 4px 0 0 var(--accent); }
+.box.pc { border-style: dashed; }
+.box b { display: block; }
+.box small { color: var(--dim); }
+.arrow { text-align: center; color: var(--dim); line-height: 1; padding: 3px 0 3px 132px; font-size: 14px; }
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+ol.steps { padding-left: 22px; }
+ol.steps li { margin: 6px 0; }
+details { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin: 10px 0; }
+details > summary { cursor: pointer; padding: 12px 16px; font-weight: 600; list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
+details > summary::before { content: "＋"; color: var(--accent); margin-right: 8px; }
+details[open] > summary::before { content: "－"; }
+details > div { padding: 0 16px 14px; border-top: 1px solid var(--line); }
+.quiz-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 4px; }
+button { font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer; }
+button:hover { border-color: var(--accent); }
+.score { color: var(--dim); font-size: 14px; }
+.q label { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--dim); margin-top: 8px; cursor: pointer; }
+.timeline { border-left: 2px solid var(--line); margin: 10px 0 10px 6px; padding-left: 18px; }
+.timeline .ev { position: relative; margin: 14px 0; }
+.timeline .ev::before { content: ""; position: absolute; left: -25px; top: 8px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.timeline .date { font-size: 13px; color: var(--dim); font-weight: 600; }
+.theme-btn { position: fixed; right: 16px; bottom: 16px; z-index: 5; }
+@media (max-width: 820px) {
+  .wrap { grid-template-columns: 1fr; padding: 20px 16px 72px; gap: 0; }
+  nav { position: static; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--panel); margin-bottom: 8px; }
+  nav a { display: inline-block; margin-right: 12px; }
+  .stage { grid-template-columns: 1fr; gap: 2px; }
+  .where { text-align: left; padding-top: 0; }
+  .arrow { padding-left: 0; }
+  .split { grid-template-columns: 1fr; }
+  header h1 { font-size: 25px; }
+}
+@media print {
+  nav, .theme-btn, .quiz-bar { display: none; }
+  .wrap { display: block; }
+  details { break-inside: avoid; }
+  details > div { display: block; }
+}
+</style>
+</head>
+<body>
+<button class="theme-btn" type="button" id="themeBtn" aria-label="밝은/어두운 화면 전환">화면 밝기</button>
+<div class="wrap">
+<nav aria-label="목차">
+  <b>목차</b>
+  <a href="#s1">1. 1분 소개</a>
+  <a href="#s2">2. 전체 흐름</a>
+  <a href="#s3">3. 핵심 원리 5개</a>
+  <a href="#s4">4. 외울 숫자</a>
+  <a href="#s5">5. 시연 순서</a>
+  <a href="#s6">6. 시행착오</a>
+  <a href="#s7">7. 예상 질문</a>
+  <a href="#s8">8. 한계</a>
+  <a href="#s9">9. AI 활용</a>
+  <a href="#s10">10. 셀프 퀴즈</a>
+  <a href="#s11">11. 더 읽을 것</a>
+</nav>
+<main>
+<header>
+  <h1>마법 펜 — 발표 준비 공부 자료</h1>
+  <p>Design Project #2 · 자석 펜 서명 식별 · 2026-11-25 기준 코드(<code>main</code> 232653f)</p>
+</header>
+
+<div class="card">
+  <p><b>이 문서의 쓰임.</b> 발표 직전에 읽고, 말로 설명하는 연습을 하기 위한 자료다. 원리 하나하나의 자세한 설명은 <code>core-tech-study.html</code>(같은 폴더)에 있다. 여기서는 <b>발표에서 할 말, 숫자, 시연 순서, 예상 질문</b>을 정리한다.</p>
+  <p>평가 기준은 Creativity(창의성), Quality(완성도), Level of understanding(이해도)다. 특히 이해도는 "왜 그렇게 했는가"를 설명할 수 있는지로 본다. 각 절의 <b>파란 상자</b>는 그대로 말로 연습할 문장이다.</p>
+  <div class="legend">
+    <span class="tag t-meas">실측</span> 보드에서 잰 값
+    <span class="tag t-sim">시뮬레이션</span> PC·ModelSim 계산
+    <span class="tag t-syn">합성 리포트</span> Quartus 결과
+    <span class="tag t-est">추정</span> 계산·가정
+    <span class="tag t-none">미측정</span> 아직 없음
+  </div>
+  <p style="color:var(--dim);font-size:14px">숫자를 말할 때 이 구분을 반드시 같이 말한다. 시뮬레이션 숫자를 실측처럼 말하면 이해도 점수를 잃는다.</p>
+</div>
+
+<!-- 1 -->
+<section id="s1">
+<h2><span class="n">1</span>1분 소개</h2>
+<div class="say">
+  <b class="lab">발표 첫머리 (약 1분)</b>
+  펜 끝에 작은 영구자석을 붙이고, 종이 네 모서리에 3축 자기 센서 4개를 놓았습니다. 자석의 자기장으로 펜의 위치를 1초에 50번 계산해서 서명의 궤적을 얻고, 그 궤적을 등록된 사람들의 서명과 비교해 <b>누가 썼는지 식별</b>합니다.<br><br>
+  DE2가 처음부터 끝까지 다 합니다. 센서 읽기는 Verilog로 만든 I²C 회로가 CPU 없이 하고, 위치 계산은 Nios II에서 작은 신경망이 합니다. 서명 비교에 쓰는 DTW는 소프트웨어와 FPGA 가속기 두 가지로 만들어, 같은 서명으로 속도를 비교할 수 있게 했습니다. 보드에서 잰 결과 하드웨어가 약 1,000배 빨랐습니다.
+</div>
+<div class="card">
+  <b>세 가지 강조점</b>
+  <ul>
+    <li><b>창의성:</b> 터치 패널이나 카메라 없이 자기장만으로 펜을 추적한다. 같은 DE2를 쓰는 다른 팀과 겹치지 않는 주제다.</li>
+    <li><b>완성도:</b> 센서 → 위치 → 서명 → 판정 → 화면까지 보드 하나에서 끊김 없이 돈다. Design 1과 한 이미지로 묶어 스위치 하나로 전환한다.</li>
+    <li><b>이해도:</b> 모든 C 코드를 Python 기준 모델과 비트 단위로 맞췄고, 보드에서 틀린 것(위치 오차 72 mm, 문턱값 문제)을 원인까지 찾아 고쳤다.</li>
+  </ul>
+</div>
+<div class="warn">
+  <b>표현 주의.</b> 이 프로젝트는 "등록된 사람 중 누구인가"를 고르는 <b>식별</b>이다. 남이 따라 쓴 서명을 막아 준다고 말하지 않는다. 그런 질문이 나오면 7절 Q1처럼 "못 막는다, 범위 밖이다"라고 답한다.
+</div>
+</section>
+
+<!-- 2 -->
+<section id="s2">
+<h2><span class="n">2</span>전체 흐름 — 데이터가 어디를 지나가나</h2>
+<p>보라색 테두리는 FPGA 회로(Verilog), 파란색은 Nios II 소프트웨어(C), 점선은 PC다. 화살표 옆이 주고받는 데이터다.</p>
+<div class="flow">
+  <div class="stage"><div class="where">펜·센서</div>
+    <div class="box"><b>자석 펜 + MLX90393 × 4</b><small>종이 네 모서리, 칩 중심 간격 140 × 140 mm. 센서마다 X·Y·Z 세 축 → 모두 12개 값</small></div></div>
+  <div class="arrow">↓ I²C 200 kHz, 버스 1개, 주소 0x18~0x1B</div>
+  <div class="stage"><div class="where">FPGA</div>
+    <div class="box hw"><b>센서 판독기</b> <code>hdl/i2c_master.v</code> <code>hdl/mlx_reader.v</code><small>CPU 없이 20 ms마다 네 센서를 차례로 측정·판독해 레지스터에 올린다. 응답 없는 센서는 ERR 비트로 표시</small></div></div>
+  <div class="arrow">↓ Avalon 버스 · 12채널 원시값</div>
+  <div class="stage"><div class="where">Nios II</div>
+    <div class="box sw"><b>위치 계산</b> <code>nios/main.c</code> <code>nios/position.c</code><small>기준값 빼기(KEY0) → 센서 장착 방향 보정 → 세제곱근 압축 → 정수 신경망 12→64→64→5 → (x, y, z, ux, uy) → 중앙값 + 1€ 필터</small></div></div>
+  <div class="arrow">↓ 펜 위치, 1초에 50번</div>
+  <div class="stage"><div class="where">Nios II</div>
+    <div class="box sw"><b>서명 만들기</b> <code>nios/signature.c</code><small>SW17(펜 스위치)로 시작·끝 → 128점으로 다시 뽑기 → 위치·크기 정규화 → 8채널 int8(x, y, z, vx, vy, ux, uy, pen)</small></div></div>
+  <div class="arrow">↓ 128 × 8 바이트 질의 서명</div>
+  <div class="stage"><div class="where">SW5로 선택</div>
+    <div class="split">
+      <div class="box sw"><b>SW DTW</b> <code>nios/dtw.c</code><small>Nios II가 한 칸씩 계산</small></div>
+      <div class="box hw"><b>HW DTW</b> <code>hdl/dtw_array.v</code><small>PE 33개 시스톨릭 배열, 곱셈기 0개</small></div>
+    </div></div>
+  <div class="arrow">↓ 등록 템플릿마다 거리 (사람당 5개)</div>
+  <div class="stage"><div class="where">Nios II</div>
+    <div class="box sw"><b>판정</b> <code>nios/decide.c</code><small>가장 가까운 사람 k1의 거리 &lt; τ, 그리고 2등과 500 이상 차이 → 그 사람. 아니면 "미등록"</small></div></div>
+  <div class="arrow">↓</div>
+  <div class="stage"><div class="where">출력</div>
+    <div class="box hw"><b>LCD · VGA · LED · 7세그</b> <code>hdl/vga_ui.v</code> <code>nios/ui.c</code><small>VGA는 직접 만든 회로: 문자 80×30칸 + 192×192 서명 칸 + 하드웨어 선 그리기. 7세그는 DTW 시간(µs)</small></div></div>
+  <div class="arrow">↓ JTAG UART (화면에서 바뀐 칸만)</div>
+  <div class="stage"><div class="where">PC</div>
+    <div class="box pc"><b>노트북 화면 중계</b> <code>pc/screen.py</code><small>보드가 정한 화면을 받아 그리기만 한다. 신경망 학습(<code>pc/train_mlp.py</code>)과 분석도 PC에서 미리 한다</small></div></div>
+</div>
+<div class="say">
+  <b class="lab">"왜 이렇게 나눴나"를 물으면</b>
+  매 순간 정해진 타이밍으로 반복해야 하는 일(센서 통신, 화면 그리기)과 계산이 아주 많고 규칙적인 일(DTW)은 FPGA 회로로 만들었습니다. 조건 분기가 많고 자주 바뀌는 일(서명 시작·끝 판단, 판정, 화면 내용)은 Nios II 소프트웨어로 두었습니다.
+</div>
+</section>
+
+<!-- 3 -->
+<section id="s3">
+<h2><span class="n">3</span>핵심 원리 5개 — 한 줄 답과 깊은 답</h2>
+
+<h3>① 자기장으로 위치를 어떻게 아나</h3>
+<div class="say"><b class="lab">한 줄</b>자석의 자기장은 거리의 세제곱에 반비례해서 약해지고 방향도 위치에 따라 달라집니다. 네 센서가 보는 12개 값의 조합은 펜 위치마다 다르기 때문에, 그 조합에서 거꾸로 위치를 계산할 수 있습니다.</div>
+<div class="card">
+  <ul>
+    <li><b>모델:</b> 자기 쌍극자 B = (μ₀/4π)[3(m·r̂)r̂ − m]/r³. 측정은 12개, 미지수는 위치 3개 + 자석 방향 2개 = 5개다.</li>
+    <li><b>기준값 빼기(KEY0):</b> 지구 자기장과 주변의 고정된 자기장을 펜 없이 재 두었다가 뺀다. 펜을 멀리 두고 눌러야 한다.</li>
+    <li><b>장착 보정:</b> 센서 모듈이 판 위에 돌아가 붙어 있으면 축이 다르다. <code>MOUNT_ROT {2,2,2,0}</code>은 9점 측정으로 찾은 값이다(S3만 180° 다름). <code>FIELD_SIGN −1</code>은 젓가락 펜의 자석 극이 아래를 향해서 넣었다.</li>
+    <li><b>세제곱근:</b> 펜이 가까우면 수 mT, 멀면 수 µT로 천 배 넘게 차이 난다. 세제곱근을 취하면 1/r³이 1/r이 되어 범위가 약 10배로 줄고, 신경망이 고르게 배운다.</li>
+  </ul>
+</div>
+
+<h3>② 왜 신경망(MLP)인가</h3>
+<div class="say"><b class="lab">한 줄</b>정석은 최적화(LM)로 방정식을 푸는 것인데, 반복 계산이라 Nios II에서 매 프레임 돌리기엔 느리고 시간도 들쭉날쭉합니다. 그래서 PC에서 시뮬레이션 데이터로 신경망을 학습시켜 두고, 보드에서는 곱셈·덧셈 몇천 번으로 끝나는 정수 신경망만 돌립니다.</div>
+<div class="card">
+  <ul>
+    <li><b>구조:</b> 입력 12 → 은닉 64 → 64 → 출력 5(x, y, z, ux, uy). ReLU, 가중치는 Q10 정수.</li>
+    <li><b>시간:</b> 1프레임 2.1 ms <span class="tag t-sim">시뮬레이션</span>, 프레임 주기 20 ms의 약 10%.</li>
+    <li><b>학습 데이터:</b> 쌍극자 모델로 만든 가상 데이터(<code>pc/train_mlp.py</code>). 그래서 자석 세기(0.62 A·m²)와 높이 범위가 실물과 맞아야 한다.</li>
+    <li><b>LM은 PC에 기준선으로 남아 있다</b>(<code>pc/position_lm.py</code>, <code>pc/gate1.py</code>). 9점 측정으로 실제 오차를 잴 때 쓴다.</li>
+  </ul>
+</div>
+
+<h3>③ 서명을 어떻게 같은 모양의 데이터로 만드나</h3>
+<div class="say"><b class="lab">한 줄</b>사람마다 서명 크기, 위치, 속도가 매번 다르니까 128점으로 다시 뽑고, 무게중심을 원점으로 옮기고, 가로 폭을 같게 맞춥니다. 그러면 "모양과 쓰는 순서"만 남습니다.</div>
+<div class="card">
+  <ul>
+    <li>8채널: x, y, z, vx, vy, ux, uy, pen. 각각 int8(−128~127).</li>
+    <li><b>지금은 x, y, vx, vy, pen만 비교한다</b>(<code>CHANNEL_MASK 0x9B</code>, 11/24 변경). 높이와 기울기는 서명보다 펜을 쥐는 방식에 따라 더 크게 변했기 때문이다. 이 변경의 효과는 아직 수치로 재지 않았다.</li>
+    <li>서명은 SW17을 켜는 순간 시작, 끄는 순간 끝. 끝에서 펜을 든 꼬리는 잘라 낸다.</li>
+  </ul>
+</div>
+
+<h3>④ DTW와 하드웨어 가속기</h3>
+<div class="say"><b class="lab">한 줄</b>DTW는 빠르기가 다른 두 서명을 시간축을 늘였다 줄였다 하며 가장 잘 맞춘 뒤 남는 차이를 거리로 냅니다. 표의 한 칸은 왼쪽·위·왼쪽 위 칸만 보기 때문에, 대각선 방향으로 놓인 칸들은 서로 기다릴 필요가 없어 동시에 계산할 수 있습니다. 이걸 PE 33개짜리 회로로 만들었습니다.</div>
+<div class="card">
+  <ul>
+    <li><b>점화식:</b> D[i][j] = |x[i] − y[j]|₁ + min(D[i−1][j], D[i][j−1], D[i−1][j−1]). 대역 |i−j| ≤ 16만 계산(Sakoe–Chiba), 템플릿당 3,952칸.</li>
+    <li><b>병렬성:</b> (i, j)가 쓰는 세 칸은 모두 i+j가 1 또는 2 작다. i+j가 같은 칸(안티대각선)끼리는 독립이다. 대역 안에서 한 대각선은 최대 17칸이다.</li>
+    <li><b>PE 배치:</b> PE 하나가 오프셋 d = i − j 하나를 맡는다(−16~+16, 33개). 질의 x는 한쪽으로, 템플릿 y는 반대쪽으로 한 PE씩 흐른다. 두 클럭마다 샘플을 넣으면 x[i]와 y[j]가 정확히 PE d에서 시각 i+j에 만난다.</li>
+    <li><b>왜 절반만 일하나:</b> PE는 두 클럭에 한 번 일한다. 남는 클럭을 파이프라인으로 써서 첫 클럭에 L1 거리, 다음 클럭에 min+덧셈을 한다. 그래서 50 MHz를 맞춘다. 17개로 줄일 수 있지만 설명이 어려워져 쓰지 않았다.</li>
+    <li><b>곱셈기 0개:</b> 거리는 절댓값의 합(L1), 누적은 min과 덧셈뿐이다.</li>
+    <li><b>속도:</b> 비교 1회 276클럭 = 5.5 µs <span class="tag t-sim">시뮬레이션</span>. 템플릿 10개 기준 보드에서 HW 117 µs, SW 약 115 ms <span class="tag t-meas">실측</span>.</li>
+  </ul>
+</div>
+
+<h3>⑤ 판정 규칙과 문턱값 τ</h3>
+<div class="say"><b class="lab">한 줄</b>각 사람과의 거리는 그 사람이 등록한 서명 5개 중 가장 가까운 것과의 거리입니다. 가장 가까운 사람의 거리가 그 사람의 문턱값 τ보다 작고, 2등과 충분히 차이 나면 그 사람으로 판정합니다.</div>
+<div class="card">
+  <ul>
+    <li><b>규칙:</b> d<sub>k1</sub> &lt; τ<sub>k1</sub> 그리고 d<sub>k2</sub> − d<sub>k1</sub> ≥ 500(<code>MARGIN_M</code>) → 사람 k1, 아니면 "NOT ENROLLED".</li>
+    <li><b>τ 계산(11/24 수정):</b> 등록 서명 5개 각각에서 "나머지 4개 중 가장 가까운 것과의 거리"를 구하고, 이 5개 값의 평균 + 2 × 표준편차(<code>TAU_A</code> = 2).</li>
+    <li><b>왜 고쳤나:</b> 처음에는 서명 쌍 10개 거리의 평균을 썼다. 그런데 판정은 "가장 가까운 것"과의 거리라서 늘 작은 값이 나온다. 평균으로 잡은 τ는 너무 커서 아무렇게나 쓴 서명도 등록자로 받았다(보드에서 발견). 판정에 쓰는 값과 같은 종류로 τ를 잡도록 바꿨다.</li>
+    <li><code>TAU_A</code>와 <code>MARGIN_M</code>은 <span class="tag t-est">추정</span>값이다. 데이터를 모아 정해야 한다.</li>
+  </ul>
+</div>
+</section>
+
+<!-- 4 -->
+<section id="s4">
+<h2><span class="n">4</span>외울 숫자 — 출처와 함께</h2>
+<div class="tbl"><table>
+  <thead><tr><th>항목</th><th>값</th><th>출처</th><th>말할 때 덧붙일 것</th></tr></thead>
+  <tbody>
+  <tr><td>위치 오차 xy (9점, 젓가락 펜)</td><td class="num">RMS 1.74 mm<br>밀림 제외 1.50 mm</td><td><span class="tag t-meas">실측</span> 11/20</td><td>잔차 0.7 µT. 목표(≤5 mm) 통과. 11/18엔 44~72 mm였다</td></tr>
+  <tr><td>센서 잡음</td><td class="num">축당 약 5 LSB<br>(약 1.2 µT)</td><td><span class="tag t-meas">실측</span> 11/20</td><td>네 센서 모두 초기화가 제대로 된 상태 기준</td></tr>
+  <tr><td>자석 세기</td><td class="num">0.62 A·m²</td><td><span class="tag t-meas">실측</span> 피팅</td><td>처음 가정 0.9보다 약했다. 신경망을 이 값으로 다시 학습</td></tr>
+  <tr><td>위치 신경망 오차</td><td class="num">xy 약 2.5 mm</td><td><span class="tag t-sim">시뮬레이션</span></td><td>가상 데이터 기준. 실측 1.74 mm는 PC LM으로 잰 것이라 서로 다른 숫자다</td></tr>
+  <tr><td>DTW 지연, SW (템플릿 10개)</td><td class="num">114.2~117.0 ms</td><td><span class="tag t-meas">실측</span> 11/24, 8회</td><td>2명 등록 = 템플릿 10개. 1개당 약 11.5 ms</td></tr>
+  <tr><td>DTW 지연, HW (템플릿 10개)</td><td class="num">117 µs</td><td><span class="tag t-meas">실측</span> 11/24, 1회</td><td>약 980배. <b>1회뿐이라 시연에서 몇 번 더 재서 말한다</b></td></tr>
+  <tr><td>DTW 비교 1회 계산</td><td class="num">276클럭 = 5.5 µs</td><td><span class="tag t-sim">시뮬레이션</span></td><td>ModelSim. 질의 복사까지 넣으면 56 µs</td></tr>
+  <tr><td>DTW 가속기 정확도</td><td class="num">100/100 일치</td><td><span class="tag t-sim">시뮬레이션</span></td><td>테스트 벡터 100개를 Python 기준 모델과 비트 단위 비교</td></tr>
+  <tr><td>FPGA 사용량 (Design 2 단독)</td><td class="num">23,900 LE (72%)<br>M4K 98/105</td><td><span class="tag t-syn">합성 리포트</span></td><td>DTW 가속기의 곱셈기는 0개</td></tr>
+  <tr><td>FPGA 사용량 (발표용 통합)</td><td class="num">25,547 LE (77%)<br>메모리 73%</td><td><span class="tag t-syn">합성 리포트</span> 11/24</td><td>Design 1 + 2. 9비트 곱셈기 4/70. 타이밍 여유 모두 양수</td></tr>
+  <tr><td>프레임 주기</td><td class="num">50 Hz (20 ms)</td><td>설계값</td><td>I²C 버스 시간은 프레임당 약 2.6 ms <span class="tag t-est">추정</span></td></tr>
+  <tr><td>식별 정확도·오인식률</td><td class="num">—</td><td><span class="tag t-none">미측정</span></td><td>"체계적으로 재지 못했다"고 솔직히 말한다. 8절 참고</td></tr>
+  </tbody>
+</table></div>
+<div class="warn"><b>자주 헷갈리는 것.</b> "위치 오차 1.74 mm"는 보드의 신경망이 아니라 PC의 LM 피팅으로 잰 값이다. 보드 신경망의 실측 오차는 따로 재지 않았다. 물어보면 이렇게 구분해서 답한다.</div>
+</section>
+
+<!-- 5 -->
+<section id="s5">
+<h2><span class="n">5</span>시연 순서와 비상 대처</h2>
+<h3>준비 (발표 전)</h3>
+<ol class="steps">
+  <li>보드 전원, USB-Blaster, 센서 4개 배선 확인. <b>센서 전원은 3.3 V 핀만</b>(확장 헤더 11번 핀은 5 V라 쓰지 않는다).</li>
+  <li>Git Bash에서 <code>sh demo/run.sh</code>. FPGA 굽기 → Design 2 프로그램 올리기 → 노트북 화면 순서로 진행된다.</li>
+  <li><b>이 창을 발표 끝까지 닫지 않는다.</b> 무료판 Nios II(OpenCore Plus)는 프로그래머 연결이 끊기면 CPU가 멈춘다.</li>
+  <li>화면 오른쪽 위 <code>S 4/4</code>, LCD <code>SENSORS OK 4/4</code> 확인.</li>
+</ol>
+<h3>본 시연</h3>
+<div class="tbl"><table>
+  <thead><tr><th>#</th><th>조작</th><th>보여 줄 것 / 할 말</th></tr></thead>
+  <tbody>
+  <tr><td>1</td><td><code>SW9</code> 내림, 펜을 멀리 두고 <code>KEY0</code></td><td>기준값 측정. "지구 자기장을 빼는 단계입니다"</td></tr>
+  <tr><td>2</td><td>펜을 패드 위에서 움직이기</td><td>화면 커서와 x·y·z 숫자, 센서 막대가 따라 움직인다</td></tr>
+  <tr><td>3</td><td><code>SW1~0</code> = 01, <code>SW4~2</code> = 슬롯, <code>SW17</code> 켜고 서명 → 끄기, 5번</td><td>등록. 5번째가 끝나면 τ가 화면에 나온다</td></tr>
+  <tr><td>4</td><td>두 번째 사람도 등록</td><td>사람마다 색이 다르다(배너, 거리 막대, 서명 선)</td></tr>
+  <tr><td>5</td><td><code>SW1~0</code> = 00, <code>SW5</code> 올림(HW), 서명</td><td>식별 결과, 거리 막대와 τ 선, 7세그에 µs</td></tr>
+  <tr><td>6</td><td><code>SW5</code> 내림(SW), 같은 사람 서명</td><td>같은 결과, 7세그 숫자가 약 1,000배. 화면 <code>DTW TIME</code>에 <code>SW / HW = x</code></td></tr>
+  <tr><td>7</td><td>아무렇게나 서명</td><td>"NOT ENROLLED"가 나오면 좋다. 안 나와도 그대로 보이고 8절 한계로 설명</td></tr>
+  <tr><td>8</td><td><code>SW9</code> 올림</td><td>Design 1(카운터·계산기)로 전환. LCD 글자는 꺼진다</td></tr>
+  <tr><td>9</td><td><code>SW9</code> 내림</td><td>Design 2로 복귀. 등록한 서명이 그대로 남아 있다. 그 전에 <code>SW17</code>, <code>SW1~0</code>을 되돌린다</td></tr>
+  </tbody>
+</table></div>
+<h3>비상 대처</h3>
+<div class="tbl"><table>
+  <thead><tr><th>증상</th><th>원인</th><th>대처</th></tr></thead>
+  <tbody>
+  <tr><td>화면에 <code>S0 NO ANSWER</code>, <code>S 2/4</code></td><td>센서 배선 접촉 불량(11/24 S0·S1에서 실제로 발생)</td><td>선을 다시 꽂고 <code>KEY3</code>. 센서 판독기는 리셋 때만 센서를 설정한다</td></tr>
+  <tr><td>커서가 혼자 떠다님</td><td>기준값을 펜이 가까이 있을 때 잡음</td><td>펜을 멀리 두고 <code>KEY0</code></td></tr>
+  <tr><td>모든 것이 멈춤</td><td>프로그래머 창이 닫힘, USB 빠짐</td><td><code>sh demo/run.sh</code> 다시 실행(약 30초). 등록은 지워진다</td></tr>
+  <tr><td>엉뚱한 사람으로 식별</td><td>문턱값·거리 차이가 작음</td><td>숨기지 않는다. 거리 막대를 보여 주며 "경계에 있는 경우"로 설명</td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<!-- 6 -->
+<section id="s6">
+<h2><span class="n">6</span>시행착오 — 이해도를 보여 주는 이야기</h2>
+<p>평가에서 "무엇이 안 됐고 어떻게 원인을 찾았나"는 좋은 재료다. 하나만 골라 1분 안에 말할 수 있게 연습한다. 추천은 11/18 → 11/20의 위치 오차 이야기다.</p>
+<div class="timeline">
+  <div class="ev"><div class="date">11/15 · 코드 검토</div><b>I²C를 350 kHz에서 200 kHz로 낮춤.</b> START·STOP 준비 시간 여유가 규격(0.6 µs)에 비해 부족했다. 신호 상승 시간이 빠진 계산이었다. 시험 모델에 준비 시간 검사를 넣어 350 kHz면 실패하는 것을 확인했다.</div>
+  <div class="ev"><div class="date">11/18 · 첫 구동</div><b>위치 오차 44~72 mm.</b> 원인이 여러 개 겹쳐 있었다: 센서 간격이 좁음(55·65 mm), 기준값을 잴 때 펜이 옆에 있었음, 자석을 펜 옆에 붙여 극이 펜 축과 직각, 센서 축이 모델과 거울상일 가능성.</div>
+  <div class="ev"><div class="date">11/19 · 재조립</div><b>11.7 mm.</b> 간격 140 mm, 자석을 축 방향으로 다시 붙임. <code>gate1.py</code>가 장착 방향을 찾았다. 센서가 한 평면에 있으면 "판 아래 거울 위치의 자석"도 똑같이 맞는다는 것을 발견하고, 자석이 판 위에 오는 해만 고르도록 고쳤다.</div>
+  <div class="ev"><div class="date">11/20 · 젓가락 펜</div><b>1.74 mm, 목표 통과.</b> 펜을 기울이면 궤적이 밀렸는데, 자석 극이 아래를 향해 신경망 학습 방향과 반대였다. 자석을 다시 붙이지 않고 <code>FIELD_SIGN −1</code> 한 줄로 해결했다. S0·S1 잡음이 7배 컸던 것도 부팅 때 설정을 못 받은 것이 원인이었다.</div>
+  <div class="ev"><div class="date">11/24 · 문턱값</div><b>아무 서명이나 등록자로 받음.</b> τ를 서명 쌍 거리의 평균으로 잡았는데, 판정은 가장 가까운 것과의 거리라 늘 더 작았다. 같은 종류의 값으로 τ를 잡도록 고쳤다. 같은 날 SW/HW DTW 지연을 처음 보드에서 쟀다.</div>
+</div>
+<div class="say"><b class="lab">1분 이야기 예시</b>처음 보드에 올렸을 때 위치 오차가 7 cm였습니다. 원인을 하나씩 분리했습니다. 센서 간격을 넓히고, 자석 방향을 펜 축에 맞추고, 9개 점에서 측정해 센서가 붙은 방향을 데이터로 찾았습니다. 그 과정에서 센서가 한 평면에 있으면 자석이 판 위에 있는 해와 아래에 있는 해를 구별할 수 없다는 것도 알게 되어, 물리적으로 가능한 해만 고르게 했습니다. 마지막으로 자석 극이 거꾸로 붙은 것을 소프트웨어 상수 하나로 보정해서 1.7 mm까지 줄였습니다.</div>
+</section>
+
+<!-- 7 -->
+<section id="s7">
+<h2><span class="n">7</span>예상 질문과 답</h2>
+<p>질문을 먼저 보고 답을 스스로 말해 본 뒤 펼쳐서 확인한다.</p>
+
+<details><summary>Q1. 다른 사람이 서명을 따라 쓰면 막을 수 있나요?</summary><div>
+<p><b>못 막습니다.</b> 이 프로젝트의 범위는 "등록된 사람 중 누가 썼는가"를 고르는 식별입니다. 따라 쓰기를 걸러 낸다고 주장하지 않습니다. 속도 채널(vx, vy)을 쓰기 때문에 모양만 베낀 서명과는 거리가 커질 수 있지만, 이를 검증할 데이터는 아직 모으지 못했습니다.</p></div></details>
+
+<details><summary>Q2. DTW는 노트북에서도 1 ms 안에 끝나는데, 왜 FPGA로 만들었나요?</summary><div>
+<p>맞습니다. "FPGA 없이는 불가능해서"가 아닙니다. 목적은 <b>같은 알고리즘을 소프트웨어와 하드웨어로 나눠 만들고, 지연과 자원을 숫자로 비교하는 것</b>입니다. Nios II 50 MHz에서는 템플릿 10개에 약 115 ms가 걸려 서명 후 기다림이 느껴지는데, 가속기로는 117 µs라 등록자가 늘어도 즉시 답합니다. 그리고 DTW는 칸 사이 의존성이 대각선 방향으로만 있어서 병렬 구조를 설명하기 좋은 예입니다.</p></div></details>
+
+<details><summary>Q3. 1,000배 빨라졌다는 게 공정한 비교인가요?</summary><div>
+<p>측정 구간은 같습니다. 두 경우 모두 질의 서명을 준비한 시점부터 모든 템플릿과의 거리가 나올 때까지이고, 하드웨어 쪽은 질의를 가속기로 복사하는 시간도 포함합니다. 다만 HW 측정은 아직 1회뿐이고, 소프트웨어 DTW는 컴파일러 최적화(-O2)만 했지 손으로 다듬은 것은 아닙니다. 그래서 "이 설정에서 약 1,000배"라고 말합니다.</p></div></details>
+
+<details><summary>Q4. 왜 PE가 33개인데 한 번에 17칸만 계산하나요?</summary><div>
+<p>PE 하나가 대각선 오프셋 d = i − j 하나를 맡고 대역이 ±16이라 33개입니다. 샘플을 두 클럭마다 넣어야 x[i]와 y[j]가 정확히 만나기 때문에, PE마다 두 클럭에 한 번씩 일합니다. 쉬는 클럭은 파이프라인으로 썼습니다. 첫 클럭에 거리를 계산하고 다음 클럭에 min과 덧셈을 해서 50 MHz 타이밍을 맞췄습니다. 17개로 줄이는 공유 방식도 있지만 구조가 복잡해져 쓰지 않았습니다.</p></div></details>
+
+<details><summary>Q5. 왜 곱셈기가 하나도 없나요?</summary><div>
+<p>칸 사이 거리를 유클리드 거리 대신 채널별 절댓값의 합(L1)으로 했기 때문입니다. 뺄셈, 절댓값, 덧셈, 최솟값 비교만 남습니다. 8채널 × 최대 255라 한 칸 거리는 11비트 안에 들어가고, 누적값은 24비트에서 포화시킵니다.</p></div></details>
+
+<details><summary>Q6. 센서 4개면 미지수보다 측정이 많은데 왜 신경망을 쓰나요?</summary><div>
+<p>측정 12개, 미지수 5개라 수학적으로는 풀 수 있습니다. 문제는 푸는 방법입니다. 최적화(LM)는 반복 횟수가 들쭉날쭉하고 초기값이 나쁘면 엉뚱한 해로 갑니다. 신경망은 항상 정해진 계산량(1프레임 2.1 ms, 시뮬레이션)으로 끝나서 50 Hz 실시간에 맞습니다. 대신 학습에 쓴 물리 모델(자석 세기, 높이 범위)이 실물과 맞아야 해서, 실측으로 자석 세기를 구해 다시 학습했습니다.</p></div></details>
+
+<details><summary>Q7. 위치 오차 1.74 mm는 어떻게 쟀나요?</summary><div>
+<p>종이에 3×3 격자 9개 점을 찍고, 수집 모드(<code>SW1~0</code> = 10)에서 펜을 각 점에 세울 때마다 <code>KEY1</code>로 표시하며 센서 원시값을 기록했습니다. PC에서 쌍극자 모델을 LM으로 피팅해 자석 위치를 구하고, 실제 점 위치와 비교했습니다. 전체를 일정하게 미는 성분을 빼면 1.50 mm입니다. 보드 위 신경망의 출력 오차는 이 방법으로 따로 재지 않았습니다.</p></div></details>
+
+<details><summary>Q8. 문턱값 τ는 어떻게 정하나요?</summary><div>
+<p>등록 때 같은 사람의 서명 5개로 정합니다. 서명마다 나머지 4개 중 가장 가까운 것과의 거리를 구하고, 그 5개 값의 평균에 표준편차 두 배를 더합니다. 판정할 때도 "가장 가까운 등록 서명과의 거리"를 쓰기 때문에 같은 종류의 값으로 문턱을 잡은 것입니다. 처음에 평균으로 잡았다가 너무 너그러운 것을 보드에서 발견하고 고쳤습니다. 계수 2와 2등과의 차이 500은 추정값입니다.</p></div></details>
+
+<details><summary>Q9. 왜 높이와 기울기 채널은 뺐나요?</summary><div>
+<p>서명을 쓰는 사람보다 펜을 쥐는 방식이나 자석 추적 잡음에 따라 더 크게 변했습니다. 그러면 같은 사람끼리의 거리가 커지고, 결국 문턱값이 커져 구분력이 떨어집니다. 그래서 위치와 속도만 남겼습니다. 이 결정은 보드에서 관찰한 것에 근거하고, 채널 조합별 정확도는 아직 데이터로 비교하지 못했습니다(<code>pc/evaluate.py</code>에 비교 도구는 있습니다).</p></div></details>
+
+<details><summary>Q10. 소프트웨어 DTW와 하드웨어 DTW 결과가 같다는 건 어떻게 보장하나요?</summary><div>
+<p>Python 기준 모델(<code>hw/dtw_ref.py</code>)을 정답으로 두고, 테스트 벡터 100개를 하드웨어(ModelSim)와 C 코드 양쪽에서 비트 단위로 비교했습니다. 모두 일치했습니다. ModelSim 전체 시스템 시뮬레이션에서도 실제 Nios II 코어가 돌린 SW DTW와 HW DTW 결과가 같았습니다. 보드에서는 서명마다 SW 또는 HW 한쪽으로만 식별하기 때문에, 똑같은 입력으로 두 결과를 나란히 비교한 기록은 아직 없습니다.</p></div></details>
+
+<details><summary>Q11. 센서 통신을 왜 Verilog로 만들었나요? Nios에서 I²C 하면 되지 않나요?</summary><div>
+<p>50 Hz로 네 센서를 매번 측정·판독하려면 정해진 순서와 대기 시간을 계속 지켜야 합니다. 이걸 CPU가 하면 그동안 신경망과 화면 처리가 밀립니다. 회로가 알아서 읽어 레지스터에 올려 두면 CPU는 프레임 번호만 보고 값을 가져가면 됩니다. 응답 없는 센서는 ERR 비트로 알려 줘서, 화면에 <code>NO ANSWER</code>를 띄울 수 있습니다.</p></div></details>
+
+<details><summary>Q12. VGA 화면은 어떻게 만들었나요?</summary><div>
+<p>640×480 전체를 픽셀로 저장하면 1비트만 해도 307 kbit라 남은 메모리에 안 들어갑니다. 그래서 글자 80×30칸(칸마다 글자와 색)과 서명 칸 192×192 비트맵, 커서로 나눴습니다. 선은 Nios가 시작점과 끝점만 주면 회로가 Bresenham으로 그립니다. 노트북 화면은 보드가 바뀐 칸만 JTAG로 보내 주는 것을 그대로 그린 것입니다.</p></div></details>
+
+<details><summary>Q13. 서명 데이터는 개인정보 아닌가요?</summary><div>
+<p>맞습니다. 그래서 수집 전에 동의를 받는 것을 전제로 하고, 원시 데이터는 저장소에 올리지 않습니다(<code>design2/pc/data/</code>는 제외 목록). 파일 이름에도 이름 대신 번호를 씁니다. 보드는 전원을 끄면 등록 서명이 지워집니다.</p></div></details>
+
+<details><summary>Q14. 식별 정확도는 몇 %인가요?</summary><div>
+<p>아직 체계적으로 재지 못했습니다. 여러 사람의 본인 서명과 다른 서명을 정해진 횟수만큼 모아야 하는데, 하드웨어를 안정시키는 데 시간이 걸렸습니다. 대신 위치 오차와 SW/HW 속도는 실측했습니다. 측정할 방법(본인·타인을 나눠 정답률과 오인식률을 신뢰구간과 함께 보고)과 도구는 준비되어 있습니다.</p></div></details>
+
+<details><summary>Q15. Design 1과 Design 2를 어떻게 한 FPGA에 넣었나요?</summary><div>
+<p>최상위 모듈(<code>demo/demo_top.v</code>)이 두 설계를 수정 없이 함께 넣고 입출력만 고릅니다. SW9가 키·스위치·LED·7세그의 주인을 정합니다. 보이지 않는 쪽에는 키를 "안 눌림"으로 주고, Design 2의 스위치는 SW9를 올리기 직전 값으로 고정합니다. 그래서 Design 1을 조작해도 Design 2의 등록이 그대로 남습니다. Design 1을 보는 동안 Nios가 LCD 표시를 끕니다.</p></div></details>
+
+<details><summary>Q16. 무엇이 가장 어려웠나요?</summary><div>
+<p>시뮬레이션에서는 2 mm였던 위치 오차가 실물에서는 7 cm였던 것입니다. 시뮬레이션은 같은 물리 모델로 정답을 만들고 같은 모델로 풀기 때문에, 센서 방향, 자석 극, 세기 같은 실물 차이를 못 잡습니다. 6절의 이야기로 이어서 답합니다.</p></div></details>
+</section>
+
+<!-- 8 -->
+<section id="s8">
+<h2><span class="n">8</span>한계 — 먼저 말하면 강점이 된다</h2>
+<div class="card"><ul>
+  <li><b>식별 정확도 미측정.</b> 문턱값 계수(2)와 거리 차이(500), 채널 선택은 데이터로 정한 값이 아니다.</li>
+  <li><b>따라 쓰기를 막지 못한다.</b> 범위 밖이다.</li>
+  <li><b>HW 지연 측정이 1회.</b> 시연에서 더 재서 보고한다.</li>
+  <li><b>로그 프레임 누락 약 1/3.</b> JTAG UART 출력량을 의심하지만 원인을 확인하지 못했다. 식별 동작 중에는 영향이 없지만 수집 데이터에는 문제가 된다.</li>
+  <li><b>신경망은 시뮬레이션 데이터로만 학습.</b> 보드 신경망의 실측 오차는 따로 재지 않았다.</li>
+  <li><b>센서 4개의 한계.</b> 균일한 외란은 걸러 내지만 기울기가 있는 외란(가까운 철, 휴대폰)은 보정할 미지수가 부족하다.</li>
+  <li><b>배선이 약하다.</b> 점퍼선 접촉 불량으로 센서가 빠지는 일이 있었다. 리셋 때만 센서를 설정하므로, 배선을 만진 뒤에는 KEY3이 필요하다.</li>
+  <li><b>무료판 Nios II.</b> PC 연결이 끊기면 멈춘다. 독립 실행은 정식 라이선스가 있어야 한다.</li>
+</ul></div>
+</section>
+
+<!-- 9 -->
+<section id="s9">
+<h2><span class="n">9</span>AI 활용 — 어떻게 쓰고 어떻게 검증했나</h2>
+<div class="say"><b class="lab">한 줄</b>코드 대부분은 Claude Code와 함께 작성했습니다. AI가 쓴 코드는 믿지 않고, 모든 C 코드를 Python 기준 모델과 비트 단위로 맞추는 시험을 만들었고, 시험이 버그를 잡는지 일부러 버그를 넣어 확인했습니다.</div>
+<h3>검증 방법</h3>
+<div class="card"><ul>
+  <li><b>기준 모델:</b> Python이 정답. C(전처리, 신경망, DTW, 판정)와 Verilog(DTW, VGA)를 비트 단위로 비교. 한 명령으로 전부 돈다(<code>sh design2/run_checks.sh</code>).</li>
+  <li><b>시험의 시험:</b> C 코어에 일부러 버그 5개를 넣어 4개 검출, VGA 회로에 6개 넣어 6개 검출.</li>
+  <li><b>시스템 시뮬레이션:</b> ModelSim에서 실제 Nios II/f 코어가 C 코드를 실행하는 전체 시뮬레이션(약 1.5시간).</li>
+</ul></div>
+<h3>AI가 틀렸던 사례 (발표에서 1~2개 소개)</h3>
+<div class="tbl"><table>
+  <thead><tr><th>무엇</th><th>어떻게 알았나</th></tr></thead>
+  <tbody>
+  <tr><td>DTW 가속기 "PE 33개, 약 200클럭"</td><td>Python 기준 모델로 세어 보니 약 275클럭. 설계서를 고쳤다</td></tr>
+  <tr><td>I²C 350 kHz 타이밍 여유</td><td>코드 검토에서 신호 상승 시간이 빠진 것을 발견. 200 kHz로 낮추고 시험에 검사 추가</td></tr>
+  <tr><td>문턱값 τ를 쌍 거리 평균으로 계산</td><td>보드에서 아무 서명이나 등록자로 받는 것을 보고 원인 분석. 판정 값과 종류가 달랐다</td></tr>
+  <tr><td>장착값 탐색이 판 아래 거울 해를 고름</td><td>자로 잰 높이와 비교해 발견. 물리적으로 가능한 해만 남기도록 수정</td></tr>
+  <tr><td>설정 파일 주석을 실제 값으로 읽음</td><td><code>config.h</code> 주석의 "Z_SIGN −1"을 PC 도구가 값으로 읽었다. <code>#define</code> 줄만 읽게 수정</td></tr>
+  </tbody>
+</table></div>
+<p>기록: 작업 일지 <code>journal/</code>, 주요 프롬프트 <code>prompts/</code>.</p>
+</section>
+
+<!-- 10 -->
+<section id="s10">
+<h2><span class="n">10</span>셀프 퀴즈</h2>
+<p>답을 말로 해 본 뒤 펼쳐 확인하고, 맞았으면 체크한다. 체크는 이 브라우저에만 저장된다.</p>
+<div class="quiz-bar"><span class="score" id="score"></span><button type="button" id="resetQuiz">체크 모두 지우기</button></div>
+<div id="quiz"></div>
+</section>
+
+<!-- 11 -->
+<section id="s11">
+<h2><span class="n">11</span>더 읽을 것</h2>
+<div class="tbl"><table>
+  <thead><tr><th>파일</th><th>언제 읽나</th></tr></thead>
+  <tbody>
+  <tr><td><code>design2/docs/core-tech-study.html</code></td><td>원리를 하나씩 더 깊게(I²C, 장착 보정, LM, 필터, 시스톨릭 배열)</td></tr>
+  <tr><td><code>design2/docs/IMPLEMENTATION.md</code></td><td>코드 읽는 순서, 검증 범위, 시뮬레이션 지연 표</td></tr>
+  <tr><td><code>design2/docs/BRINGUP.md</code></td><td>보드 띄우는 절차와 문제 해결</td></tr>
+  <tr><td><code>design2/README.md</code> 6.4절</td><td>판정 규칙과 11/24 변경 이유</td></tr>
+  <tr><td><code>demo/README.md</code></td><td>통합 이미지와 SW9 전환</td></tr>
+  <tr><td><code>hw/dtw_ref.py</code> → <code>hdl/dtw_array.v</code></td><td>DTW 질문 대비. 머리 주석에 원리가 있다</td></tr>
+  <tr><td><code>journal/2026-11-18.md</code> ~ <code>11-20.md</code></td><td>시행착오 이야기의 원본</td></tr>
+  </tbody>
+</table></div>
+</section>
+</main>
+</div>
+
+<script>
+(function () {
+  // theme toggle (per viewer, optional)
+  var root = document.documentElement, btn = document.getElementById("themeBtn");
+  function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function save(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  var saved = load("mp-theme");
+  if (saved) root.setAttribute("data-theme", saved);
+  btn.addEventListener("click", function () {
+    var dark = root.getAttribute("data-theme") ? root.getAttribute("data-theme") === "dark"
+             : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var next = dark ? "light" : "dark";
+    root.setAttribute("data-theme", next); save("mp-theme", next);
+  });
+
+  // self quiz
+  var Q = [
+    ["센서는 몇 개이고 측정값은 모두 몇 개인가? 미지수는?", "4개 × 3축 = 12개. 미지수는 위치 x, y, z와 자석 방향 2개, 모두 5개."],
+    ["자기장에 세제곱근을 취하는 이유는?", "쌍극자 자기장은 1/r³로 줄어 값의 범위가 천 배 넘게 차이 난다. 세제곱근을 취하면 1/r 꼴이 되어 범위가 약 10배로 줄고 신경망이 고르게 배운다."],
+    ["KEY0은 무엇을 하고, 언제 누르나?", "기준값(지구 자기장 등 고정 자기장)을 다시 잰다. 펜을 센서에서 멀리 둔 상태에서 누른다."],
+    ["위치 신경망의 입력, 출력, 층 구성은?", "입력 12(세제곱근 압축한 센서값) → 64 → 64 → 출력 5(x, y, z, ux, uy). ReLU, Q10 정수 가중치."],
+    ["서명 하나는 어떤 데이터가 되나?", "128점 × 8채널 int8. 무게중심을 원점으로, 가로 폭을 같게 정규화. 지금은 x, y, vx, vy, pen만 비교(CHANNEL_MASK 0x9B)."],
+    ["DTW 점화식을 말해 보라.", "D[i][j] = |x[i] − y[j]|₁ + min(D[i−1][j], D[i][j−1], D[i−1][j−1]), 대역 |i−j| ≤ 16."],
+    ["DTW를 병렬로 계산할 수 있는 이유는?", "칸 (i, j)가 쓰는 세 칸은 모두 i+j가 1 또는 2 작다. i+j가 같은 칸(안티대각선)끼리는 서로 의존하지 않는다."],
+    ["PE는 몇 개이고 각자 무엇을 맡나?", "33개. PE 하나가 대각선 오프셋 d = i − j(−16~+16) 하나를 맡는다."],
+    ["가속기에 곱셈기가 없는 이유는?", "칸 거리를 L1(절댓값 합)로 하고 누적은 min과 덧셈만 쓰기 때문."],
+    ["판정 규칙 두 조건은?", "가장 가까운 사람 k1의 거리가 τ보다 작고, 2등과의 거리 차이가 500 이상이어야 k1. 아니면 미등록."],
+    ["τ를 11/24에 왜 바꿨나?", "판정은 가장 가까운 등록 서명과의 거리인데, τ는 서명 쌍 거리의 평균으로 잡아 너무 컸다. 이제는 서명마다 나머지 중 가장 가까운 거리로 평균 + 2σ를 낸다."],
+    ["보드에서 잰 SW/HW DTW 지연은? 조건은?", "템플릿 10개(2명) 기준 SW 약 115 ms(8회), HW 117 µs(1회). 약 1,000배. 실측."],
+    ["위치 오차 1.74 mm는 무엇으로 잰 값인가?", "9점 격자 측정을 PC에서 LM 피팅한 실측값(11/20). 보드 신경망의 출력 오차는 따로 재지 않았다."],
+    ["센서 판독기를 Verilog로 만든 이유는?", "50 Hz로 네 센서를 정해진 순서·대기 시간으로 읽는 일을 CPU 없이 하게 해서, Nios가 신경망·화면에 시간을 쓰게 하려고."],
+    ["S0이 NO ANSWER면 무엇을 하나?", "센서 배선을 다시 꽂고 KEY3으로 리셋. 판독기는 리셋 때만 센서를 설정한다."],
+    ["발표 중 demo/run.sh 창을 닫으면 안 되는 이유는?", "무료판 Nios II(OpenCore Plus)는 프로그래머 연결이 끊기면 CPU가 멈춘다."]
+  ];
+  var box = document.getElementById("quiz"), score = document.getElementById("score");
+  var done = {};
+  try { done = JSON.parse(load("mp-quiz") || "{}") || {}; } catch (e) { done = {}; }
+  function update() {
+    var n = 0; for (var k in done) if (done[k]) n++;
+    score.textContent = "맞힌 문제 " + n + " / " + Q.length;
+    save("mp-quiz", JSON.stringify(done));
+  }
+  Q.forEach(function (q, i) {
+    var d = document.createElement("details"); d.className = "q";
+    var s = document.createElement("summary"); s.textContent = "퀴즈 " + (i + 1) + ". " + q[0];
+    var body = document.createElement("div");
+    var p = document.createElement("p"); p.textContent = q[1];
+    var lab = document.createElement("label");
+    var cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = !!done[i];
+    cb.addEventListener("change", function () { done[i] = cb.checked; update(); });
+    lab.appendChild(cb); lab.appendChild(document.createTextNode("맞혔다"));
+    body.appendChild(p); body.appendChild(lab);
+    d.appendChild(s); d.appendChild(body); box.appendChild(d);
+  });
+  document.getElementById("resetQuiz").addEventListener("click", function () {
+    done = {}; box.querySelectorAll("input[type=checkbox]").forEach(function (c) { c.checked = false; }); update();
+  });
+  update();
+})();
+</script>
+</body>
+</html>
